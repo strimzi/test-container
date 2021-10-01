@@ -13,8 +13,6 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -48,11 +46,11 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     }
 
     public StrimziZookeeperContainer(Map<String, String> additionalKafkaConfiguration) {
-        this(StrimziKafkaContainer.getStrimziVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion());
+        this(StrimziKafkaContainer.getStrimziTestContainerImageVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion());
     }
 
     public StrimziZookeeperContainer() {
-        this(StrimziKafkaContainer.getStrimziVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion());
+        this(StrimziKafkaContainer.getStrimziTestContainerImageVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion());
     }
 
     @Override

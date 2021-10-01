@@ -133,7 +133,7 @@ public class StrimziKafkaClusterTest {
         Map<String, String> kafkaClusterConfiguration = new HashMap<>();
         kafkaClusterConfiguration.put("zookeeper.connect", "zookeeper:2181");
 
-        systemUnderTest = new StrimziKafkaCluster(StrimziKafkaContainer.getStrimziVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion(),
+        systemUnderTest = new StrimziKafkaCluster(StrimziKafkaContainer.getStrimziTestContainerImageVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion(),
             numberOfBrokers,
             numberOfReplicas,
             kafkaClusterConfiguration);

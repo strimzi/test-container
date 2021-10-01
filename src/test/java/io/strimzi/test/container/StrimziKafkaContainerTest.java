@@ -53,7 +53,6 @@ public class StrimziKafkaContainerTest {
 
         List<String> supportedKafkaVersions = new ArrayList<>();
 
-
         // Read Kafka versions
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/supported_kafka.versions"))) {
             String kafkaVersion;
@@ -76,14 +75,14 @@ public class StrimziKafkaContainerTest {
 
         // Read Strimzi version
         String strimziVersion = null;
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/strimzi-version.txt"))) {
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/strimzi_test_container_image.version"))) {
             strimziVersion = bufferedReader.readLine();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         LOGGER.info("Asserting Strimzi version: {}", strimziVersion);
-        assertThat(strimziVersion, is(StrimziKafkaContainer.getStrimziVersion()));
+        assertThat(strimziVersion, is(StrimziKafkaContainer.getStrimziTestContainerImageVersion()));
 
         systemUnderTest.stop();
     }

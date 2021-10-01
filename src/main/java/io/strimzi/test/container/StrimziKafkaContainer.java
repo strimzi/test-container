@@ -11,15 +11,12 @@ import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,7 +41,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
     private static final String LATEST_KAFKA_VERSION;
     private static final List<String> SUPPORTED_KAFKA_VERSIONS = new ArrayList<>(5);
-    private static final String STRIMZI_VERSION;
+    private static final String STRIMZI_TEST_CONTAINER_IMAGE_VERSION;
 
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
@@ -53,20 +50,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     static {
         // Reads the supported_kafka.versions for the supported Kafka versions
-        String fileName = "config/sample.txt";
-        ClassLoader classLoader = StrimziKafkaContainer.class.getClassLoader();
-
-        try (InputStream inputStream = classLoader.getResourceAsStream(fileName)) {
-
-            String result = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
-            System.out.println(result);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-        InputStream kafkaVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/kafka-versions.txt");
+        InputStream kafkaVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/supported_kafka.versions");
 
         try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(kafkaVersionsInputStream, StandardCharsets.UTF_8))) {
             String kafkaVersion;
@@ -84,8 +68,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         LATEST_KAFKA_VERSION = SUPPORTED_KAFKA_VERSIONS.get(SUPPORTED_KAFKA_VERSIONS.size() - 1);
 
-        // Reads the strimzi-version.txt for the Strimzi version which should be used
-        InputStream strimziVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/strimzi-version.txt");
+        // Reads the strimzi_test_container_image.version for the Strimzi version which should be used
+        InputStream strimziVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/strimzi_test_container_image.version");
         String strimziVersion = null;
 
         try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(strimziVersionsInputStream, StandardCharsets.UTF_8))) {
@@ -98,8 +82,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             e.printStackTrace();
         }
 
-        STRIMZI_VERSION = strimziVersion;
-        LOGGER.info("Supported Strimzi version: {}", STRIMZI_VERSION);
+        STRIMZI_TEST_CONTAINER_IMAGE_VERSION = strimziVersion;
+        LOGGER.info("Supported Strimzi test container image version: {}", STRIMZI_TEST_CONTAINER_IMAGE_VERSION);
     }
 
     private StrimziKafkaContainer(final int brokerId, final String imageVersion, Map<String, String> additionalKafkaConfiguration) {
@@ -128,11 +112,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     public static StrimziKafkaContainer createWithAdditionalConfiguration(final int brokerId, Map<String, String> additionalKafkaConfiguration) {
-        return new StrimziKafkaContainer(brokerId, STRIMZI_VERSION + "-kafka-" + LATEST_KAFKA_VERSION, additionalKafkaConfiguration);
+        return new StrimziKafkaContainer(brokerId, STRIMZI_TEST_CONTAINER_IMAGE_VERSION + "-kafka-" + LATEST_KAFKA_VERSION, additionalKafkaConfiguration);
     }
 
     public static StrimziKafkaContainer create(final int brokerId) {
-        return new StrimziKafkaContainer(brokerId, STRIMZI_VERSION + "-kafka-" + LATEST_KAFKA_VERSION, Collections.emptyMap());
+        return new StrimziKafkaContainer(brokerId, STRIMZI_TEST_CONTAINER_IMAGE_VERSION + "-kafka-" + LATEST_KAFKA_VERSION, Collections.emptyMap());
     }
 
     @Override
@@ -230,8 +214,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return LATEST_KAFKA_VERSION;
     }
 
-    public static String getStrimziVersion() {
-        return STRIMZI_VERSION;
+    public static String getStrimziTestContainerImageVersion() {
+        return STRIMZI_TEST_CONTAINER_IMAGE_VERSION;
     }
 
     @Override
