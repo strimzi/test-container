@@ -99,7 +99,7 @@ public class StrimziKafkaCluster implements Startable {
             e.printStackTrace();
         }
 
-        TestUtils.waitFor("Broker node", Duration.ofSeconds(1).toMillis(), Duration.ofSeconds(30).toMillis(),
+        Utils.waitFor("Broker node", Duration.ofSeconds(1).toMillis(), Duration.ofSeconds(30).toMillis(),
             () -> {
                 Container.ExecResult result = null;
                 try {

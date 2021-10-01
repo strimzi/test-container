@@ -4,7 +4,7 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.utils.TestUtils;
+import io.strimzi.utils.Utils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -102,7 +102,7 @@ public class StrimziKafkaClusterTest {
 
         producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-        TestUtils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(1).toMillis(),
+        Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(1).toMillis(),
             () -> {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
