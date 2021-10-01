@@ -55,7 +55,7 @@ public class StrimziKafkaContainerTest {
 
 
         // Read Kafka versions
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/kafka-versions.txt"))) {
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/supported_kafka.versions"))) {
             String kafkaVersion;
 
             while ((kafkaVersion = bufferedReader.readLine()) != null) {

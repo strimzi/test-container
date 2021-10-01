@@ -28,7 +28,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainer.class);
 
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
-    private static final List<String> SUPPORTED_KAFKA_VERSIONS = new ArrayList<>(5);
 
     public static final int ZOOKEEPER_PORT = 2181;
 

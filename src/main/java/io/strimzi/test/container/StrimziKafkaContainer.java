@@ -11,12 +11,15 @@ import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -49,7 +52,20 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private int brokerId;
 
     static {
-        // Reads the kafka-versions.txt for the supported Kafka versions
+        // Reads the supported_kafka.versions for the supported Kafka versions
+        String fileName = "config/sample.txt";
+        ClassLoader classLoader = StrimziKafkaContainer.class.getClassLoader();
+
+        try (InputStream inputStream = classLoader.getResourceAsStream(fileName)) {
+
+            String result = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+            System.out.println(result);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
         InputStream kafkaVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/kafka-versions.txt");
 
         try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(kafkaVersionsInputStream, StandardCharsets.UTF_8))) {

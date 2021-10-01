@@ -35,7 +35,7 @@ public class StrimziZookeeperContainerTest {
     }
 
     @Test
-    void testZookeeperWithKafkaContainer() throws InterruptedException {
+    void testZookeeperWithKafkaContainer() {
         systemUnderTest = new StrimziZookeeperContainer();
         systemUnderTest.start();
 
