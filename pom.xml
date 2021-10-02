@@ -33,7 +33,7 @@
 
     <properties>
         <!-- DEPENDENCY CODE VERSIONS       -->
-        <test-containers.version>1.15.2</test-containers.version>
+        <test-containers.version>1.16.0</test-containers.version>
         <spotbugs.version>4.0.3</spotbugs.version>
         <log4j.version>2.14.1</log4j.version>
         <docker-java.version>3.2.7</docker-java.version>
