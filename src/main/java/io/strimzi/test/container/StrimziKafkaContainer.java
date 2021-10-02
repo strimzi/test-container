@@ -58,7 +58,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 SUPPORTED_KAFKA_VERSIONS.add(kafkaVersion);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            String message = "Unexpected IOException there is no `supported_kafka.versions` file!";
+            LOGGER.error(message, e);
+
+            throw new RuntimeException(message, e);
         }
 
         LOGGER.info("Supported Kafka versions: {}", SUPPORTED_KAFKA_VERSIONS);

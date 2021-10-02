@@ -70,11 +70,13 @@ public class StrimziKafkaCluster implements Startable {
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
                 // adding broker id for each kafka container
-                return StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration)
+                StrimziKafkaContainer kafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration)
                     .withNetwork(this.network)
                     .withNetworkAliases("broker-" + brokerId)
                     .dependsOn(this.zookeeper)
                     .withExternalZookeeper("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
+
+                return kafkaContainer;
             })
             .collect(Collectors.toList());
     }

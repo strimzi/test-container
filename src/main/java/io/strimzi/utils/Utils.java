@@ -33,10 +33,13 @@ public class Utils {
             strimziVersion = bufferedReader.readLine();
 
             if (strimziVersion == null)    {
-                throw new RuntimeException("Failed to read Strimzi version");
+                throw new RuntimeException("Failed to read Strimzi test container version");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            String message = "Unexpected IOException there is no `strimzi_test_container_image.version` file!";
+            LOGGER.error(message, e);
+
+            throw new RuntimeException(message, e);
         }
         return strimziVersion;
     }
