@@ -32,6 +32,10 @@
     </developers>
 
     <properties>
+        <!--  JAVA CODE VERSION   -->
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+
         <!-- DEPENDENCY CODE VERSIONS       -->
         <test-containers.version>1.16.0</test-containers.version>
         <spotbugs.version>4.0.3</spotbugs.version>
@@ -176,7 +180,8 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <release>11</release>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
             <plugin>
