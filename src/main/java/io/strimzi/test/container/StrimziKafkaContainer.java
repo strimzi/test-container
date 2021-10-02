@@ -7,7 +7,6 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import io.strimzi.utils.AuxiliaryVariables;
-import io.strimzi.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
