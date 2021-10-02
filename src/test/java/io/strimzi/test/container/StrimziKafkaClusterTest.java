@@ -53,7 +53,7 @@ public class StrimziKafkaClusterTest {
     @Test
     void testKafkaClusterStartup() throws IOException, InterruptedException {
         // exercise (fetch the data)
-        Container.ExecResult result = this.systemUnderTest.getZookeeper().execInContainer(
+        final Container.ExecResult result = this.systemUnderTest.getZookeeper().execInContainer(
             "sh", "-c",
             "bin/zookeeper-shell.sh zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
         );
@@ -68,7 +68,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterFunctionality() throws InterruptedException, ExecutionException, TimeoutException {
-        AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+        final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()
         ));
 
@@ -95,7 +95,7 @@ public class StrimziKafkaClusterTest {
         final String recordKey = "strimzi";
         final String recordValue = "the-best-project-in-the-world";
 
-        Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, numberOfReplicas, (short) numberOfReplicas));
+        final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, numberOfReplicas, (short) numberOfReplicas));
         adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
 
         consumer.subscribe(Collections.singletonList(topicName));
@@ -130,7 +130,7 @@ public class StrimziKafkaClusterTest {
     void setUp() {
         numberOfBrokers = 3;
         numberOfReplicas = 2;
-        Map<String, String> kafkaClusterConfiguration = new HashMap<>();
+        final Map<String, String> kafkaClusterConfiguration = new HashMap<>();
         kafkaClusterConfiguration.put("zookeeper.connect", "zookeeper:2181");
 
         systemUnderTest = new StrimziKafkaCluster(

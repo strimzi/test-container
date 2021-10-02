@@ -26,7 +26,7 @@ public class StrimziZookeeperContainerTest {
         systemUnderTest = new StrimziZookeeperContainer();
         systemUnderTest.start();
 
-        String zookeeperLogs = systemUnderTest.getLogs();
+        final String zookeeperLogs = systemUnderTest.getLogs();
 
         assertThat(zookeeperLogs, notNullValue());
         assertThat(zookeeperLogs, containsString("Created server"));
@@ -44,7 +44,7 @@ public class StrimziZookeeperContainerTest {
 
         kafkaContainer.start();
 
-        String kafkaLogs = kafkaContainer.getLogs();
+        final String kafkaLogs = kafkaContainer.getLogs();
 
         assertThat(kafkaLogs, notNullValue());
         assertThat(kafkaLogs, containsString("Initiating client connection"));

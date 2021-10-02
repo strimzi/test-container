@@ -72,7 +72,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         LOGGER.info("Supported Strimzi test container image version: {}", AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION);
     }
 
-    private StrimziKafkaContainer(final int brokerId, Map<String, String> additionalKafkaConfiguration) {
+    private StrimziKafkaContainer(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
         super("quay.io/strimzi/kafka:" + AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION + "-kafka-" + AuxiliaryVariables.Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION);
         super.withNetwork(Network.SHARED);
 
@@ -88,12 +88,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     public static StrimziKafkaContainer createWithExternalZookeeper(final int brokerId,
-                                                                    final String connectString, Map<String, String> additionalKafkaConfiguration) {
+                                                                    final String connectString, final Map<String, String> additionalKafkaConfiguration) {
         return new StrimziKafkaContainer(brokerId, additionalKafkaConfiguration)
             .withExternalZookeeper(connectString);
     }
 
-    public static StrimziKafkaContainer createWithAdditionalConfiguration(final int brokerId, Map<String, String> additionalKafkaConfiguration) {
+    public static StrimziKafkaContainer createWithAdditionalConfiguration(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
         return new StrimziKafkaContainer(brokerId, additionalKafkaConfiguration);
     }
 
@@ -108,13 +108,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super.doStart();
     }
 
-    public StrimziKafkaContainer withExternalZookeeper(String connectString) {
+    public StrimziKafkaContainer withExternalZookeeper(final String connectString) {
         this.externalZookeeperConnect = connectString;
         return self();
     }
 
     @Override
-    protected void containerIsStarting(InspectContainerResponse containerInfo, boolean reused) {
+    protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
         this.kafkaExposedPort = getMappedPort(KAFKA_PORT);

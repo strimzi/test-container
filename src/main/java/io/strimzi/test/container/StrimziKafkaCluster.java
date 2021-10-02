@@ -40,7 +40,7 @@ public class StrimziKafkaCluster implements Startable {
     private final StrimziZookeeperContainer zookeeper;
     private final Collection<StrimziKafkaContainer> brokers;
 
-    public StrimziKafkaCluster(int brokersNum, int internalTopicReplicationFactor, Map<String, String> additionalKafkaConfiguration) {
+    public StrimziKafkaCluster(final int brokersNum, final int internalTopicReplicationFactor, final Map<String, String> additionalKafkaConfiguration) {
         if (brokersNum < 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
         }
