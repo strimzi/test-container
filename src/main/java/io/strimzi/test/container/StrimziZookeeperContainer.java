@@ -6,6 +6,7 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.strimzi.utils.AuxiliaryVariables;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
@@ -13,7 +14,6 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 
 /**
  * StrimziZookeeperContainer is an instance of the Zookeeper encapsulated inside a docker container using image from
@@ -31,8 +31,8 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     private int zookeeperExposedPort;
 
-    public StrimziZookeeperContainer(final String imageVersion) {
-        super("quay.io/strimzi/kafka:" + imageVersion);
+    public StrimziZookeeperContainer() {
+        super("quay.io/strimzi/kafka:" + AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION + "-kafka-" + AuxiliaryVariables.Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION);
         super.withNetwork(Network.SHARED);
 
         // exposing zookeeper port from the container
@@ -43,14 +43,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
         // env for readiness
         withEnv("ZOO_4LW_COMMANDS_WHITELIST", "rouk");
-    }
-
-    public StrimziZookeeperContainer(Map<String, String> additionalKafkaConfiguration) {
-        this(StrimziKafkaContainer.getStrimziTestContainerImageVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion());
-    }
-
-    public StrimziZookeeperContainer() {
-        this(StrimziKafkaContainer.getStrimziTestContainerImageVersion() + "-kafka-" + StrimziKafkaContainer.getLatestKafkaVersion());
     }
 
     @Override

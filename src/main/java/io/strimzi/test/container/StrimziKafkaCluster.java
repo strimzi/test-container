@@ -40,7 +40,7 @@ public class StrimziKafkaCluster implements Startable {
     private final StrimziZookeeperContainer zookeeper;
     private final Collection<StrimziKafkaContainer> brokers;
 
-    public StrimziKafkaCluster(String imageVersion, int brokersNum, int internalTopicReplicationFactor, Map<String, String> additionalKafkaConfiguration) {
+    public StrimziKafkaCluster(int brokersNum, int internalTopicReplicationFactor, Map<String, String> additionalKafkaConfiguration) {
         if (brokersNum < 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
         }
@@ -70,7 +70,7 @@ public class StrimziKafkaCluster implements Startable {
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
                 // adding broker id for each kafka container
-                return StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, imageVersion, additionalKafkaConfiguration)
+                return StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration)
                     .withNetwork(this.network)
                     .withNetworkAliases("broker-" + brokerId)
                     .dependsOn(this.zookeeper)
@@ -101,7 +101,7 @@ public class StrimziKafkaCluster implements Startable {
 
         Utils.waitFor("Broker node", Duration.ofSeconds(1).toMillis(), Duration.ofSeconds(30).toMillis(),
             () -> {
-                Container.ExecResult result = null;
+                Container.ExecResult result;
                 try {
                     result = this.zookeeper.execInContainer(
                         "sh", "-c",
