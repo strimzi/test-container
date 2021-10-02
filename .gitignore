@@ -6,4 +6,5 @@ target/
 release.properties
 
 # IntelliJ IDEA specific
+.idea
 *.iml
