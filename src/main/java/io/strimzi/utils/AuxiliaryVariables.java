@@ -13,12 +13,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+/**
+ * AuxiliaryVariables contains serveral variables, which are used in whole project. Moreover it also has nested class
+ * @see{Environment}, which stores all supported env variables.
+ */
 public class AuxiliaryVariables {
 
     private AuxiliaryVariables() { }
 
     public static String STRIMZI_TEST_CONTAINER_IMAGE_VERSION = Utils.getStrimziTestContainerVersion();
 
+    /**
+     * Environment stores env variables
+     */
     public static class Environment {
 
         private static final Logger LOGGER = LogManager.getLogger(Environment.class);
@@ -32,7 +39,7 @@ public class AuxiliaryVariables {
         }
 
         // empty constructor to prohibit instantiate object
-
+        private Environment() { }
 
         // env variables
         private static final String CONFIG_FILE_PATH_ENV = "ST_CONFIG_PATH";

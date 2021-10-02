@@ -17,10 +17,12 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.function.BooleanSupplier;
 
+/**
+ * Utils contains auxiliary static methods, which are used in whole project.
+ */
 public class Utils {
 
     private static final Logger LOGGER = LogManager.getLogger(Utils.class);
-
 
     public static String getStrimziTestContainerVersion() {
         // Reads the strimzi_test_container_image.version for the Strimzi version which should be used

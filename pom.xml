@@ -6,9 +6,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.strimzi.test.container</groupId>
-    <artifactId>test-container</artifactId>
+    <artifactId>strimzi-test-container</artifactId>
     <packaging>pom</packaging>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.26.0-SNAPSHOT</version>
 
     <licenses>
         <license>
@@ -32,19 +32,22 @@
     </developers>
 
     <properties>
+        <!-- DEPENDENCY CODE VERSIONS       -->
         <test-containers.version>1.15.2</test-containers.version>
-        <maven.surefire.version>3.0.0-M5</maven.surefire.version>
-        <maven.javadoc.version>3.1.0</maven.javadoc.version>
         <spotbugs.version>4.0.3</spotbugs.version>
         <log4j.version>2.14.1</log4j.version>
         <docker-java.version>3.2.7</docker-java.version>
+        <kafka.version>3.0.0</kafka.version>
+
+        <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.7.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
-        <kafka.version>3.0.0</kafka.version>
-        <maven.source.version>3.0.1</maven.source.version>
+        <maven.surefire.version>3.0.0-M5</maven.surefire.version>
+
+        <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
-        <maven.compiler.version>3.8.1</maven.compiler.version>
-        <maven.dependency.version>3.1.1</maven.dependency.version>
+        <maven.compiler-plugin.version>3.8.1</maven.compiler-plugin.version>
+        <maven.javadoc-plugin.version>3.1.0</maven.javadoc-plugin.version>
     </properties>
 
     <distributionManagement>
@@ -58,8 +61,8 @@
         </repository>
     </distributionManagement>
 
-
     <dependencies>
+        <!--  CODE DEPENDENCY  -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
@@ -87,7 +90,7 @@
             <version>${log4j.version}</version>
         </dependency>
 
-        <!-- FOR TEST -->
+        <!-- TEST DEPENDENCY -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -105,22 +108,9 @@
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.8.1</version>
-            <type>maven-plugin</type>
-        </dependency>
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
         <plugins>
             <!--  for copy resource to classes -->
             <plugin>
@@ -151,7 +141,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven.compiler.version}</version>
+                <version>${maven.compiler-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>default-compile</id>
@@ -188,6 +178,25 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven.javadoc-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <sourcepath>${project.build.sourceDirectory}:${project.build.directory}/generated-sources/annotations</sourcepath>
+                            <show>public</show>
+                            <failOnError>true</failOnError>
+                            <failOnWarnings>true</failOnWarnings>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
