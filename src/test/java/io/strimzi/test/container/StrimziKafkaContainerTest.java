@@ -9,19 +9,11 @@ import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class StrimziKafkaContainerTest {
@@ -30,61 +22,8 @@ public class StrimziKafkaContainerTest {
 
     private StrimziKafkaContainer systemUnderTest;
 
-    @Test
-    void testAtLeastOneVersionKafkaIsPresent() {
-        assumeDocker();
-        systemUnderTest = StrimziKafkaContainer.create(1);
-
-        LOGGER.info("Verifying that at least one kafka version is present.");
-
-        assertThat(StrimziKafkaContainer.getSupportedKafkaVersions(), is(not(nullValue())));
-
-        systemUnderTest.stop();
-    }
-
     private void assumeDocker() {
         Assumptions.assumeTrue(System.getenv("DOCKER_CMD") == null || "docker".equals(System.getenv("DOCKER_CMD")));
-    }
-
-    @Test
-    void testVersions() {
-        assumeDocker();
-        systemUnderTest = StrimziKafkaContainer.create(1);
-
-        List<String> supportedKafkaVersions = new ArrayList<>();
-
-        // Read Kafka versions
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/supported_kafka.versions"))) {
-            String kafkaVersion;
-
-            while ((kafkaVersion = bufferedReader.readLine()) != null) {
-                supportedKafkaVersions.add(kafkaVersion);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // sort kafka version from low to high
-        Collections.sort(supportedKafkaVersions);
-
-        LOGGER.info("This is all supported Kafka versions {}", supportedKafkaVersions.toString());
-        assertThat(supportedKafkaVersions, is(StrimziKafkaContainer.getSupportedKafkaVersions()));
-
-        LOGGER.info("Verifying that {} is latest kafka version", supportedKafkaVersions.get(supportedKafkaVersions.size() - 1));
-        assertThat(supportedKafkaVersions.get(supportedKafkaVersions.size() - 1), is(StrimziKafkaContainer.getLatestKafkaVersion()));
-
-        // Read Strimzi version
-        String strimziVersion = null;
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader("src/main/resources/strimzi_test_container_image.version"))) {
-            strimziVersion = bufferedReader.readLine();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        LOGGER.info("Asserting Strimzi version: {}", strimziVersion);
-        assertThat(strimziVersion, is(StrimziKafkaContainer.getStrimziTestContainerImageVersion()));
-
-        systemUnderTest.stop();
     }
 
     @Test

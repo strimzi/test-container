@@ -4,17 +4,11 @@
  */
 package io.strimzi.utils;
 
-import io.strimzi.test.container.StrimziKafkaContainer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -23,26 +17,6 @@ import java.util.function.BooleanSupplier;
 public class Utils {
 
     private static final Logger LOGGER = LogManager.getLogger(Utils.class);
-
-    public static String getStrimziTestContainerVersion() {
-        // Reads the strimzi_test_container_image.version for the Strimzi version which should be used
-        InputStream strimziVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/strimzi_test_container_image.version");
-        String strimziVersion = null;
-
-        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(strimziVersionsInputStream, StandardCharsets.UTF_8))) {
-            strimziVersion = bufferedReader.readLine();
-
-            if (strimziVersion == null)    {
-                throw new RuntimeException("Failed to read Strimzi test container version");
-            }
-        } catch (IOException e) {
-            String message = "Unexpected IOException there is no `strimzi_test_container_image.version` file!";
-            LOGGER.error(message, e);
-
-            throw new RuntimeException(message, e);
-        }
-        return strimziVersion;
-    }
 
     /**
      * Poll the given {@code ready} function every {@code pollIntervalMs} milliseconds until it returns true,

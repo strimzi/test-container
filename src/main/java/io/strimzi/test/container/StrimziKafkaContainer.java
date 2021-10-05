@@ -6,17 +6,12 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
-import io.strimzi.utils.AuxiliaryVariables;
+import io.strimzi.utils.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,53 +35,23 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public static final int ZOOKEEPER_PORT = 2181;
 
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
-    private static final String LATEST_KAFKA_VERSION;
-    private static final List<String> SUPPORTED_KAFKA_VERSIONS = new ArrayList<>(5);
 
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int kafkaExposedPort;
     private int brokerId;
 
-    static {
-        // Reads the supported_kafka.versions for the supported Kafka versions
-        InputStream kafkaVersionsInputStream = StrimziKafkaContainer.class.getResourceAsStream("/supported_kafka.versions");
-
-        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(kafkaVersionsInputStream, StandardCharsets.UTF_8))) {
-            String kafkaVersion;
-            while ((kafkaVersion = bufferedReader.readLine()) != null) {
-                SUPPORTED_KAFKA_VERSIONS.add(kafkaVersion);
-            }
-        } catch (IOException e) {
-            String message = "Unexpected IOException there is no `supported_kafka.versions` file!";
-            LOGGER.error(message, e);
-
-            throw new RuntimeException(message, e);
-        }
-
-        LOGGER.info("Supported Kafka versions: {}", SUPPORTED_KAFKA_VERSIONS);
-
-        // sort kafka version from low to high
-        Collections.sort(SUPPORTED_KAFKA_VERSIONS);
-
-        LATEST_KAFKA_VERSION = SUPPORTED_KAFKA_VERSIONS.get(SUPPORTED_KAFKA_VERSIONS.size() - 1);
-
-        LOGGER.info("Supported Strimzi test container image version: {}", AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION);
-    }
-
     private StrimziKafkaContainer(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
-        super("quay.io/strimzi/kafka:" + AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION + "-kafka-" + AuxiliaryVariables.Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION);
-        super.withNetwork(Network.SHARED);
+        super("quay.io/strimzi/kafka:" +
+            Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
+            Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
+        // exposing kafka port from the container
+        super.withExposedPorts(KAFKA_PORT);
+        super.withEnv("LOG_DIR", "/tmp");
 
         this.brokerId = brokerId;
-
         kafkaConfigurationMap = new HashMap<>(additionalKafkaConfiguration);
         kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
-
-        // exposing kafka port from the container
-        withExposedPorts(KAFKA_PORT);
-
-        withEnv("LOG_DIR", "/tmp");
     }
 
     public static StrimziKafkaContainer createWithExternalZookeeper(final int brokerId,
@@ -121,7 +86,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
 
-        LOGGER.info("This is mapped port {}", this.kafkaExposedPort);
+        LOGGER.info("Mapped port: {}", this.kafkaExposedPort);
 
         StringBuilder advertisedListeners = new StringBuilder(getBootstrapServers());
 
@@ -145,29 +110,34 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         advertisedListenersNames.forEach(name -> {
             // listeners
-            kafkaListeners.append(name);
-            kafkaListeners.append("://0.0.0.0:9093");
-            kafkaListeners.append(",");
+            kafkaListeners
+                .append(name)
+                .append("://0.0.0.0:9093")
+                .append(",");
             // listener.security.protocol.map
-            kafkaListenerSecurityProtocol.append(name);
-            kafkaListenerSecurityProtocol.append(":PLAINTEXT");
-            kafkaListenerSecurityProtocol.append(",");
+            kafkaListenerSecurityProtocol
+                .append(name)
+                .append(":PLAINTEXT")
+                .append(",");
         });
 
         StringBuilder kafkaConfiguration = new StringBuilder();
 
         // default listener config
         kafkaConfiguration
-            .append(" --override listeners=" + kafkaListeners + "PLAINTEXT://0.0.0.0:" + KAFKA_PORT)
-            .append(" --override advertised.listeners=" + advertisedListeners)
-            .append(" --override zookeeper.connect=localhost:" + ZOOKEEPER_PORT)
-            .append(" --override listener.security.protocol.map=" + kafkaListenerSecurityProtocol + "PLAINTEXT:PLAINTEXT")
+            .append(" --override listeners=").append(kafkaListeners).append("PLAINTEXT://0.0.0.0:").append(KAFKA_PORT)
+            .append(" --override advertised.listeners=").append(advertisedListeners)
+            .append(" --override zookeeper.connect=localhost:").append(ZOOKEEPER_PORT)
+            .append(" --override listener.security.protocol.map=").append(kafkaListenerSecurityProtocol).append("PLAINTEXT:PLAINTEXT")
             .append(" --override inter.broker.listener.name=BROKER1");
 
         // additional kafka config
-        this.kafkaConfigurationMap.forEach((configName, configValue) -> {
-            kafkaConfiguration.append(" --override " + configName + "=" + configValue);
-        });
+        this.kafkaConfigurationMap.forEach((configName, configValue) ->
+            kafkaConfiguration
+                .append(" --override ")
+                .append(configName)
+                .append("=")
+                .append(configValue));
 
         String command = "#!/bin/bash \n";
 
@@ -188,27 +158,5 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     public String getBootstrapServers() {
         return String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
-    }
-
-    public static List<String> getSupportedKafkaVersions() {
-        return SUPPORTED_KAFKA_VERSIONS;
-    }
-
-    public static String getLatestKafkaVersion() {
-        return LATEST_KAFKA_VERSION;
-    }
-
-    public static String getStrimziTestContainerImageVersion() {
-        return AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return super.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode();
     }
 }

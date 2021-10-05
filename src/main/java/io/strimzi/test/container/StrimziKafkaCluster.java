@@ -1,6 +1,6 @@
 /*
  * Copyright Strimzi authors.
- * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
+ * Lcense: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
 package io.strimzi.test.container;
 
@@ -26,10 +26,9 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * A multi-node instance of the Kafka and Zookeeper using the latest image from quay.io/strimzi/kafka with the given version.
- * It perfectly fits for integration/system testing. We always deploy one zookeeper with a specified amount of Kafka instances.
- * Everything is isolated environment and running as a separate container inside Docker. The additional configuration
- * for Kafka brokers can be specified by @additionalKafkaConfiguration parameter in the constructor.
+ * A multi-node instance of Kafka and Zookeeper using the latest image from quay.io/strimzi/kafka with the given version.
+ * It perfectly fits for integration/system testing. We always deploy one zookeeper with a specified number of Kafka instances,
+ * running as a separate container inside Docker. The additional configuration for Kafka brokers can be passed to the constructor.
  */
 public class StrimziKafkaCluster implements Startable {
 
@@ -40,6 +39,14 @@ public class StrimziKafkaCluster implements Startable {
     private final StrimziZookeeperContainer zookeeper;
     private final Collection<StrimziKafkaContainer> brokers;
 
+    /**
+     * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
+     * replication factor of internal topics @see{internalTopicReplicationFactor} and map of additional Kafka
+     * configuration @see{additionalKafkaConfiguration}.
+     * @param brokersNum number of brokers
+     * @param internalTopicReplicationFactor internal topics
+     * @param additionalKafkaConfiguration additional Kafka configuration
+     */
     public StrimziKafkaCluster(final int brokersNum, final int internalTopicReplicationFactor, final Map<String, String> additionalKafkaConfiguration) {
         if (brokersNum < 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");

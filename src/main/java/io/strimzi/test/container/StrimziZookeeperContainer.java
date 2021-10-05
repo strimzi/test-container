@@ -6,11 +6,10 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.strimzi.utils.AuxiliaryVariables;
+import io.strimzi.utils.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
@@ -32,17 +31,16 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private int zookeeperExposedPort;
 
     public StrimziZookeeperContainer() {
-        super("quay.io/strimzi/kafka:" + AuxiliaryVariables.STRIMZI_TEST_CONTAINER_IMAGE_VERSION + "-kafka-" + AuxiliaryVariables.Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION);
-        super.withNetwork(Network.SHARED);
-
+        super("quay.io/strimzi/kafka:" +
+            Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
+            Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
         // exposing zookeeper port from the container
-        withExposedPorts(ZOOKEEPER_PORT);
-        withNetworkAliases("zookeeper");
-
-        withEnv("LOG_DIR", "/tmp");
-        withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
-        // env for readiness
-        withEnv("ZOO_4LW_COMMANDS_WHITELIST", "rouk");
+        super.withExposedPorts(ZOOKEEPER_PORT)
+            .withNetworkAliases("zookeeper")
+            .withEnv("LOG_DIR", "/tmp")
+            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT))
+            // env for readiness
+            .withEnv("ZOO_4LW_COMMANDS_WHITELIST", "rouk");
     }
 
     @Override
