@@ -58,9 +58,9 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
         LOGGER.info("This is mapped port {}", zookeeperExposedPort);
 
-        String command = "#!/bin/bash \n";
-
-        command += "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
+        final String command =
+            "#!/bin/bash \n" +
+            "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
