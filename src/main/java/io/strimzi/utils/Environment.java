@@ -22,9 +22,8 @@ public class Environment {
     private static final Map<String, String> VALUES = new HashMap<>();
 
     static {
-        String debugFormat = "{}: {}";
         LOGGER.info("Used environment variables:");
-        VALUES.forEach((key, value) -> LOGGER.info(debugFormat, key, value));
+        VALUES.forEach((key, value) -> LOGGER.info("{}: {}", key, value));
     }
 
     // env variables

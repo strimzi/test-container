@@ -10,6 +10,7 @@ import io.strimzi.utils.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
@@ -36,11 +37,12 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
         // exposing zookeeper port from the container
         super.withExposedPorts(ZOOKEEPER_PORT)
+            .withNetwork(Network.SHARED)
             .withNetworkAliases("zookeeper")
             .withEnv("LOG_DIR", "/tmp")
             .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT))
             // env for readiness
-            .withEnv("ZOO_4LW_COMMANDS_WHITELIST", "rouk");
+            .withEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
     }
 
     @Override
@@ -58,9 +60,9 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
         LOGGER.info("This is mapped port {}", zookeeperExposedPort);
 
-        String command = "#!/bin/bash \n";
-
-        command += "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
+        final String command =
+            "#!/bin/bash \n" +
+            "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
