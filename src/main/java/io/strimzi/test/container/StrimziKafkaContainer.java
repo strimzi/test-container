@@ -10,6 +10,7 @@ import io.strimzi.utils.Environment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
@@ -42,12 +43,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private int brokerId;
 
     private StrimziKafkaContainer(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
-        super("quay.io/strimzi/kafka:" +
+        super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
         // exposing kafka port from the container
-        super.withExposedPorts(KAFKA_PORT);
-        super.withEnv("LOG_DIR", "/tmp");
+        withExposedPorts(KAFKA_PORT);
+        withEnv("LOG_DIR", "/tmp");
 
         this.brokerId = brokerId;
         kafkaConfigurationMap = new HashMap<>(additionalKafkaConfiguration);

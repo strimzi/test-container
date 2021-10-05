@@ -32,17 +32,16 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private int zookeeperExposedPort;
 
     public StrimziZookeeperContainer() {
-        super("quay.io/strimzi/kafka:" +
+        super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
         // exposing zookeeper port from the container
-        super.withExposedPorts(ZOOKEEPER_PORT)
-            .withNetwork(Network.SHARED)
-            .withNetworkAliases("zookeeper")
-            .withEnv("LOG_DIR", "/tmp")
-            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT))
-            // env for readiness
-            .withEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
+        withExposedPorts(ZOOKEEPER_PORT);
+        withNetworkAliases("zookeeper");
+        withEnv("LOG_DIR", "/tmp");
+        withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
+        // env for readiness
+        withEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
     }
 
     @Override
@@ -60,9 +59,9 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
         LOGGER.info("This is mapped port {}", zookeeperExposedPort);
 
-        final String command =
-            "#!/bin/bash \n" +
-            "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
+        String command = "#!/bin/bash \n";
+
+        command += "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 

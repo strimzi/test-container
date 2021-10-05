@@ -42,6 +42,7 @@
         <log4j.version>2.14.1</log4j.version>
         <docker-java.version>3.2.7</docker-java.version>
         <kafka.version>3.0.0</kafka.version>
+        <slf4j.version>1.6.1</slf4j.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.7.0</jupiter.version>
@@ -97,6 +98,16 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
 
         <!-- TEST DEPENDENCY -->

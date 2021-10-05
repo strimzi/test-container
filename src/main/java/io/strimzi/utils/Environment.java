@@ -4,12 +4,6 @@
  */
 package io.strimzi.utils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Environment stores env variables
  */
@@ -17,14 +11,6 @@ public class Environment {
 
     // empty constructor to prohibit instantiate object
     private Environment() { }
-
-    private static final Logger LOGGER = LogManager.getLogger(Environment.class);
-    private static final Map<String, String> VALUES = new HashMap<>();
-
-    static {
-        LOGGER.info("Used environment variables:");
-        VALUES.forEach((key, value) -> LOGGER.info("{}: {}", key, value));
-    }
 
     // env variables
     public static final String STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV = "STRIMZI_TEST_CONTAINER_KAFKA_VERSION";
