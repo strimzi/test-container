@@ -3,4 +3,4 @@
 
 # Strimzi Template repository
 
-This repository is currently empty
+TODO:

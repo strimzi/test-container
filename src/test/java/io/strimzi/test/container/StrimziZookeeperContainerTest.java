@@ -6,6 +6,7 @@ package io.strimzi.test.container;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -23,35 +24,40 @@ public class StrimziZookeeperContainerTest {
 
     @Test
     void testZookeeperContainerStartup() {
-        systemUnderTest = new StrimziZookeeperContainer();
-        systemUnderTest.start();
+        try {
+            systemUnderTest = new StrimziZookeeperContainer();
+            systemUnderTest.start();
 
-        final String zookeeperLogs = systemUnderTest.getLogs();
+            final String zookeeperLogs = systemUnderTest.getLogs();
 
-        assertThat(zookeeperLogs, notNullValue());
-        assertThat(zookeeperLogs, containsString("Created server"));
-
-        systemUnderTest.stop();
+            assertThat(zookeeperLogs, notNullValue());
+            assertThat(zookeeperLogs, containsString("Created server"));
+        } finally {
+            kafkaContainer.stop();
+            systemUnderTest.stop();
+        }
     }
 
     @Test
     void testZookeeperWithKafkaContainer() {
-        systemUnderTest = new StrimziZookeeperContainer();
-        systemUnderTest.start();
+        try {
+            systemUnderTest = new StrimziZookeeperContainer();
+            systemUnderTest.start();
 
-        kafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(1, Collections.singletonMap("zookeeper.connect", "zookeeper:2181"))
-            .withExternalZookeeper("zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT);
+            kafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(1, Collections.singletonMap("zookeeper.connect", "zookeeper:2181"))
+                .withExternalZookeeper("zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT);
 
-        kafkaContainer.start();
+            kafkaContainer.start();
 
-        final String kafkaLogs = kafkaContainer.getLogs();
+            final String kafkaLogs = kafkaContainer.getLogs();
 
-        assertThat(kafkaLogs, notNullValue());
-        assertThat(kafkaLogs, containsString("Initiating client connection"));
-        // kafka established connection to external zookeeper
-        assertThat(kafkaLogs, containsString("Session establishment complete on server zookeeper"));
-
-        kafkaContainer.stop();
-        systemUnderTest.stop();
+            assertThat(kafkaLogs, notNullValue());
+            assertThat(kafkaLogs, containsString("Initiating client connection"));
+            // kafka established connection to external zookeeper
+            assertThat(kafkaLogs, containsString("Session establishment complete on server zookeeper"));
+        } finally {
+            kafkaContainer.stop();
+            systemUnderTest.stop();
+        }
     }
 }
