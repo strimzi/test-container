@@ -3,7 +3,7 @@
 
 # Strimzi Template repository
 
-The test container repository primarily deals with developing and maintaining test container code that uses an image from the strimzi/test-container-images repository. 
+The test container repository primarily deals with developing and maintaining test container code that uses an image from the [strimzi/test-container-images](https://github.com/strimzi/test-container-images) repository. 
 The main dependency is the test container framework, which offers the overall life of the docker container.
 
 ## Why to use?
@@ -14,7 +14,7 @@ Furthermore, for accuracy, we will describe some of the most important classes:
 - `StrimziKafkaContainer` is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the given version. 
   There are two options for how to use it. The first one is using an embedded zookeeper which will run inside Kafka container. 
   Another option is to use @StrimziZookeeperContainer as an external Zookeeper. 
-  The additional configuration for Kafka broker can be injected via the constructor. 
+  The additional configuration for Kafka Broker can be injected via the constructor. 
   This container is a good fit for integration testing, but for more hardcore testing, we suggest using @StrimziKafkaCluster.
 - `StrimziZookeeperContainer` is an instance of the Zookeeper encapsulated inside a docker container using an image from quay.io/strimzi/kafka with the given version. 
   It can be combined with @StrimziKafkaContainer, but we suggest using directly @StrimziKafkaCluster for more complicated testing.
@@ -44,16 +44,18 @@ At the same time, in case of using the given dependency, it is possible to add i
 For instance, we can then run the given Kafka container with additional Kafka configuration from Java code
 (we assume that you already specified `STRIMZI_TEST_CONTAINER_KAFKA_VERSION` and `STRIMZI_TEST_CONTAINER_IMAGE_VERSION` environment variables):
 ```java
-Map<String, String> kafkaConfiguration = new HashMap<>();
+final int brokerId = 1;
 
 // additional configuration
-kafkaConfiguration.put("log.cleaner.enable", "false");
-kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
-kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
-kafkaConfiguration.put("log.index.interval.bytes", "2048");
+Map<String, String> additionalKafkaConfiguration = Map.of(
+    "log.cleaner.enable", "false", 
+    "log.cleaner.backoff.ms", 
+    "1000", "ssl.enabled.protocols", "TLSv1", 
+    "log.index.interval.bytes", "2048"
+);
 
 
-StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(1, kafkaConfiguration);
+StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration);
 // startup of the Kafka container
 strimziKafkaContainer.start();
 
