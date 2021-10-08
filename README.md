@@ -31,7 +31,7 @@ Using a given test container is very simple, and it can be decompose in three st
 2. Add the Strimzi Test container as a Maven dependency
 3. Run Strimzi test container
     1. defaults configuration
-    2. (optional) run with additional configuration of Kafka broker
+    2. (optional) run Strimzi test container with additional configuration
 
 First, you need to specify two essential environment variables:
 
@@ -56,19 +56,13 @@ Examples:
 ```java
 final int brokerId = 1;
 
-StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId);
+StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.create(brokerId);
 // startup of the Kafka container
 strimziKafkaContainer.start();
 ```
-
+#### ii) (optional) run Strimzi test container with additional configuration
 
 ```java
-
-
-
-
-
-// example of Strimzi test container with additio
 final int brokerId = 1;
 
 // additional configuration
@@ -78,7 +72,6 @@ Map<String, String> additionalKafkaConfiguration = Map.of(
     "1000", "ssl.enabled.protocols", "TLSv1", 
     "log.index.interval.bytes", "2048"
 );
-
 
 StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration);
 // startup of the Kafka container
