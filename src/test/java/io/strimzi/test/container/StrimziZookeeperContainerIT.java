@@ -32,7 +32,6 @@ public class StrimziZookeeperContainerIT {
             assertThat(zookeeperLogs, notNullValue());
             assertThat(zookeeperLogs, containsString("Created server"));
         } finally {
-            kafkaContainer.stop();
             systemUnderTest.stop();
         }
     }
