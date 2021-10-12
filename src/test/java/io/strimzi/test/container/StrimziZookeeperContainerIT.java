@@ -14,9 +14,9 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StrimziZookeeperContainerTest {
+public class StrimziZookeeperContainerIT {
 
-    private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainerTest.class);
+    private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainerIT.class);
 
     private StrimziZookeeperContainer systemUnderTest;
     private StrimziKafkaContainer kafkaContainer;
