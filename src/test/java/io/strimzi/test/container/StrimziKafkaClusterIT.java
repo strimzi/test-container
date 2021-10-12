@@ -42,9 +42,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StrimziKafkaClusterTest {
+public class StrimziKafkaClusterIT {
 
-    private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainerTest.class);
+    private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainerIT.class);
 
     private StrimziKafkaCluster systemUnderTest;
     private int numberOfBrokers;

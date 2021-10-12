@@ -7,7 +7,7 @@
 
     <groupId>io.strimzi</groupId>
     <artifactId>strimzi-test-container</artifactId>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
     <version>0.26.0-SNAPSHOT</version>
 
     <licenses>
@@ -89,7 +89,7 @@
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.7.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
-        <maven.surefire.version>3.0.0-M5</maven.surefire.version>
+        <maven-failsafe-plugin.version>3.0.0-M5</maven-failsafe-plugin.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
@@ -239,9 +239,17 @@
                 </configuration>
             </plugin>
             <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven.surefire.version}</version>
-                <inherited>true</inherited>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
