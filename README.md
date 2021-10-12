@@ -27,11 +27,8 @@ The most important classes are described here::
   We always deploy one ZooKeeper with a specified number of Kafka instances, running as a separate container inside Docker.
   The additional configuration for Kafka brokers can be passed to the constructor.
 
-In summary, use mostly `StrimziKafkaContainer` if you do not want to use features of a multi-node setup.
-Moreover, most continuous integration tools (i.e., Azure pipelines, Travis) has usually quotas for resources.
-In that case, it's still better to use `StrimziKafkaContainer`.
-On the other hand, use `StrimziKafkaCluster` you have not a problem with resource consumption, and you have to
-verify some multi-node scenarios.
+In summary, you can use `StrimziKafkaContainer` to use a Kafka cluster with a single Kafka broker.
+Or you can use `StrimziKafkaCluster` for a Kafka cluster with multiple Kafka brokers.
 
 ## How to use the Test container?
 
