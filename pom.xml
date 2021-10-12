@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.strimzi</groupId>
+    <artifactId>strimzi-test-container</artifactId>
+    <packaging>pom</packaging>
+    <version>0.26.0-SNAPSHOT</version>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/strimzi/test-container/issues</url>
+    </issueManagement>
+
+    <developers>
+        <developer>
+            <name>Tom Bentley</name>
+            <email>tbentley@redhat.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Paolo Patierno</name>
+            <email>ppatierno@live.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Jakub Scholz</name>
+            <email>github@scholzj.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Sam Hawker</name>
+            <email>sam.b.hawker@gmail.com</email>
+            <organization>IBM</organization>
+            <organizationUrl>https://www.ibm.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Jakub Stejskal</name>
+            <email>xstejs24@gmail.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Stanislav Knot</name>
+            <email>sknot@redhat.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Paul Mellor</name>
+            <email>pmellor@redhat.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
+            <name>Maros Orsak</name>
+            <email>morsak@redhat.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+    </developers>
+
+    <properties>
+        <!--  JAVA CODE VERSION   -->
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+
+        <!-- DEPENDENCY CODE VERSIONS       -->
+        <test-containers.version>1.16.0</test-containers.version>
+        <spotbugs.version>4.0.3</spotbugs.version>
+        <log4j.version>2.14.1</log4j.version>
+        <docker-java.version>3.2.7</docker-java.version>
+        <kafka.version>3.0.0</kafka.version>
+        <slf4j.version>1.6.1</slf4j.version>
+
+        <!-- DEPENDENCY TEST VERSIONS      -->
+        <jupiter.version>5.7.0</jupiter.version>
+        <hamcrest.version>2.2</hamcrest.version>
+        <maven.surefire.version>3.0.0-M5</maven.surefire.version>
+
+        <!-- PLUGIN VERSIONS       -->
+        <maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
+        <maven.compiler-plugin.version>3.8.1</maven.compiler-plugin.version>
+        <maven.javadoc-plugin.version>3.1.0</maven.javadoc-plugin.version>
+        <maven.checkstyle.version>3.1.1</maven.checkstyle.version>
+
+        <!-- FIX VULNERABILITY VERSIONS  -->
+        <commons-compress.version>1.21</commons-compress.version>
+        <junit4.version>4.13.2</junit4.version>
+    </properties>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
+    <dependencies>
+        <!--  CODE DEPENDENCY  -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${test-containers.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>${spotbugs.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-api</artifactId>
+            <version>${docker-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <!-- TEST DEPENDENCY -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest</artifactId>
+            <version>${hamcrest.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+
+
+        <!-- overriding version of commons-compress for Test container - Vulnerability -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons-compress.version}</version>
+        </dependency>
+        <!-- overriding version of commons-compress for Test container - Vulnerability -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit4.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--  for copy resource to classes -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.basedir}/target/classes/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources</directory>
+                                    <includes>
+                                        <include>**/*</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <compilerArgs>
+                                <arg>-Xlint:unchecked,deprecation</arg>
+                                <arg>-Werror</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.version}</version>
+                <inherited>true</inherited>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven-jar-plugin.version}</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven.javadoc-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <sourcepath>${project.build.sourceDirectory}:${project.build.directory}/generated-sources/annotations</sourcepath>
+                            <show>public</show>
+                            <failOnError>true</failOnError>
+                            <failOnWarnings>true</failOnWarnings>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${maven.checkstyle.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>8.29</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <configuration>
+                            <configLocation>.checkstyle/checkstyle.xml</configLocation>
+                            <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                            <encoding>UTF-8</encoding>
+                            <consoleOutput>true</consoleOutput>
+                            <failsOnError>true</failsOnError>
+                        </configuration>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

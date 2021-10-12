@@ -1,0 +1,10 @@
+# Maven build targets
+target/
+
+# Maven release files
+*.releaseBackup
+release.properties
+
+# IntelliJ IDEA specific
+.idea
+*.iml
