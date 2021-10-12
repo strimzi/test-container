@@ -12,7 +12,10 @@ Since the Docker image is a simple encapsulation of Kafka binaries, you can spin
 Therefore, it is a suitable candidate for the unit or integration testing. If you need something more complex, there is a multi-node Kafka cluster implementation with only infrastructure limitations.
 The most important classes are described here::
 - `StrimziKafkaContainer` is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the given version.
-  There are two options to use it.
+  You can use it in two ways:
+  1. As an embedded ZooKeeper to run inside a Kafka container.
+  2. As an external ZooKeeper.
+  An additional configuration for Kafka brokers can be injected through the constructor.
   The first one is using an embedded ZooKeeper which will run inside Kafka container.
   Another option is to use @StrimziZookeeperContainer as an external ZooKeeper.
   An additional configuration for Kafka brokers can be injected through the constructor.
@@ -24,13 +27,19 @@ The most important classes are described here::
   We always deploy one ZooKeeper with a specified number of Kafka instances, running as a separate container inside Docker.
   The additional configuration for Kafka brokers can be passed to the constructor.
 
+In summary, use mostly `StrimziKafkaContainer` if you do not want to use features of a multi-node setup.
+Moreover, most continuous integration tools (i.e., Azure pipelines, Travis) has usually quotas for resources.
+In that case, it's still better to use `StrimziKafkaContainer`.
+On the other hand, use `StrimziKafkaCluster` you have not a problem with resource consumption, and you have to
+verify some multi-node scenarios.
+
 ## How to use the Test container?
 
-Using a given test container is very simple, and it can be decompose in three steps:
+Using a given test container takes three simple steps:
 1. Specify two environment variables
-2. Add the Strimzi Test container as a Maven dependency
+2. Add the Strimzi test container as a Maven dependency
 3. Run Strimzi test container
-    1. defaults configuration
+    1. default configuration
     2. (optional) run Strimzi test container with additional configuration
 
 First, you need to specify two essential environment variables:
@@ -51,7 +60,7 @@ Add the Strimzi test container to the project as a Maven dependency:
 
 Examples:
 
-#### i) defaults configuration
+#### i) default configuration
 
 ```java
 final int brokerId = 1;
@@ -60,7 +69,7 @@ StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.create(broke
 // startup of the Kafka container
 strimziKafkaContainer.start();
 ```
-#### ii) (optional) run Strimzi test container with additional configuration
+#### ii) (Optional) Run Strimzi test container with additional configuration
 
 ```java
 final int brokerId = 1;
@@ -80,10 +89,10 @@ strimziKafkaContainer.start();
 ### Additional tips
 
 1. In case you are using `Azure pipelines` Ryuk needs to be turned off, since Azure does not allow starting privileged containers.
-One can disable Ryuk by setting environment variable:
+   Disable Ryuk by setting an environment variable::
     - `TESTCONTAINERS_RYUK_DISABLED` - TRUE
     
-2. By default, `TestContainers` performs series of start-up checks to ensure that environment is configured correctly. 
-  It takes a couple of seconds, but if you want to speed up your tests, you can disable the checks once you have everything configured.
-   One can disable start-up checks by setting environment variable:
+2. By default, `TestContainers` performs a series of start-up checks to ensure that the environment is configured correctly.
+   It takes a couple of seconds, but if you want to speed up your tests, you can disable the checks once you have everything configured.
+   Disable start-up checks by setting an environment variable:
    - `TESTCONTAINERS_CHECKS_DISABLE` - TRUE
