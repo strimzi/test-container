@@ -43,7 +43,7 @@ Add the Strimzi test container to the project as a Maven dependency:
 ```
 // in case of 0.26.0 version
 <dependency>
-    <groupId>io.strimzi.test.container</groupId>
+    <groupId>io.strimzi</groupId>
     <artifactId>strimzi-test-container</artifactId>
     <version>0.26.0</version>
 </dependency>
