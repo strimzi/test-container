@@ -46,8 +46,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
-        // we need this shared network in case we deploy StrimziKafkaCluster because by default each container has its own network,
-        // which results in `Unable to resolve address: zookeeper:2181`
+        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
+        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
         super.withNetwork(Network.SHARED);
         // exposing kafka port from the container
         withExposedPorts(KAFKA_PORT);
