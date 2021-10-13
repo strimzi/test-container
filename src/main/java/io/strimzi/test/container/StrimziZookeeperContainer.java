@@ -35,8 +35,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
-        super.withNetwork(Network.SHARED);
-
         // exposing zookeeper port from the container
         withExposedPorts(ZOOKEEPER_PORT);
         withNetworkAliases("zookeeper");

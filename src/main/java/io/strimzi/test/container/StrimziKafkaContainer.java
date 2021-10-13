@@ -46,7 +46,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
-        super.withNetwork(Network.SHARED);
         // exposing kafka port from the container
         withExposedPorts(KAFKA_PORT);
         withEnv("LOG_DIR", "/tmp");
