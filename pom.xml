@@ -22,9 +22,9 @@
     <url>https://github.com/strimzi/test-container</url>
 
     <scm>
-        <connection>scm:git:git:/github.com/strimzi/kafka-kubernetes-config-provider.git</connection>
-        <developerConnection>scm:git:ssh://github.com/strimzi/kafka-kubernetes-config-provider.git</developerConnection>
-        <url>https://github.com/strimzi/kafka-kubernetes-config-provider</url>
+        <connection>scm:git:git:/github.com/strimzi/test-container.git</connection>
+        <developerConnection>scm:git:ssh://github.com/strimzi/test-container.git</developerConnection>
+        <url>https://github.com/strimzi/test-container</url>
     </scm>
 
 
