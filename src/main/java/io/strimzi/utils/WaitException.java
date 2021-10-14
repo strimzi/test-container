@@ -10,10 +10,19 @@ package io.strimzi.utils;
  * should not always be met which results in WaitException.
  */
 public class WaitException extends RuntimeException {
+
+    /**
+     *  WaitException used for active waiting
+     * @param message specific message to throw
+     */
     public WaitException(String message) {
         super(message);
     }
 
+    /**
+     * WaitException used for active waiting
+     * @param cause type of cause
+     */
     public WaitException(Throwable cause) {
         super(cause);
     }
