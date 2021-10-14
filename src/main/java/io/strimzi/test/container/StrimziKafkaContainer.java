@@ -32,7 +32,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
 
+    /**
+     * Default Kafka port
+     */
     public static final int KAFKA_PORT = 9092;
+    /**
+     * Default ZooKeeper port
+     */
     public static final int ZOOKEEPER_PORT = 2181;
 
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
@@ -58,16 +64,34 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
     }
 
+    /**
+     * Create @code{StrimziKafkaContainer} instance with external ZooKeeper (i.e., @code{StrimziZooKeeperContainer})
+     * @param brokerId broker id
+     * @param connectString connect string
+     * @param additionalKafkaConfiguration addtional configuration
+     * @return instance of @code{StrimziKafkaContainer}
+     */
     public static StrimziKafkaContainer createWithExternalZookeeper(final int brokerId,
                                                                     final String connectString, final Map<String, String> additionalKafkaConfiguration) {
         return new StrimziKafkaContainer(brokerId, additionalKafkaConfiguration)
             .withExternalZookeeper(connectString);
     }
 
+    /**
+     * Static factory method, which creates @code{StrimziKafkaContainer} with additional additional configuration of Kafka broker
+     * @param brokerId broker id
+     * @param additionalKafkaConfiguration additional configuration for Kafka broker
+     * @return instance of @code{StrimziKafkaContainer}
+     */
     public static StrimziKafkaContainer createWithAdditionalConfiguration(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
         return new StrimziKafkaContainer(brokerId, additionalKafkaConfiguration);
     }
 
+    /**
+     * Static factory method, which creates @code{StrimziKafkaContainer} with empty additional configuration of Kafka broker
+     * @param brokerId broker id
+     * @return instance of StrimziKafkaContainer
+     */
     public static StrimziKafkaContainer create(final int brokerId) {
         return new StrimziKafkaContainer(brokerId, Collections.emptyMap());
     }
@@ -79,6 +103,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super.doStart();
     }
 
+    /**
+     * Fluent method, which sets @code{externalZookeeperConnect}
+     * @param connectString connect string
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziKafkaContainer withExternalZookeeper(final String connectString) {
         this.externalZookeeperConnect = connectString;
         return self();
@@ -160,6 +189,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         );
     }
 
+    /**
+     * Get bootstrap servers of @code{StrimziKafkaContainer} instance
+     * @return bootstrap servers
+     */
     public String getBootstrapServers() {
         return String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
     }

@@ -292,6 +292,7 @@
                             <show>public</show>
                             <failOnError>true</failOnError>
                             <failOnWarnings>true</failOnWarnings>
+                            <source>8</source>
                         </configuration>
                     </execution>
                 </executions>

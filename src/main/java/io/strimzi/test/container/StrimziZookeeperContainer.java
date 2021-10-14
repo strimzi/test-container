@@ -27,10 +27,16 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
+    /**
+     * Default ZooKeeper port
+     */
     public static final int ZOOKEEPER_PORT = 2181;
 
     private int zookeeperExposedPort;
 
+    /**
+     * Constructor for @code{StrimziZookeeperContainer}, which instantiate object based on env variables.
+     */
     public StrimziZookeeperContainer() {
         super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +

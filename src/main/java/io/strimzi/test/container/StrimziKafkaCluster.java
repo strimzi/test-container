@@ -88,10 +88,18 @@ public class StrimziKafkaCluster implements Startable {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Get collection of Strimzi kafka containers
+     * @return collection of Strimzi kafka containers
+     */
     public Collection<StrimziKafkaContainer> getBrokers() {
         return this.brokers;
     }
 
+    /**
+     * Get bootstrap servers as a string, which can be inserted inside Kafka config
+     * @return bootstrap servers
+     */
     public String getBootstrapServers() {
         return brokers.stream()
             .map(StrimziKafkaContainer::getBootstrapServers)
@@ -140,6 +148,10 @@ public class StrimziKafkaCluster implements Startable {
             .forEach(GenericContainer::stop);
     }
 
+    /**
+     * Get @code{StrimziZookeeperContainer} instance
+     * @return StrimziZookeeperContainer instance
+     */
     public StrimziZookeeperContainer getZookeeper() {
         return zookeeper;
     }

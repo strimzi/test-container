@@ -23,12 +23,13 @@ public class Utils {
      * or throw a WaitException if it doesn't returns true within {@code timeoutMs} milliseconds.
      * @return The remaining time left until timeout occurs
      * (helpful if you have several calls which need to share a common timeout),
-     * */
+     *
+     * @param description waiting for `description`
+     * @param pollIntervalMs poll interval in milliseconds
+     * @param timeoutMs timeout in milliseconds
+     * @param ready lambda predicate
+     */
     public static long waitFor(String description, long pollIntervalMs, long timeoutMs, BooleanSupplier ready) {
-        return waitFor(description, pollIntervalMs, timeoutMs, ready, () -> { });
-    }
-
-    public static long waitFor(String description, long pollIntervalMs, long timeoutMs, BooleanSupplier ready, Runnable onTimeout) {
         LOGGER.debug("Waiting for {}", description);
         long deadline = System.currentTimeMillis() + timeoutMs;
         String exceptionMessage = null;
@@ -62,7 +63,6 @@ public class Utils {
                         LOGGER.error(stackTraceError.toString());
                     }
                 }
-                onTimeout.run();
                 WaitException waitException = new WaitException("Timeout after " + timeoutMs + " ms waiting for " + description);
                 waitException.addSuppressed(waitException);
                 throw waitException;
