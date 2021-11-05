@@ -115,6 +115,7 @@ public class LogicalKafkaVersionEntity {
 
     /**
      * Get the latest release
+     * @return LogicalKafkaVersion latest release
      */
     public LogicalKafkaVersion latestRelease() {
         // at least one release in the json schema is needed
@@ -142,6 +143,7 @@ public class LogicalKafkaVersionEntity {
      * On a later date it might return 2.7.3.
      * It is allowed to cross major version boundaries.
      * E.g. the previous minor release to 3.0.0 might be 2.8.2
+     * @return LogicalKafkaVersion the previous minor release
      */
     public LogicalKafkaVersion previousMinor() {
         if (this.logicalKafkaVersionEntities == null || this.logicalKafkaVersionEntities.size() < 1) {
