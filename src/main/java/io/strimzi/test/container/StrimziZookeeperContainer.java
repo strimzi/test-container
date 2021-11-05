@@ -6,13 +6,14 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.strimzi.utils.Environment;
+import io.strimzi.utils.LogicalKafkaVersionEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -24,34 +25,55 @@ import java.nio.charset.StandardCharsets;
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
 
     private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainer.class);
-
+    private static LogicalKafkaVersionEntity logicalKafkaVersionEntity;
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
+
+    static {
+        try {
+            logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private StrimziZookeeperContainer(StrimziZookeeperContainerBuilder builder) {
+        if (builder.strimziTestContainerVersion == null || builder.strimziTestContainerVersion.isEmpty()) {
+            this.strimziTestContainerVersion = logicalKafkaVersionEntity.latestRelease().getStrimziTestContainerVersion();
+            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", this.strimziTestContainerVersion);
+        } else {
+            this.strimziTestContainerVersion = builder.strimziTestContainerVersion;
+        }
+        if (builder.kafkaVersion == null || builder.kafkaVersion.isEmpty()) {
+            this.kafkaVersion = logicalKafkaVersionEntity.latestRelease().getVersion();
+            LOGGER.info("You did not specify Kafka version. Using latest release:{}", this.kafkaVersion);
+        } else {
+            this.kafkaVersion = builder.kafkaVersion;
+        }
+
+        this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
+            this.strimziTestContainerVersion + "-kafka-" +
+            this.kafkaVersion);
+
+        // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
+        // instance and by default each container has its own network
+        this.withNetwork(Network.SHARED);
+        // exposing zookeeper port from the container
+        this.withExposedPorts(ZOOKEEPER_PORT);
+        this.withNetworkAliases("zookeeper");
+        this.withEnv("LOG_DIR", "/tmp");
+        this.withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
+        // env for readiness
+        this.withEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
+    }
 
     /**
      * Default ZooKeeper port
      */
     public static final int ZOOKEEPER_PORT = 2181;
+    private static int zookeeperDynamicExposedPort;
 
-    private int zookeeperExposedPort;
-
-    /**
-     * Constructor for @code{StrimziZookeeperContainer}, which instantiate object based on env variables.
-     */
-    public StrimziZookeeperContainer() {
-        super("quay.io/strimzi-test-container/test-container:" +
-            Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
-            Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
-        // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
-        // instance and by default each container has its own network
-        super.withNetwork(Network.SHARED);
-        // exposing zookeeper port from the container
-        withExposedPorts(ZOOKEEPER_PORT);
-        withNetworkAliases("zookeeper");
-        withEnv("LOG_DIR", "/tmp");
-        withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
-        // env for readiness
-        withEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
-    }
+    private String kafkaVersion;
+    private String strimziTestContainerVersion;
 
     @Override
     protected void doStart() {
@@ -64,13 +86,13 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     protected void containerIsStarting(InspectContainerResponse containerInfo, boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        zookeeperExposedPort = getMappedPort(ZOOKEEPER_PORT);
+        zookeeperDynamicExposedPort = getMappedPort(ZOOKEEPER_PORT);
 
-        LOGGER.info("This is mapped port {}", zookeeperExposedPort);
+        LOGGER.info("This is mapped port {}", zookeeperDynamicExposedPort);
 
         final String command =
             "#!/bin/bash \n" +
-            "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
+                "bin/zookeeper-server-start.sh config/zookeeper.properties\n";
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
@@ -78,5 +100,27 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
             Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
             STARTER_SCRIPT
         );
+    }
+
+    public static final class StrimziZookeeperContainerBuilder {
+        private String kafkaVersion;
+        private String strimziTestContainerVersion;
+        public StrimziZookeeperContainerBuilder() {
+        }
+        public static StrimziZookeeperContainerBuilder aStrimziZookeeperContainer() {
+            return new StrimziZookeeperContainerBuilder();
+        }
+
+        public StrimziZookeeperContainerBuilder withKafkaVersion(String kafkaVersion) {
+            this.kafkaVersion = kafkaVersion;
+            return this;
+        }
+        public StrimziZookeeperContainerBuilder withStrimziTestContainerVersion(String strimziTestContainerVersion) {
+            this.strimziTestContainerVersion = strimziTestContainerVersion;
+            return this;
+        }
+        public StrimziZookeeperContainer build() {
+            return new StrimziZookeeperContainer(this);
+        }
     }
 }

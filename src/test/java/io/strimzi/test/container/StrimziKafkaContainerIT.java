@@ -6,13 +6,14 @@ package io.strimzi.test.container;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -27,9 +28,11 @@ public class StrimziKafkaContainerIT {
     }
 
     @Test
-    void testStartContainerWithEmptyConfiguration() {
+    void testStartContainerWithEmptyConfiguration() throws IOException {
         assumeDocker();
-        systemUnderTest = StrimziKafkaContainer.create(1);
+        systemUnderTest = new StrimziKafkaContainer.StrimziKafkaContainerBuilder()
+            .withBrokerId(1)
+            .build();
 
         systemUnderTest.start();
 
@@ -37,7 +40,7 @@ public class StrimziKafkaContainerIT {
     }
 
     @Test
-    void testStartContainerWithSomeConfiguration() {
+    void testStartContainerWithSomeConfiguration() throws IOException {
         assumeDocker();
 
         Map<String, String> kafkaConfiguration = new HashMap<>();
@@ -47,16 +50,19 @@ public class StrimziKafkaContainerIT {
         kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
         kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-        systemUnderTest = StrimziKafkaContainer.createWithAdditionalConfiguration(1, kafkaConfiguration);
+        systemUnderTest = new StrimziKafkaContainer.StrimziKafkaContainerBuilder()
+            .withBrokerId(1)
+            .withKafkaConfigurationMap(kafkaConfiguration)
+            .build();
 
         systemUnderTest.start();
 
         String logsFromKafka = systemUnderTest.getLogs();
 
-        assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
-        assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
-        assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
-        assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
+        assertThat(logsFromKafka, CoreMatchers.containsString("log.cleaner.enable = false"));
+        assertThat(logsFromKafka, CoreMatchers.containsString("log.cleaner.backoff.ms = 1000"));
+        assertThat(logsFromKafka, CoreMatchers.containsString("ssl.enabled.protocols = [TLSv1]"));
+        assertThat(logsFromKafka, CoreMatchers.containsString("log.index.interval.bytes = 2048"));
 
         systemUnderTest.stop();
     }

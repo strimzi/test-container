@@ -58,7 +58,8 @@ public class StrimziKafkaCluster implements Startable {
         this.brokersNum = brokersNum;
         this.network = Network.newNetwork();
 
-        this.zookeeper = new StrimziZookeeperContainer()
+        this.zookeeper = new StrimziZookeeperContainer.StrimziZookeeperContainerBuilder()
+            .build()
             .withNetwork(this.network)
             .withNetworkAliases("zookeeper")
             .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(StrimziZookeeperContainer.ZOOKEEPER_PORT));
@@ -77,11 +78,21 @@ public class StrimziKafkaCluster implements Startable {
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
                 // adding broker id for each kafka container
-                StrimziKafkaContainer kafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration)
-                    .withNetwork(this.network)
-                    .withNetworkAliases("broker-" + brokerId)
-                    .dependsOn(this.zookeeper)
-                    .withExternalZookeeper("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
+                StrimziKafkaContainer kafkaContainer = null;
+                try {
+                    kafkaContainer = new StrimziKafkaContainer.StrimziKafkaContainerBuilder()
+                        .withBrokerId(brokerId)
+                        .withKafkaConfigurationMap(additionalKafkaConfiguration)
+                        .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
+                        .build()
+                        .withNetwork(this.network)
+                        .withNetworkAliases("broker-" + brokerId)
+                        .dependsOn(this.zookeeper);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                LOGGER.info("Started broker with id:{}", kafkaContainer);
 
                 return kafkaContainer;
             })
