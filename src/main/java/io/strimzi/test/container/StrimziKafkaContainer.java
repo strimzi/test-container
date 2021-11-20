@@ -11,6 +11,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
@@ -43,29 +45,34 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
+    private static final String DEFAUT_STORAGE_UUID = "xtzWWN4bTjitpL4efd9s6g";
+
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int kafkaExposedPort;
-    private int brokerId;
+    private final int brokerId;
+    private final boolean useKraft;
+    private String storageUUID = DEFAUT_STORAGE_UUID;
 
-    private StrimziKafkaContainer(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
+    private StrimziKafkaContainer(final int brokerId, final boolean useKraft, final Map<String, String> additionalKafkaConfiguration) {
         super("quay.io/strimzi-test-container/test-container:" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_IMAGE_VERSION_ENV) + "-kafka-" +
             Environment.getValue(Environment.STRIMZI_TEST_CONTAINER_KAFKA_VERSION_ENV));
-        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
-        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
         super.withNetwork(Network.SHARED);
-        // exposing kafka port from the container
-        withExposedPorts(KAFKA_PORT);
-        withEnv("LOG_DIR", "/tmp");
+        super.withExposedPorts(KAFKA_PORT);
+        super.withEnv("LOG_DIR", "/tmp");
 
+        this.useKraft = useKraft;
         this.brokerId = brokerId;
-        kafkaConfigurationMap = new HashMap<>(additionalKafkaConfiguration);
-        kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
+        this.kafkaConfigurationMap = new HashMap<>(additionalKafkaConfiguration);
+        this.kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
     }
 
     /**
-     * Create @code{StrimziKafkaContainer} instance with external ZooKeeper (i.e., @code{StrimziZooKeeperContainer})
+     * Create @code{StrimziKafkaContainer} instance with external ZooKeeper (i.e., @code{StrimziZooKeeperContainer}).
+     *
+     * Creating the container using this method disables Kraft.
+     *
      * @param brokerId broker id
      * @param connectString connect string
      * @param additionalKafkaConfiguration addtional configuration
@@ -73,18 +80,29 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static StrimziKafkaContainer createWithExternalZookeeper(final int brokerId,
                                                                     final String connectString, final Map<String, String> additionalKafkaConfiguration) {
-        return new StrimziKafkaContainer(brokerId, additionalKafkaConfiguration)
+        return new StrimziKafkaContainer(brokerId, false, additionalKafkaConfiguration)
             .withExternalZookeeper(connectString);
     }
 
     /**
-     * Static factory method, which creates @code{StrimziKafkaContainer} with additional additional configuration of Kafka broker
+     * Static factory method, which creates @code{StrimziKafkaContainer} with additional configuration of Kafka broker
+     * @param brokerId broker id
+     * @param useKraft whether the broker should use Kraft
+     * @param additionalKafkaConfiguration additional configuration for Kafka broker
+     * @return instance of @code{StrimziKafkaContainer}
+     */
+    public static StrimziKafkaContainer createWithAdditionalConfiguration(final int brokerId, final boolean useKraft, final Map<String, String> additionalKafkaConfiguration) {
+        return new StrimziKafkaContainer(brokerId, useKraft, additionalKafkaConfiguration);
+    }
+
+    /**
+     * Static factory method, which creates @code{StrimziKafkaContainer} with additional configuration of Kafka broker
      * @param brokerId broker id
      * @param additionalKafkaConfiguration additional configuration for Kafka broker
      * @return instance of @code{StrimziKafkaContainer}
      */
     public static StrimziKafkaContainer createWithAdditionalConfiguration(final int brokerId, final Map<String, String> additionalKafkaConfiguration) {
-        return new StrimziKafkaContainer(brokerId, additionalKafkaConfiguration);
+        return createWithAdditionalConfiguration(brokerId, false, additionalKafkaConfiguration);
     }
 
     /**
@@ -93,7 +111,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return instance of StrimziKafkaContainer
      */
     public static StrimziKafkaContainer create(final int brokerId) {
-        return new StrimziKafkaContainer(brokerId, Collections.emptyMap());
+        return new StrimziKafkaContainer(brokerId, false, Collections.emptyMap());
+    }
+
+    /**
+     * Static factory method, which creates @code{StrimziKafkaContainer} with empty additional configuration of Kafka broker, and use Kraft.
+     * @param brokerId broker id
+     * @return instance of StrimziKafkaContainer
+     */
+    public static StrimziKafkaContainer createWithKraft(final int brokerId) {
+        return new StrimziKafkaContainer(brokerId, true, Collections.emptyMap());
     }
 
     @Override
@@ -104,12 +131,51 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{externalZookeeperConnect}
+     * Fluent method, which sets @code{externalZookeeperConnect}.
+     *
+     * If the broker was created using Kraft, this method throws an {@link IllegalArgumentException}.
+     *
      * @param connectString connect string
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withExternalZookeeper(final String connectString) {
+        if (useKraft) {
+            throw new IllegalArgumentException("Cannot configure an external Zookeeper and use Kraft at the same time");
+        }
         this.externalZookeeperConnect = connectString;
+        return self();
+    }
+
+    /**
+     * Fluent method, which sets a waiting strategy to wait until the broker is ready.
+     *
+     * This method waits for a log message in the broker log.
+     * You can customize the strategy using {@link #waitingFor(WaitStrategy)}.
+     *
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer waitForRunning() {
+        super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
+        return self();
+    }
+
+    /**
+     * Fluent method, which sets @code{storageUUID}.
+     * The storage UUID must be the 16 bytes of a base64-encoded UUID.
+     *
+     * This method requires the broker to be created using Kraft.
+     *
+     * @param uuid the uuid, must not be {@code null} or blank.
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer withStorageUUID(final String uuid) {
+        if (!useKraft) {
+            throw new IllegalArgumentException("Setting the storage UUID requires Kraft");
+        }
+        if (uuid == null || uuid.trim().isEmpty()) {
+            throw new IllegalArgumentException("The UUID must not be blank");
+        }
+        this.storageUUID = uuid;
         return self();
     }
 
@@ -156,13 +222,20 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         StringBuilder kafkaConfiguration = new StringBuilder();
 
-        // default listener config
+        // Common configuration
         kafkaConfiguration
-            .append(" --override listeners=").append(kafkaListeners).append("PLAINTEXT://0.0.0.0:").append(KAFKA_PORT)
-            .append(" --override advertised.listeners=").append(advertisedListeners)
-            .append(" --override zookeeper.connect=localhost:").append(ZOOKEEPER_PORT)
-            .append(" --override listener.security.protocol.map=").append(kafkaListenerSecurityProtocol).append("PLAINTEXT:PLAINTEXT")
-            .append(" --override inter.broker.listener.name=BROKER1");
+                .append(" --override listeners=").append(kafkaListeners).append("PLAINTEXT://0.0.0.0:").append(KAFKA_PORT)
+                .append(" --override advertised.listeners=").append(advertisedListeners)
+                .append(" --override listener.security.protocol.map=").append(kafkaListenerSecurityProtocol).append("PLAINTEXT:PLAINTEXT")
+                .append(" --override inter.broker.listener.name=BROKER1");
+
+        if (useKraft) {
+            kafkaConfiguration
+                    .append(" --override controller.listener.names=").append("BROKER1");
+        } else {
+            kafkaConfiguration
+                    .append(" --override zookeeper.connect=localhost:").append(ZOOKEEPER_PORT);
+        }
 
         // additional kafka config
         this.kafkaConfigurationMap.forEach((configName, configValue) ->
@@ -174,12 +247,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         String command = "#!/bin/bash \n";
 
-        if (this.externalZookeeperConnect != null) {
-            withEnv("KAFKA_ZOOKEEPER_CONNECT", this.externalZookeeperConnect);
+        if (!useKraft) {
+            if (this.externalZookeeperConnect != null) {
+                withEnv("KAFKA_ZOOKEEPER_CONNECT", this.externalZookeeperConnect);
+            } else {
+                command += "bin/zookeeper-server-start.sh config/zookeeper.properties &\n";
+            }
+            command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfiguration;
         } else {
-            command += "bin/zookeeper-server-start.sh config/zookeeper.properties &\n";
+            command += "bin/kafka-storage.sh format -t " + storageUUID + " -c config/kraft/server.properties \n";
+            command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfiguration;
         }
-        command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfiguration.toString();
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
