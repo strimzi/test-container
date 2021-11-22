@@ -83,6 +83,27 @@ StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithAd
 // startup of the Kafka container
 strimziKafkaContainer.start();
 ```
+
+#### iii) (Optional) Run Strimzi Kafka container with KRaft (KIP-500)
+
+[KRaft (KIP-500)](https://github.com/apache/kafka/blob/trunk/config/kraft/README.md) allows running Apache Kafka without Apache ZooKeeper. To run Kafka in KRaft mode use:
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithKraft(1);
+
+strimziKafkaContainer.start();
+```
+
+#### iv) Waiting for Kafka to be ready
+
+Test Container can block waiting the container to be ready.
+Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer.waitForRunning();
+strimziKafkaContainer.start();
+```
+
 ### Additional tips
 
 1. In case you are using `Azure pipelines` Ryuk needs to be turned off, since Azure does not allow starting privileged containers.
