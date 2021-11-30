@@ -246,8 +246,8 @@
                         </goals>
                         <configuration>
                             <compilerArgs>
-                                <arg>-Xlint:unchecked,deprecation</arg>
-<!--                                <arg>-Werror</arg>-->
+                                <arg>-Xlint:unchecked</arg>
+                                <arg>-Werror</arg>
                             </compilerArgs>
                         </configuration>
                     </execution>
