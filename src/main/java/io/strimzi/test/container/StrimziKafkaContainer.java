@@ -51,6 +51,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.kafkaVersion = builder.kafkaVersion;
         }
 
+        this.useKraft = builder.useKraft;
+        this.storageUUID = builder.storageUUID == null ? DEFAUT_STORAGE_UUID : builder.storageUUID;
         this.brokerId = builder.brokerId;
 
         if (builder.kafkaConfigurationMap == null) {
@@ -90,6 +92,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
     public static int kafkaDynamicKafkaPort;
+    private static final String DEFAUT_STORAGE_UUID = "xtzWWN4bTjitpL4efd9s6g";
 
     /**
      * Default ZooKeeper port
@@ -98,36 +101,20 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
-    private static final String DEFAUT_STORAGE_UUID = "xtzWWN4bTjitpL4efd9s6g";
-
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
     private String kafkaVersion;
     private String strimziTestContainerVersion;
-    private final boolean useKraft;
+    private boolean useKraft;
+    private String storageUUID = DEFAUT_STORAGE_UUID;
+
 
     @Override
     protected void doStart() {
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
-    }
-
-    /**
-     * Fluent method, which sets @code{externalZookeeperConnect}.
-     *
-     * If the broker was created using Kraft, this method throws an {@link IllegalArgumentException}.
-     *
-     * @param connectString connect string
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withExternalZookeeper(final String connectString) {
-        if (useKraft) {
-            throw new IllegalArgumentException("Cannot configure an external Zookeeper and use Kraft at the same time");
-        }
-        this.externalZookeeperConnect = connectString;
-        return self();
     }
 
     /**
@@ -140,27 +127,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer waitForRunning() {
         super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
-        return self();
-    }
-
-    /**
-     * Fluent method, which sets @code{storageUUID}.
-     * The storage UUID must be the 16 bytes of a base64-encoded UUID.
-     *
-     * This method requires the broker to be created using Kraft.
-     *
-     * @param uuid the uuid, must not be {@code null} or blank.
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withStorageUUID(final String uuid) {
-        if (!useKraft) {
-            throw new IllegalArgumentException("Setting the storage UUID requires Kraft");
-        }
-        if (uuid == null || uuid.trim().isEmpty()) {
-            throw new IllegalArgumentException("The UUID must not be blank");
-        }
-        this.storageUUID = uuid;
-        return self();
+        return this;
     }
 
     @Override
@@ -267,12 +234,25 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         private int brokerId;
         private String kafkaVersion;
         private String strimziTestContainerVersion;
+        private boolean useKraft;
+        private String storageUUID;
 
         public StrimziKafkaContainerBuilder withKafkaConfigurationMap(Map<String, String> kafkaConfigurationMap) {
             this.kafkaConfigurationMap = kafkaConfigurationMap;
             return this;
         }
+        /**
+         * Fluent method, which sets @code{externalZookeeperConnect}.
+         *
+         * If the broker was created using Kraft, this method throws an {@link IllegalArgumentException}.
+         *
+         * @param externalZookeeperConnect connect string
+         * @return StrimziKafkaContainer instance
+         */
         public StrimziKafkaContainerBuilder withExternalZookeeperConnect(String externalZookeeperConnect) {
+            if (useKraft) {
+                throw new IllegalArgumentException("Cannot configure an external Zookeeper and use Kraft at the same time");
+            }
             this.externalZookeeperConnect = externalZookeeperConnect;
             return this;
         }
@@ -286,6 +266,30 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
         public StrimziKafkaContainerBuilder withStrimziTestContainerVersion(String strimziTestContainerVersion) {
             this.strimziTestContainerVersion = strimziTestContainerVersion;
+            return this;
+        }
+        public StrimziKafkaContainerBuilder withKraft(boolean useKraft) {
+            this.useKraft = useKraft;
+            return this;
+        }
+
+        /**
+         * Fluent method, which sets @code{storageUUID}.
+         * The storage UUID must be the 16 bytes of a base64-encoded UUID.
+         *
+         * This method requires the broker to be created using Kraft.
+         *
+         * @param uuid the uuid, must not be {@code null} or blank.
+         * @return StrimziKafkaContainerBuilder instance
+         */
+        public StrimziKafkaContainerBuilder withStorageUUID(final String uuid) {
+            if (!useKraft) {
+                throw new IllegalArgumentException("Setting the storage UUID requires Kraft");
+            }
+            if (uuid == null || uuid.trim().isEmpty()) {
+                throw new IllegalArgumentException("The UUID must not be blank");
+            }
+            this.storageUUID = uuid;
             return this;
         }
 

@@ -14,6 +14,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,10 +36,13 @@ public class StrimziKafkaKraftContainerIT {
     }
 
     @Test
-    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException {
+    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException, IOException {
         assumeDocker();
-        systemUnderTest = StrimziKafkaContainer.createWithKraft(1)
-                        .waitForRunning();
+
+        systemUnderTest = new StrimziKafkaContainer.StrimziKafkaContainerBuilder().withBrokerId(1)
+            .withKraft(true)
+            .build()
+            .waitForRunning();
 
         systemUnderTest.start();
 
@@ -51,7 +55,7 @@ public class StrimziKafkaKraftContainerIT {
     }
 
     @Test
-    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException {
+    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException, IOException {
         assumeDocker();
 
         Map<String, String> kafkaConfiguration = new HashMap<>();
@@ -61,9 +65,12 @@ public class StrimziKafkaKraftContainerIT {
         kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
         kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-        systemUnderTest = StrimziKafkaContainer.createWithAdditionalConfiguration(1, true, kafkaConfiguration)
-                .withStorageUUID("xtzWWN5bTjitdL4efd9g6g")
-                .waitForRunning();
+        systemUnderTest = new StrimziKafkaContainer.StrimziKafkaContainerBuilder().withBrokerId(1)
+            .withKraft(true)
+            .withStorageUUID("xtzWWN5bTjitdL4efd9g6g")
+            .withKafkaConfigurationMap(kafkaConfiguration)
+            .build()
+            .waitForRunning();
 
         systemUnderTest.start();
 

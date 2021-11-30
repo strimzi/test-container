@@ -89,7 +89,7 @@ public class StrimziKafkaCluster implements Startable {
                         .withNetworkAliases("broker-" + brokerId)
                         .dependsOn(this.zookeeper);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.error("Error occurred during starting Kafka cluster!", e);
                 }
 
                 LOGGER.info("Started broker with id:{}", kafkaContainer);

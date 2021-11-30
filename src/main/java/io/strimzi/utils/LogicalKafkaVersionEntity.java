@@ -27,7 +27,8 @@ public class LogicalKafkaVersionEntity {
     private static final Logger LOGGER = LogManager.getLogger(LogicalKafkaVersionEntity.class);
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
-    private static final String KAFKA_VERSIONS_URL_JSON = "https://api.jsonbin.io/b/PLACEHOLDER"; // this would be replaced by test-container-images url where json will be stored
+    // TODO: change to strimzi one...
+    private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/see-quick/c--paralellism/main/kafka_versions.yaml"; // this would be replaced by test-container-images url where json will be stored
     private static JsonReader reader;
 
     private String jsonVersion;
@@ -171,12 +172,11 @@ public class LogicalKafkaVersionEntity {
         URLConnection request;
         try {
             request = new URL(KAFKA_VERSIONS_URL_JSON).openConnection();
-            request.addRequestProperty("Secret-key", "----PLACE...");
             request.connect();
 
             reader = new JsonReader(new InputStreamReader(request.getInputStream(), StandardCharsets.UTF_8));
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Error occurred during instantiation of JsonReader!", e);
         }
 
         reader.beginObject();

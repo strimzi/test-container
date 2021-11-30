@@ -32,7 +32,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         try {
             logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Error occurred during instantiation of LogicalKafkaVersionEntity!", e);
         }
     }
 
