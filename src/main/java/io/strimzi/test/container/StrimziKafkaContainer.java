@@ -107,8 +107,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String kafkaVersion;
     private String strimziTestContainerVersion;
     private boolean useKraft;
-    private String storageUUID = DEFAUT_STORAGE_UUID;
-
+    private String storageUUID;
 
     @Override
     protected void doStart() {
