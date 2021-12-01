@@ -86,8 +86,8 @@ public class StrimziKafkaCluster implements Startable {
                         .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
                         .withNetwork(this.network)
                         .withNetworkAliases("broker-" + brokerId)
-                        .build()
-                        .dependsOn(this.zookeeper);
+                        .build();
+                    kafkaContainer.dependsOn(this.zookeeper);
                 } catch (IOException e) {
                     LOGGER.error("Error occurred during starting Kafka cluster!", e);
                 }
