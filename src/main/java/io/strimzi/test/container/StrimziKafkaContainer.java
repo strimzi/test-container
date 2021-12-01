@@ -36,10 +36,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
     private static LogicalKafkaVersionEntity logicalKafkaVersionEntity;
 
-    private StrimziKafkaContainer(StrimziKafkaContainerBuilder builder) {
+    static {
         logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
-        System.out.println(logicalKafkaVersionEntity.toString());
+    }
 
+    private StrimziKafkaContainer(StrimziKafkaContainerBuilder builder) {
         if (builder.strimziTestContainerVersion == null || builder.strimziTestContainerVersion.isEmpty()) {
             this.strimziTestContainerVersion = logicalKafkaVersionEntity.latestRelease().getStrimziTestContainerVersion();
             LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", this.strimziTestContainerVersion);
