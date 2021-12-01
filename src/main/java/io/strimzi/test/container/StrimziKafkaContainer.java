@@ -7,6 +7,7 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import io.strimzi.utils.LogicalKafkaVersionEntity;
+import io.strimzi.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
@@ -35,8 +36,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
     private static LogicalKafkaVersionEntity logicalKafkaVersionEntity;
 
-    private StrimziKafkaContainer(StrimziKafkaContainerBuilder builder) throws IOException {
+    private StrimziKafkaContainer(StrimziKafkaContainerBuilder builder) {
         logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
+        System.out.println(logicalKafkaVersionEntity.toString());
 
         if (builder.strimziTestContainerVersion == null || builder.strimziTestContainerVersion.isEmpty()) {
             this.strimziTestContainerVersion = logicalKafkaVersionEntity.latestRelease().getStrimziTestContainerVersion();
@@ -52,7 +54,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         this.useKraft = builder.useKraft;
-        this.storageUUID = builder.storageUUID == null ? DEFAUT_STORAGE_UUID : builder.storageUUID;
+        this.storageUUID = builder.storageUUID == null ? Utils.randomUuid().toString() : builder.storageUUID;
         this.brokerId = builder.brokerId;
 
         if (builder.kafkaConfigurationMap == null) {
@@ -79,12 +81,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
             this.strimziTestContainerVersion + "-kafka-" +
             this.kafkaVersion);
-
-        LOGGER.info("=============================================");
-        LOGGER.info(this.getDockerImageName());
-        LOGGER.info("=============================================");
-
-        LOGGER.info("This is inside this object:{}", this::toString);
     }
 
     /**
@@ -92,7 +88,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
     public static int kafkaDynamicKafkaPort;
-    private static final String DEFAUT_STORAGE_UUID = "xtzWWN4bTjitpL4efd9s6g";
 
     /**
      * Default ZooKeeper port
@@ -227,7 +222,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), kafkaDynamicKafkaPort);
     }
 
-    public final static class StrimziKafkaContainerBuilder {
+    public final static class StrimziKafkaContainerBuilder extends GenericContainer<StrimziKafkaContainerBuilder> {
         private Map<String, String> kafkaConfigurationMap;
         private String externalZookeeperConnect;
         private int brokerId;

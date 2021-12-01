@@ -4,11 +4,13 @@
  */
 package io.strimzi.utils;
 
+import org.apache.kafka.common.Uuid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -77,5 +79,14 @@ public class Utils {
                 return deadline - System.currentTimeMillis();
             }
         }
+    }
+
+    /**
+     * Static factory method to get a type 4 (pseudo randomly generated) UUID.
+     */
+    public static Uuid randomUuid() {
+        UUID uuid = UUID.randomUUID();
+
+        return new Uuid(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
     }
 }

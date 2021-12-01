@@ -59,10 +59,10 @@ public class StrimziKafkaCluster implements Startable {
         this.network = Network.newNetwork();
 
         this.zookeeper = new StrimziZookeeperContainer.StrimziZookeeperContainerBuilder()
-            .build()
             .withNetwork(this.network)
             .withNetworkAliases("zookeeper")
-            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(StrimziZookeeperContainer.ZOOKEEPER_PORT));
+            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(StrimziZookeeperContainer.ZOOKEEPER_PORT))
+            .build();
 
         Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
         defaultKafkaConfigurationForMultiNode.put("offsets.topic.replication.factor", String.valueOf(internalTopicReplicationFactor));
@@ -84,9 +84,9 @@ public class StrimziKafkaCluster implements Startable {
                         .withBrokerId(brokerId)
                         .withKafkaConfigurationMap(additionalKafkaConfiguration)
                         .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
-                        .build()
                         .withNetwork(this.network)
                         .withNetworkAliases("broker-" + brokerId)
+                        .build()
                         .dependsOn(this.zookeeper);
                 } catch (IOException e) {
                     LOGGER.error("Error occurred during starting Kafka cluster!", e);

@@ -13,7 +13,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -29,11 +28,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     static {
-        try {
-            logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
-        } catch (IOException e) {
-            LOGGER.error("Error occurred during instantiation of LogicalKafkaVersionEntity!", e);
-        }
+        logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
     }
 
     private StrimziZookeeperContainer(StrimziZookeeperContainerBuilder builder) {
@@ -102,7 +97,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         );
     }
 
-    public static final class StrimziZookeeperContainerBuilder {
+    public static final class StrimziZookeeperContainerBuilder extends GenericContainer<StrimziZookeeperContainerBuilder> {
         private String kafkaVersion;
         private String strimziTestContainerVersion;
         public StrimziZookeeperContainerBuilder() {

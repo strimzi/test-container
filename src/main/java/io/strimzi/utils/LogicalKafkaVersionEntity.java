@@ -4,18 +4,20 @@
  */
 package io.strimzi.utils;
 
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,14 +30,13 @@ public class LogicalKafkaVersionEntity {
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
     private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.yaml"; // this would be replaced by test-container-images url where json will be stored
-    private static JsonReader reader;
 
     private String jsonVersion;
-    private List<LogicalKafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
+    private final List<LogicalKafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
 
-    public LogicalKafkaVersionEntity() throws IOException {
+    public LogicalKafkaVersionEntity() {
         // scrape json schema and fill the inner list of versions
-        this.resolve();
+        this.resolveAndParse();
     }
 
     public static class LogicalKafkaVersion implements Comparable<LogicalKafkaVersion> {
@@ -45,10 +46,6 @@ public class LogicalKafkaVersionEntity {
         public LogicalKafkaVersion(String version, String image) {
             this.version = version;
             this.image = image;
-        }
-
-        public static LogicalKafkaVersion fromJson(JsonReader reader) throws IOException {
-            return new LogicalKafkaVersion(reader.nextName(), reader.nextString());
         }
 
         @Override
@@ -92,7 +89,7 @@ public class LogicalKafkaVersionEntity {
         }
 
         public String getStrimziTestContainerVersion() {
-            Matcher regex = STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION.matcher(image);
+            Matcher regex = STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION.matcher(this.image);
 
             // only one occurrence in the string
             if (regex.find()) {
@@ -100,15 +97,15 @@ public class LogicalKafkaVersionEntity {
                 LOGGER.info("Find the version of Strimzi kafka container:{}", strimziContainerVersion);
                 return strimziContainerVersion;
             } else {
-                throw new RuntimeException("Unable to find version of Strimzi kafka container from image name - " + image);
+                throw new RuntimeException("Unable to find version of Strimzi kafka container from image name - " + this.image);
             }
         }
 
         @Override
         public String toString() {
             return "LogicalKafkaVersionEntity{" +
-                "version='" + version + '\'' +
-                ", image='" + image + '\'' +
+                "version='" + this.version + '\'' +
+                ", image='" + this.image + '\'' +
                 '}';
         }
     }
@@ -157,7 +154,6 @@ public class LogicalKafkaVersionEntity {
         // 2.40.50
         // 3.0.0 <- previous minor (it will be always previous last)
         // 4.1.2 <- latest release
-        LOGGER.error(this.logicalKafkaVersionEntities.toString());
         final LogicalKafkaVersion previousMinorRelease = this.logicalKafkaVersionEntities.get(this.logicalKafkaVersionEntities.size() - 2);
         LOGGER.info("Previous minor release of Kafka is:{}", previousMinorRelease);
         return previousMinorRelease;
@@ -166,34 +162,23 @@ public class LogicalKafkaVersionEntity {
     /**
      * Resolve the logical version to an actual version
      */
-    private void resolve() throws IOException {
+    private void resolveAndParse() {
         // Connect to the URL using java's native library
-        URLConnection request;
         try {
-            request = new URL(KAFKA_VERSIONS_URL_JSON).openConnection();
-            request.connect();
+            StringWriter writer = new StringWriter();
+            IOUtils.copy(new URL(KAFKA_VERSIONS_URL_JSON).openStream(), writer, StandardCharsets.UTF_8);
+            String pureStringJson = writer.toString().replaceAll("(?m)^#.*(?:\\r?\\n)", "");
+            JsonNode rootNode = new ObjectMapper().readValue(pureStringJson, JsonNode.class);
 
-            reader = new JsonReader(new InputStreamReader(request.getInputStream(), StandardCharsets.UTF_8));
-            reader.setLenient(true);    // because of comments `#` from input source
+            this.jsonVersion = rootNode.get("version").toString();
+
+            for (Iterator<Map.Entry<String, JsonNode>> iter = rootNode.get("kafkaVersions").fields(); iter.hasNext(); ) {
+                Map.Entry<String, JsonNode> fields = iter.next();
+                LogicalKafkaVersion logicalKafkaVersion = new LogicalKafkaVersion(fields.getKey(), fields.getValue().asText());
+                this.logicalKafkaVersionEntities.add(logicalKafkaVersion);
+            }
         } catch (IOException e) {
             LOGGER.error("Error occurred during instantiation of JsonReader!", e);
-        }
-
-        reader.beginObject();
-
-        // version
-        reader.nextName();
-        this.jsonVersion = String.valueOf(reader.nextInt());
-
-        // kafka-versions
-        reader.nextName();
-        reader.beginObject();
-
-        // pre-allocate 2 items and eliminate re-allocation
-        this.logicalKafkaVersionEntities = new ArrayList<>(2);
-
-        while (reader.peek() != JsonToken.END_OBJECT) {
-            this.logicalKafkaVersionEntities.add(LogicalKafkaVersion.fromJson(reader));
         }
     }
 
