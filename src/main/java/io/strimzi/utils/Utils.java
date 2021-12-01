@@ -83,6 +83,7 @@ public class Utils {
 
     /**
      * Static factory method to get a type 4 (pseudo randomly generated) UUID.
+     * @return random Uuid
      */
     public static Uuid randomUuid() {
         UUID uuid = UUID.randomUUID();
