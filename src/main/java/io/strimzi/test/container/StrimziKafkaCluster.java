@@ -4,6 +4,7 @@
  */
 package io.strimzi.test.container;
 
+import io.strimzi.utils.Constants;
 import io.strimzi.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,8 +33,10 @@ import java.util.stream.Stream;
  */
 public class StrimziKafkaCluster implements Startable {
 
+    // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaCluster.class);
 
+    // instance attributes
     private final int brokersNum;
     private final Network network;
     private final StrimziZookeeperContainer zookeeper;
@@ -61,7 +64,7 @@ public class StrimziKafkaCluster implements Startable {
         this.zookeeper = new StrimziZookeeperContainer.StrimziZookeeperContainerBuilder()
             .withNetwork(this.network)
             .withNetworkAliases("zookeeper")
-            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(StrimziZookeeperContainer.ZOOKEEPER_PORT))
+            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(Constants.ZOOKEEPER_PORT))
             .build();
 
         Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
@@ -83,7 +86,7 @@ public class StrimziKafkaCluster implements Startable {
                     kafkaContainer = new StrimziKafkaContainer.StrimziKafkaContainerBuilder()
                         .withBrokerId(brokerId)
                         .withKafkaConfigurationMap(additionalKafkaConfiguration)
-                        .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
+                        .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT)
                         .withNetwork(this.network)
                         .withNetworkAliases("broker-" + brokerId)
                         .build();
@@ -133,7 +136,7 @@ public class StrimziKafkaCluster implements Startable {
                 try {
                     result = this.zookeeper.execInContainer(
                         "sh", "-c",
-                        "bin/zookeeper-shell.sh zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+                        "bin/zookeeper-shell.sh zookeeper:" + Constants.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
                     );
                     String brokers = result.getStdout();
 

@@ -6,6 +6,7 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.strimzi.utils.Constants;
 import io.strimzi.utils.LogicalKafkaVersionEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +15,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 
 /**
  * StrimziZookeeperContainer is an instance of the Zookeeper encapsulated inside a docker container using image from
@@ -23,52 +25,44 @@ import java.nio.charset.StandardCharsets;
 @SuppressFBWarnings("EQ_DOESNT_OVERRIDE_EQUALS")
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
 
+    // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainer.class);
-    private static LogicalKafkaVersionEntity logicalKafkaVersionEntity;
+    private static final LogicalKafkaVersionEntity LOGICAL_KAFKA_VERSION_ENTITY;
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     static {
-        logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
+        LOGICAL_KAFKA_VERSION_ENTITY = new LogicalKafkaVersionEntity();
     }
 
     private StrimziZookeeperContainer(StrimziZookeeperContainerBuilder builder) {
+        String strimziTestContainerVersion;
         if (builder.strimziTestContainerVersion == null || builder.strimziTestContainerVersion.isEmpty()) {
-            this.strimziTestContainerVersion = logicalKafkaVersionEntity.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", this.strimziTestContainerVersion);
+            strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
+            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", strimziTestContainerVersion);
         } else {
-            this.strimziTestContainerVersion = builder.strimziTestContainerVersion;
+            strimziTestContainerVersion = builder.strimziTestContainerVersion;
         }
+        String kafkaVersion;
         if (builder.kafkaVersion == null || builder.kafkaVersion.isEmpty()) {
-            this.kafkaVersion = logicalKafkaVersionEntity.latestRelease().getVersion();
-            LOGGER.info("You did not specify Kafka version. Using latest release:{}", this.kafkaVersion);
+            kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
+            LOGGER.info("You did not specify Kafka version. Using latest release:{}", kafkaVersion);
         } else {
-            this.kafkaVersion = builder.kafkaVersion;
+            kafkaVersion = builder.kafkaVersion;
         }
-
         this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
-            this.strimziTestContainerVersion + "-kafka-" +
-            this.kafkaVersion);
-
+            strimziTestContainerVersion + "-kafka-" +
+            kafkaVersion);
         // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
         // instance and by default each container has its own network
-        this.withNetwork(Network.SHARED);
+        super.setNetwork(Network.SHARED);
         // exposing zookeeper port from the container
-        this.withExposedPorts(ZOOKEEPER_PORT);
-        this.withNetworkAliases("zookeeper");
-        this.withEnv("LOG_DIR", "/tmp");
-        this.withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
+        super.setExposedPorts(Collections.singletonList(Constants.ZOOKEEPER_PORT));
+        super.setNetworkAliases(Collections.singletonList("zookeeper"));
+        super.addEnv("LOG_DIR", "/tmp");
+        super.addEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(Constants.ZOOKEEPER_PORT));
         // env for readiness
-        this.withEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
+        super.addEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
     }
-
-    /**
-     * Default ZooKeeper port
-     */
-    public static final int ZOOKEEPER_PORT = 2181;
-    private static int zookeeperDynamicExposedPort;
-
-    private String kafkaVersion;
-    private String strimziTestContainerVersion;
 
     @Override
     protected void doStart() {
@@ -81,7 +75,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     protected void containerIsStarting(InspectContainerResponse containerInfo, boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        zookeeperDynamicExposedPort = getMappedPort(ZOOKEEPER_PORT);
+        int zookeeperDynamicExposedPort = getMappedPort(Constants.ZOOKEEPER_PORT);
 
         LOGGER.info("This is mapped port {}", zookeeperDynamicExposedPort);
 
@@ -102,15 +96,12 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         private String strimziTestContainerVersion;
         public StrimziZookeeperContainerBuilder() {
         }
-        public static StrimziZookeeperContainerBuilder aStrimziZookeeperContainer() {
-            return new StrimziZookeeperContainerBuilder();
-        }
 
-        public StrimziZookeeperContainerBuilder withKafkaVersion(String kafkaVersion) {
+        public StrimziZookeeperContainerBuilder withKafkaVersion(final String kafkaVersion) {
             this.kafkaVersion = kafkaVersion;
             return this;
         }
-        public StrimziZookeeperContainerBuilder withStrimziTestContainerVersion(String strimziTestContainerVersion) {
+        public StrimziZookeeperContainerBuilder withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
             this.strimziTestContainerVersion = strimziTestContainerVersion;
             return this;
         }

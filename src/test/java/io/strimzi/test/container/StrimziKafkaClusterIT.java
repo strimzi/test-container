@@ -4,6 +4,7 @@
  */
 package io.strimzi.test.container;
 
+import io.strimzi.utils.Constants;
 import io.strimzi.utils.Utils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -55,7 +56,7 @@ public class StrimziKafkaClusterIT {
         // exercise (fetch the data)
         final Container.ExecResult result = this.systemUnderTest.getZookeeper().execInContainer(
             "sh", "-c",
-            "bin/zookeeper-shell.sh zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+            "bin/zookeeper-shell.sh zookeeper:" + Constants.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
         );
 
         final String brokers = result.getStdout();

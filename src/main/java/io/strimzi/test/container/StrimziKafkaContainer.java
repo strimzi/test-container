@@ -6,6 +6,7 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
+import io.strimzi.utils.Constants;
 import io.strimzi.utils.LogicalKafkaVersionEntity;
 import io.strimzi.utils.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +21,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,30 +35,40 @@ import java.util.Map;
  */
 public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> {
 
+    // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
-    private static LogicalKafkaVersionEntity logicalKafkaVersionEntity;
+    private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
+    private static final LogicalKafkaVersionEntity LOGICAL_KAFKA_VERSION_ENTITY;
+    private static int kafkaDynamicKafkaPort;
+
+    // instance attributes
+    private final Map<String, String> kafkaConfigurationMap;
+    private final String externalZookeeperConnect;
+    private final boolean useKraft;
+    private final String storageUUID;
 
     static {
-        logicalKafkaVersionEntity = new LogicalKafkaVersionEntity();
+        LOGICAL_KAFKA_VERSION_ENTITY = new LogicalKafkaVersionEntity();
     }
 
     private StrimziKafkaContainer(StrimziKafkaContainerBuilder builder) {
+        String strimziTestContainerVersion;
         if (builder.strimziTestContainerVersion == null || builder.strimziTestContainerVersion.isEmpty()) {
-            this.strimziTestContainerVersion = logicalKafkaVersionEntity.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", this.strimziTestContainerVersion);
+            strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
+            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", strimziTestContainerVersion);
         } else {
-            this.strimziTestContainerVersion = builder.strimziTestContainerVersion;
+            strimziTestContainerVersion = builder.strimziTestContainerVersion;
         }
+        String kafkaVersion;
         if (builder.kafkaVersion == null || builder.kafkaVersion.isEmpty()) {
-            this.kafkaVersion = logicalKafkaVersionEntity.latestRelease().getVersion();
-            LOGGER.info("You did not specify Kafka version. Using latest release:{}", this.kafkaVersion);
+            kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
+            LOGGER.info("You did not specify Kafka version. Using latest release:{}", kafkaVersion);
         } else {
-            this.kafkaVersion = builder.kafkaVersion;
+            kafkaVersion = builder.kafkaVersion;
         }
-
         this.useKraft = builder.useKraft;
         this.storageUUID = builder.storageUUID == null ? Utils.randomUuid().toString() : builder.storageUUID;
-        this.brokerId = builder.brokerId;
+        int brokerId = builder.brokerId;
 
         if (builder.kafkaConfigurationMap == null) {
             this.kafkaConfigurationMap = new HashMap<>();
@@ -65,50 +77,28 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.kafkaConfigurationMap.putAll(builder.kafkaConfigurationMap);
         }
 
-        LOGGER.info("Set broker.id to: {}", this.brokerId);
-        this.kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
+        LOGGER.info("Set broker.id to: {}", brokerId);
+        this.kafkaConfigurationMap.put("broker.id", String.valueOf(brokerId));
 
-        LOGGER.info("Injected configuration inside Kafka Container constructor....\n{}", this.kafkaConfigurationMap.toString());
+        LOGGER.info("Injected configuration inside Kafka Container constructor:\n{}", this.kafkaConfigurationMap.toString());
 
         this.externalZookeeperConnect = builder.externalZookeeperConnect;
 
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
         // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
-        this.withNetwork(Network.SHARED);
+        super.setNetwork(Network.SHARED);
         // exposing kafka port from the container
-        this.withExposedPorts(KAFKA_PORT);
-        this.withEnv("LOG_DIR", "/tmp");
-
-        this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
-            this.strimziTestContainerVersion + "-kafka-" +
-            this.kafkaVersion);
+        super.setExposedPorts(Collections.singletonList(Constants.KAFKA_PORT));
+        super.addEnv("LOG_DIR", "/tmp");
+        super.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
+            strimziTestContainerVersion + "-kafka-" +
+            kafkaVersion);
     }
-
-    /**
-     * Default Kafka port
-     */
-    public static final int KAFKA_PORT = 9092;
-    public static int kafkaDynamicKafkaPort;
-
-    /**
-     * Default ZooKeeper port
-     */
-    public static final int ZOOKEEPER_PORT = 2181;
-
-    private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
-
-    private Map<String, String> kafkaConfigurationMap;
-    private String externalZookeeperConnect;
-    private int brokerId;
-    private String kafkaVersion;
-    private String strimziTestContainerVersion;
-    private boolean useKraft;
-    private String storageUUID;
 
     @Override
     protected void doStart() {
         // we need it for the startZookeeper(); and startKafka(); to run container before...
-        withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
+        super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
     }
 
@@ -129,7 +119,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        kafkaDynamicKafkaPort = getMappedPort(KAFKA_PORT);
+        kafkaDynamicKafkaPort = getMappedPort(Constants.KAFKA_PORT);
 
         LOGGER.info("Mapped port: {}", kafkaDynamicKafkaPort);
 
@@ -170,7 +160,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // Common configuration
         kafkaConfiguration
-                .append(" --override listeners=").append(kafkaListeners).append("PLAINTEXT://0.0.0.0:").append(KAFKA_PORT)
+                .append(" --override listeners=").append(kafkaListeners).append("PLAINTEXT://0.0.0.0:").append(Constants.KAFKA_PORT)
                 .append(" --override advertised.listeners=").append(advertisedListeners)
                 .append(" --override listener.security.protocol.map=").append(kafkaListenerSecurityProtocol).append("PLAINTEXT:PLAINTEXT")
                 .append(" --override inter.broker.listener.name=BROKER1");
@@ -182,7 +172,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     .append(" --override controller.listener.names=").append("BROKER1");
         } else {
             kafkaConfiguration
-                    .append(" --override zookeeper.connect=localhost:").append(ZOOKEEPER_PORT);
+                    .append(" --override zookeeper.connect=localhost:").append(Constants.ZOOKEEPER_PORT);
         }
 
         // additional kafka config
@@ -232,7 +222,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         private boolean useKraft;
         private String storageUUID;
 
-        public StrimziKafkaContainerBuilder withKafkaConfigurationMap(Map<String, String> kafkaConfigurationMap) {
+        public StrimziKafkaContainerBuilder withKafkaConfigurationMap(final Map<String, String> kafkaConfigurationMap) {
             this.kafkaConfigurationMap = kafkaConfigurationMap;
             return this;
         }
@@ -244,26 +234,26 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
          * @param externalZookeeperConnect connect string
          * @return StrimziKafkaContainer instance
          */
-        public StrimziKafkaContainerBuilder withExternalZookeeperConnect(String externalZookeeperConnect) {
+        public StrimziKafkaContainerBuilder withExternalZookeeperConnect(final String externalZookeeperConnect) {
             if (useKraft) {
                 throw new IllegalArgumentException("Cannot configure an external Zookeeper and use Kraft at the same time");
             }
             this.externalZookeeperConnect = externalZookeeperConnect;
             return this;
         }
-        public StrimziKafkaContainerBuilder withBrokerId(int brokerId) {
+        public StrimziKafkaContainerBuilder withBrokerId(final int brokerId) {
             this.brokerId = brokerId;
             return this;
         }
-        public StrimziKafkaContainerBuilder withKafkaVersion(String kafkaVersion) {
+        public StrimziKafkaContainerBuilder withKafkaVersion(final String kafkaVersion) {
             this.kafkaVersion = kafkaVersion;
             return this;
         }
-        public StrimziKafkaContainerBuilder withStrimziTestContainerVersion(String strimziTestContainerVersion) {
+        public StrimziKafkaContainerBuilder withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
             this.strimziTestContainerVersion = strimziTestContainerVersion;
             return this;
         }
-        public StrimziKafkaContainerBuilder withKraft(boolean useKraft) {
+        public StrimziKafkaContainerBuilder withKraft(final boolean useKraft) {
             this.useKraft = useKraft;
             return this;
         }
