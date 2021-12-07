@@ -16,6 +16,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.utility.MountableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -42,13 +44,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
 
     // instance attributes
-    private int kafkaDynamicKafkaPort;
+    private int kafkaExposedPort;
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
     private String kafkaVersion;
     private String strimziTestContainerImageVersion;
     private boolean useKraft;
+    private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
+        c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
 
     static {
         LOGICAL_KAFKA_VERSION_ENTITY = new KafkaVersionService();
@@ -98,7 +102,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer waitForRunning() {
-        super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
+        if (useKraft) {
+            super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
+        } else {
+            super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use broker.*", 1));
+        }
         return this;
     }
 
@@ -106,11 +114,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        kafkaDynamicKafkaPort = getMappedPort(Constants.KAFKA_PORT);
+        this.kafkaExposedPort = getMappedPort(Constants.KAFKA_PORT);
 
-        LOGGER.info("Mapped port: {}", kafkaDynamicKafkaPort);
+        LOGGER.info("Mapped port: {}", kafkaExposedPort);
 
-        StringBuilder advertisedListeners = new StringBuilder(getBootstrapServers());
+        String bootstrapServers = getBootstrapServers();
+        String bsListenerName = extractListenerName(bootstrapServers);
+
+        StringBuilder advertisedListeners = new StringBuilder(bootstrapServers);
 
         Collection<ContainerNetwork> cns = containerInfo.getNetworkSettings().getNetworks().values();
 
@@ -143,36 +154,31 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 .append(",");
         });
 
-        StringBuilder kafkaConfiguration = new StringBuilder();
-
-        // Common configuration
-        kafkaConfiguration
-                .append(" --override listeners=").append(kafkaListeners).append("PLAINTEXT://0.0.0.0:").append(Constants.KAFKA_PORT)
-                .append(" --override advertised.listeners=").append(advertisedListeners)
-                .append(" --override listener.security.protocol.map=").append(kafkaListenerSecurityProtocol).append("PLAINTEXT:PLAINTEXT")
-                .append(" --override inter.broker.listener.name=BROKER1");
-
-        if (this.kafkaConfigurationMap == null) {
-            this.kafkaConfigurationMap = new HashMap<>();
+        kafkaListeners.append(bsListenerName).append("://0.0.0.0:").append(Constants.KAFKA_PORT);
+        kafkaListenerSecurityProtocol.append("PLAINTEXT:PLAINTEXT");
+        if (!bsListenerName.equals("PLAINTEXT")) {
+            kafkaListenerSecurityProtocol.append(",").append(bsListenerName).append(":").append(bsListenerName);
         }
 
-        this.kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
+        Map<String, String> kafkaConfiguration = new HashMap<>();
+
+        kafkaConfiguration.put("listeners", kafkaListeners.toString());
+        kafkaConfiguration.put("advertised.listeners", advertisedListeners.toString());
+        kafkaConfiguration.put("listener.security.protocol.map", kafkaListenerSecurityProtocol.toString());
+        kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
+        kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
 
         if (useKraft) {
-            kafkaConfiguration
-                    .append(" --override controller.listener.names=").append("BROKER1");
+            kafkaConfiguration.put("controller.listener.names", "BROKER1");
         } else {
-            kafkaConfiguration
-                    .append(" --override zookeeper.connect=localhost:").append(Constants.ZOOKEEPER_PORT);
+            kafkaConfiguration.put("zookeeper.connect", "localhost:" + Constants.ZOOKEEPER_PORT);
         }
 
         // additional kafka config
-        this.kafkaConfigurationMap.forEach((configName, configValue) ->
-            kafkaConfiguration
-                .append(" --override ")
-                .append(configName)
-                .append("=")
-                .append(configValue));
+        if (this.kafkaConfigurationMap != null) {
+            kafkaConfiguration.putAll(this.kafkaConfigurationMap);
+        }
+        String kafkaConfigurationOverride = writeOverrideString(kafkaConfiguration);
 
         String command = "#!/bin/bash \n";
 
@@ -182,10 +188,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             } else {
                 command += "bin/zookeeper-server-start.sh config/zookeeper.properties &\n";
             }
-            command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfiguration;
+            command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
-            command += "bin/kafka-storage.sh format -t " + Utils.randomUuid().toString() + " -c config/kraft/server.properties \n";
-            command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfiguration;
+            command += "bin/kafka-storage.sh format -t " + Utils.randomUuid() + " -c config/kraft/server.properties \n";
+            command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
@@ -196,12 +202,33 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         );
     }
 
+    private String extractListenerName(String bootstrapServers) {
+        // extract listener name from given bootstrap servers
+        String[] strings = bootstrapServers.split(":");
+        if (strings.length < 3) {
+            throw new IllegalArgumentException("The configured boostrap servers '" + bootstrapServers +
+                    "' must be prefixed with a listener name.");
+        }
+        return strings[0];
+    }
+
+    private String writeOverrideString(Map<String, String> kafkaConfigurationMap) {
+        StringBuilder kafkaConfiguration = new StringBuilder();
+        kafkaConfigurationMap.forEach((configName, configValue) ->
+                kafkaConfiguration
+                        .append(" --override ")
+                        .append(configName)
+                        .append("=")
+                        .append(configValue));
+        return kafkaConfiguration.toString();
+    }
+
     /**
      * Get bootstrap servers of @code{StrimziKafkaContainer} instance
      * @return bootstrap servers
      */
     public String getBootstrapServers() {
-        return String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), kafkaDynamicKafkaPort);
+        return bootstrapServersProvider.apply(this);
     }
 
     /**
@@ -273,6 +300,41 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withKraft() {
         this.useKraft = true;
+        return self();
+    }
+
+
+    /**
+     * Fluent method, which sets fixed exposed port.
+     *
+     * @param fixedPort fixed port to expose
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer withFixedPort(final int fixedPort) {
+        addFixedExposedPort(fixedPort, Constants.KAFKA_PORT);
+        return self();
+    }
+
+    /**
+     * Fluent method, copy server properties file to the container
+     *
+     * @param serverPropertiesFile the mountable config file
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer withServerProperties(final MountableFile serverPropertiesFile) {
+        withCopyFileToContainer(serverPropertiesFile,
+                useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties");
+        return self();
+    }
+
+    /**
+     * Fluent method, assign provider for overriding bootstrap servers string
+     *
+     * @param provider provider function for bootstrapServers string
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer withBootstrapServers(final Function<StrimziKafkaContainer, String> provider) {
+        this.bootstrapServersProvider = provider;
         return self();
     }
 }

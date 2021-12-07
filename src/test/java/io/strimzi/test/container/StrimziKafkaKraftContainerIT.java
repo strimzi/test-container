@@ -52,7 +52,8 @@ public class StrimziKafkaKraftContainerIT {
 
             verify();
 
-            assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));
+            assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://" +
+                systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
         } finally {
             systemUnderTest.stop();
         }

@@ -9,10 +9,13 @@ import org.apache.logging.log4j.Logger;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.utility.MountableFile;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -30,10 +33,12 @@ public class StrimziKafkaContainerIT {
     void testStartContainerWithEmptyConfiguration() {
         assumeDocker();
         systemUnderTest = new StrimziKafkaContainer()
-            .withBrokerId(1);
+            .withBrokerId(1)
+            .waitForRunning();
         systemUnderTest.start();
 
-        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));
+        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
+                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         systemUnderTest.stop();
     }
@@ -51,7 +56,8 @@ public class StrimziKafkaContainerIT {
 
         systemUnderTest = new StrimziKafkaContainer()
             .withBrokerId(1)
-            .withKafkaConfigurationMap(kafkaConfiguration);
+            .withKafkaConfigurationMap(kafkaConfiguration)
+            .waitForRunning();
 
         systemUnderTest.start();
 
@@ -61,6 +67,56 @@ public class StrimziKafkaContainerIT {
         assertThat(logsFromKafka, CoreMatchers.containsString("log.cleaner.backoff.ms = 1000"));
         assertThat(logsFromKafka, CoreMatchers.containsString("ssl.enabled.protocols = [TLSv1]"));
         assertThat(logsFromKafka, CoreMatchers.containsString("log.index.interval.bytes = 2048"));
+
+        systemUnderTest.stop();
+    }
+
+    @Test
+    void testStartContainerWithFixedExposedPort() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+                .withFixedPort(9092)
+                .waitForRunning();
+
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getMappedPort(9092), equalTo(9092));
+
+        systemUnderTest.stop();
+    }
+
+    @Test
+    void testStartContainerWithSSLBootstrapServers() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+                .waitForRunning()
+                .withBootstrapServers(c -> String.format("SSL://%s:%s", c.getHost(), c.getMappedPort(9092)));
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getBootstrapServers(), is("SSL://"
+                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+
+        systemUnderTest.stop();
+    }
+
+    @Test
+    void testStartContainerWithServerProperties() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+                .waitForRunning()
+                .withServerProperties(MountableFile.forClasspathResource("server.properties"));
+
+        systemUnderTest.start();
+
+        String logsFromKafka = systemUnderTest.getLogs();
+
+        assertThat(logsFromKafka, containsString("auto.create.topics.enable = false"));
+
+        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
+                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         systemUnderTest.stop();
     }

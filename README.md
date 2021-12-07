@@ -32,17 +32,17 @@ Or you can use `StrimziKafkaCluster` for a Kafka cluster with multiple Kafka bro
 
 ## How to use the Test container?
 
-Using a given test container takes three simple steps:
-1. Specify two environment variables
-2. Add the Strimzi test container as a Maven dependency
-3. Run Strimzi test container
+Using Strimzi test container takes two simple steps:
+1. Add the Strimzi test container as a Maven dependency
+2. Run Strimzi test container
     1. default configuration
     2. (optional) run Strimzi test container with additional configuration
 
-First, you need to specify two essential environment variables:
+You can specify environment variables to configure the container image to run:
 
-- `STRIMZI_TEST_CONTAINER_KAFKA_VERSION` - specification of the Kafka version to run with the given container. For example, `3.0.0`.
-- `STRIMZI_TEST_CONTAINER_IMAGE_VERSION` - specification of the Strimzi test container image version that was built in the `test-container-images` repositories. For example, `0.1.0`.
+- `STRIMZI_TEST_CONTAINER_KAFKA_VERSION` - the Kafka version to run with the given container. Default : `3.0.0`.
+- `STRIMZI_TEST_CONTAINER_IMAGE_VERSION` - the Strimzi test container image version that was built in the `test-container-images` repositories. Default : `latest`.
+- `STRIMZI_TEST_CONTAINER_BASE_IMAGE` - the Strimzi test container image. Default : `quay.io/strimzi-test-container/test-container`.
 
 Add the Strimzi test container to the project as a Maven dependency:
 
@@ -99,7 +99,41 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### iv) Waiting for Kafka to be ready
+#### iv) (Optional) Run Strimzi Kafka container on a fixed port
+
+By default, the Kafka container will be exposed on a random host port. To expose Kafka on a fixed port:
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer.withFixedPort(9092);
+
+strimziKafkaContainer.start();
+```
+
+#### v) (Optional) Run Strimzi Kafka container with a custom server.properties file
+
+You can configure Kafka by providing a `server.properties` file:
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer
+        .withServerProperties(MountableFile.forClasspathResource("server.properties"));
+strimziKafkaContainer.start();
+```
+
+Note that configuration properties `listeners`, `advertised.listeners`, `listener.security.protocol.map`, `inter.broker.listener.name`, `controller.listener.names`, `zookeeper.connect` and any additional configuration will be overridden during container startup.
+
+#### v) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
+
+You can customize the bootstrap servers, thus the advertised listeners property by:
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer
+        .withBootstrapServers(container -> String.format("SSL://%s:%s", container.getHost(), container.getMappedPort(9092)));
+strimziKafkaContainer.start();
+```
+
+Note that this won't change the port exposed from the container.
+
+#### vi) Waiting for Kafka to be ready
 
 Test Container can block waiting the container to be ready.
 Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
