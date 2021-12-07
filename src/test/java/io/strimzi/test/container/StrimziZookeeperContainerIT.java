@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +26,7 @@ public class StrimziZookeeperContainerIT {
     @Test
     void testZookeeperContainerStartup() {
         try {
-            systemUnderTest = new StrimziZookeeperContainer.StrimziZookeeperContainerBuilder().build();
+            systemUnderTest = new StrimziZookeeperContainer();
             systemUnderTest.start();
 
             final String zookeeperLogs = systemUnderTest.getLogs();
@@ -42,17 +41,16 @@ public class StrimziZookeeperContainerIT {
     @Test
     void testZookeeperWithKafkaContainer() {
         try {
-            systemUnderTest = new StrimziZookeeperContainer.StrimziZookeeperContainerBuilder().build();
+            systemUnderTest = new StrimziZookeeperContainer();
             systemUnderTest.start();
 
             Map<String, String> config = new HashMap<>();
             config.put("zookeeper.connect", "zookeeper:2181");
 
-            kafkaContainer = new StrimziKafkaContainer.StrimziKafkaContainerBuilder()
+            kafkaContainer = new StrimziKafkaContainer()
                 .withBrokerId(1)
                 .withKafkaConfigurationMap(config)
-                .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT)
-                .build();
+                .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT);
 
             kafkaContainer.start();
 
@@ -62,8 +60,6 @@ public class StrimziZookeeperContainerIT {
             assertThat(kafkaLogs, containsString("Initiating client connection"));
             // kafka established connection to external zookeeper
             assertThat(kafkaLogs, containsString("Session establishment complete on server zookeeper"));
-        } catch (IOException e) {
-            e.printStackTrace();
         } finally {
             kafkaContainer.stop();
             systemUnderTest.stop();

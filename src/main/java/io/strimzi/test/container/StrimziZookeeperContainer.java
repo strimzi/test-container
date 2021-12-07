@@ -34,24 +34,24 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         LOGICAL_KAFKA_VERSION_ENTITY = new LogicalKafkaVersionEntity();
     }
 
-    private StrimziZookeeperContainer(StrimziZookeeperContainerBuilder builder) {
-        String strimziTestContainerVersion;
-        if (builder.strimziTestContainerVersion == null || builder.strimziTestContainerVersion.isEmpty()) {
-            strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", strimziTestContainerVersion);
-        } else {
-            strimziTestContainerVersion = builder.strimziTestContainerVersion;
+    // instance attributes
+    private String kafkaVersion;
+    private String strimziTestContainerVersion;
+
+    public void buildDefaults() {
+        if (this.strimziTestContainerVersion == null || this.strimziTestContainerVersion.isEmpty()) {
+            this.strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
+            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", this.strimziTestContainerVersion);
         }
-        String kafkaVersion;
-        if (builder.kafkaVersion == null || builder.kafkaVersion.isEmpty()) {
-            kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
-            LOGGER.info("You did not specify Kafka version. Using latest release:{}", kafkaVersion);
-        } else {
-            kafkaVersion = builder.kafkaVersion;
+
+        if (this.kafkaVersion == null || this.kafkaVersion.isEmpty()) {
+            this.kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
+            LOGGER.info("You did not specify Kafka version. Using latest release:{}", this.kafkaVersion);
         }
+
         this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
-            strimziTestContainerVersion + "-kafka-" +
-            kafkaVersion);
+            this.strimziTestContainerVersion + "-kafka-" +
+            this.kafkaVersion);
         // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
         // instance and by default each container has its own network
         super.setNetwork(Network.SHARED);
@@ -66,6 +66,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     @Override
     protected void doStart() {
+        buildDefaults();
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -91,22 +92,12 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         );
     }
 
-    public static final class StrimziZookeeperContainerBuilder extends GenericContainer<StrimziZookeeperContainerBuilder> {
-        private String kafkaVersion;
-        private String strimziTestContainerVersion;
-        public StrimziZookeeperContainerBuilder() {
-        }
-
-        public StrimziZookeeperContainerBuilder withKafkaVersion(final String kafkaVersion) {
-            this.kafkaVersion = kafkaVersion;
-            return this;
-        }
-        public StrimziZookeeperContainerBuilder withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
-            this.strimziTestContainerVersion = strimziTestContainerVersion;
-            return this;
-        }
-        public StrimziZookeeperContainer build() {
-            return new StrimziZookeeperContainer(this);
-        }
+    public StrimziZookeeperContainer withKafkaVersion(final String kafkaVersion) {
+        this.kafkaVersion = kafkaVersion;
+        return this;
+    }
+    public StrimziZookeeperContainer withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
+        this.strimziTestContainerVersion = strimziTestContainerVersion;
+        return this;
     }
 }

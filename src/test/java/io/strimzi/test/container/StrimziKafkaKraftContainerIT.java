@@ -37,12 +37,12 @@ public class StrimziKafkaKraftContainerIT {
     }
 
     @Test
-    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException, IOException {
+    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer.StrimziKafkaContainerBuilder().withBrokerId(1)
+        systemUnderTest = new StrimziKafkaContainer()
+            .withBrokerId(1)
             .withKraft(true)
-            .build()
             .waitForRunning();
 
         systemUnderTest.start();
@@ -66,11 +66,11 @@ public class StrimziKafkaKraftContainerIT {
         kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
         kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-        systemUnderTest = new StrimziKafkaContainer.StrimziKafkaContainerBuilder().withBrokerId(1)
+        systemUnderTest = new StrimziKafkaContainer()
+            .withBrokerId(1)
             .withKraft(true)
             .withStorageUUID("xtzWWN5bTjitdL4efd9g6g")
             .withKafkaConfigurationMap(kafkaConfiguration)
-            .build()
             .waitForRunning();
 
         systemUnderTest.start();
