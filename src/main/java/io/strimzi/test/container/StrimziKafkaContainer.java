@@ -158,8 +158,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         this.kafkaConfigurationMap.put("broker.id", String.valueOf(this.brokerId));
 
-        LOGGER.info("Injected configuration inside Kafka Container....\n{}", this.kafkaConfigurationMap.toString());
-
         if (useKraft) {
             kafkaConfiguration
                     .append(" --override controller.listener.names=").append("BROKER1");
