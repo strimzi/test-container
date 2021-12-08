@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Random;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
@@ -20,7 +19,6 @@ import java.util.function.BooleanSupplier;
 public class Utils {
 
     private static final Logger LOGGER = LogManager.getLogger(Utils.class);
-    private static final Random RNG = new Random();
 
     /**
      * Poll the given {@code ready} function every {@code pollIntervalMs} milliseconds until it returns true,
