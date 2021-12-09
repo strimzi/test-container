@@ -204,6 +204,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), kafkaDynamicKafkaPort);
     }
 
+    /**
+     * Fluent method, which sets @code{kafkaConfigurationMap}.
+     *
+     * @param kafkaConfigurationMap kafka configuration
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziKafkaContainer withKafkaConfigurationMap(final Map<String, String> kafkaConfigurationMap) {
         this.kafkaConfigurationMap = kafkaConfigurationMap;
         return this;
@@ -225,20 +231,47 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    /**
+     * Fluent method, which sets @code{brokerId}.
+     *
+     * @param brokerId broker id
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziKafkaContainer withBrokerId(final int brokerId) {
         this.brokerId = brokerId;
         return self();
     }
 
+    /**
+     * Fluent method, which sets @code{kafkaVersion}.
+     *
+     * @param kafkaVersion kafka version
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziKafkaContainer withKafkaVersion(final String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
         return self();
     }
 
+    /**
+     * Fluent method, which sets @code{strimziTestContainerVersion}.
+     *
+     * @param strimziTestContainerVersion strimzi test container version
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziKafkaContainer withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
         this.strimziTestContainerVersion = strimziTestContainerVersion;
         return self();
     }
+
+    /**
+     * Fluent method, which sets @code{useKraft}.
+     *
+     * Flag to signal if we deploy Kafka with ZooKeeper or not.
+     *
+     * @param useKraft flag if we use Kraft
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziKafkaContainer withKraft(final boolean useKraft) {
         this.useKraft = useKraft;
         return self();

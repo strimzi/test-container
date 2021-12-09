@@ -38,6 +38,9 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private String kafkaVersion;
     private String strimziTestContainerVersion;
 
+    /**
+     * Auxiliary method, which construct and set defaults values to the @code{StrimziZookeeperContainer} instance.
+     */
     public void buildDefaults() {
         if (this.strimziTestContainerVersion == null || this.strimziTestContainerVersion.isEmpty()) {
             this.strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
@@ -92,10 +95,23 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         );
     }
 
+    /**
+     * Fluent method, which sets @code{kafkaVersion}.
+     *
+     * @param kafkaVersion kafka version
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziZookeeperContainer withKafkaVersion(final String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
         return this;
     }
+
+    /**
+     * Fluent method, which sets @code{strimziTestContainerVersion}.
+     *
+     * @param strimziTestContainerVersion strimzi test container version
+     * @return StrimziKafkaContainer instance
+     */
     public StrimziZookeeperContainer withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
         this.strimziTestContainerVersion = strimziTestContainerVersion;
         return this;

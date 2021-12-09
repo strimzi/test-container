@@ -34,15 +34,28 @@ public class KafkaVersionService {
     private String jsonVersion;
     private final List<KafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
 
+    /**
+     * Constructor of the KafkaVersionService, which invokes resolution and parsing phase. In resolution, we fetch
+     * data from @code{KAFKA_VERSIONS_URL_JSON} and then we parse that json scheme, which gives us list of @code{KafkaVersion}
+     * objects.
+     */
     public KafkaVersionService() {
         // scrape json schema and fill the inner list of versions
         this.resolveAndParse();
     }
 
+    /**
+     * Represents a concrete "Kafka version"
+     */
     public static class KafkaVersion implements Comparable<KafkaVersion> {
         private final String version;
         private final String image;
 
+        /**
+         * Kafka version constructor
+         * @param version kafka version
+         * @param image image of the strimzi test container
+         */
         public KafkaVersion(String version, String image) {
             this.version = version;
             this.image = image;
@@ -78,16 +91,30 @@ public class KafkaVersionService {
             return components.length - otherComponents.length;
         }
 
-        // f.e. "3.0.0"
+        /**
+         * Get the Kafka version in the following format (i.e., "3.0.0")
+         *
+         * @return kafka version
+         */
         public String getVersion() {
             return version;
         }
 
-        // f.e. "test-container:0.1.0-kafka-3.0.0
+        /**
+         * Get the image in the following format (i.e., "test-container:0.1.0-kafka-3.0.0")
+         *
+         * @return image
+         */
         public String getImage() {
             return image;
         }
 
+        /**
+         * Auxiliary method, which fetch from @code{image} by using regex @code{STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION}
+         * the Strimzi test container version.
+         *
+         * @return strimzi test container version
+         */
         public String getStrimziTestContainerVersion() {
             Matcher regex = STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION.matcher(this.image);
 
@@ -144,10 +171,10 @@ public class KafkaVersionService {
      * It is allowed to cross major version boundaries.
      * E.g. the previous minor release to 3.0.0 might be 2.8.2
      * ============================================================
-     * | (prev prev minor) ----  (previous minor) ----  (current) |
+     * | (prev prev minor) ---  (previous minor) ---  (current) |
      *                                                     |
      *                                                     *
-     * |        2.8.1   <-------->   2.8.2  <-------->   3.0.0    |
+     * |    2.8.1   &lt;---&gt;     2.8.2  &lt;---&gt;   3.0.0  |
      * ============================================================
      * Assuming that test container images `kafka_versions.yaml` has following content:
      * {
