@@ -7,7 +7,7 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import io.strimzi.utils.Constants;
-import io.strimzi.utils.LogicalKafkaVersionEntity;
+import io.strimzi.utils.KafkaVersionService;
 import io.strimzi.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,7 +37,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
-    private static final LogicalKafkaVersionEntity LOGICAL_KAFKA_VERSION_ENTITY;
+    private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
     private static int kafkaDynamicKafkaPort;
 
     // instance attributes
@@ -50,7 +50,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String storageUUID;
 
     static {
-        LOGICAL_KAFKA_VERSION_ENTITY = new LogicalKafkaVersionEntity();
+        LOGICAL_KAFKA_VERSION_ENTITY = new KafkaVersionService();
     }
 
     private void buildDefaults() {

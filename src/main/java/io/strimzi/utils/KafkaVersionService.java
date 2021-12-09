@@ -24,32 +24,32 @@ import java.util.regex.Pattern;
 /**
  *  A logical Kafka version
  */
-public class LogicalKafkaVersionEntity {
+public class KafkaVersionService {
 
-    private static final Logger LOGGER = LogManager.getLogger(LogicalKafkaVersionEntity.class);
+    private static final Logger LOGGER = LogManager.getLogger(KafkaVersionService.class);
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
     private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.yaml"; // this would be replaced by test-container-images url where json will be stored
 
     private String jsonVersion;
-    private final List<LogicalKafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
+    private final List<KafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
 
-    public LogicalKafkaVersionEntity() {
+    public KafkaVersionService() {
         // scrape json schema and fill the inner list of versions
         this.resolveAndParse();
     }
 
-    public static class LogicalKafkaVersion implements Comparable<LogicalKafkaVersion> {
+    public static class KafkaVersion implements Comparable<KafkaVersion> {
         private final String version;
         private final String image;
 
-        public LogicalKafkaVersion(String version, String image) {
+        public KafkaVersion(String version, String image) {
             this.version = version;
             this.image = image;
         }
 
         @Override
-        public int compareTo(LogicalKafkaVersion o) {
+        public int compareTo(KafkaVersion o) {
             return compareVersions(this.version, o.version);
         }
 
@@ -111,16 +111,19 @@ public class LogicalKafkaVersionEntity {
     }
 
     /**
-     * Get the latest release
+     * Get the latest release where the result is intentionally not deterministic.
+     * It's the released test-container-images image with the highest Kafka version number.
+     * The result will change when a new version of Kafka is released with a higher Kafka version number,
+     * and a test-container-images image which contains that Kafka version has been built and released.
      * @return LogicalKafkaVersion latest release
      */
-    public LogicalKafkaVersion latestRelease() {
+    public KafkaVersion latestRelease() {
         // at least one release in the json schema is needed
         if (this.logicalKafkaVersionEntities == null || this.logicalKafkaVersionEntities.size() < 1) {
             throw new IllegalStateException("Wrong json schema! It must have at least one release");
         }
 
-        LogicalKafkaVersion latestRelease = this.logicalKafkaVersionEntities.get(0);
+        KafkaVersion latestRelease = this.logicalKafkaVersionEntities.get(0);
 
         for (int i = 1; i < this.logicalKafkaVersionEntities.size(); i++) {
             if (latestRelease.compareTo(this.logicalKafkaVersionEntities.get(i)) < 0) {
@@ -140,21 +143,36 @@ public class LogicalKafkaVersionEntity {
      * On a later date it might return 2.7.3.
      * It is allowed to cross major version boundaries.
      * E.g. the previous minor release to 3.0.0 might be 2.8.2
+     * ============================================================
+     * | (prev prev minor) ----  (previous minor) ----  (current) |
+     *                                                     |
+     *                                                     *
+     * |        2.8.1   <-------->   2.8.2  <-------->   3.0.0    |
+     * ============================================================
+     * Assuming that test container images `kafka_versions.yaml` has following content:
+     * {
+     *   "version": 1,
+     *   "kafkaVersions": {
+     *      2.8.1": "test-container:latest-kafka-2.8.1",
+     *     "2.8.2": "test-container:latest-kafka-2.8.2",
+     *     "3.0.0": "test-container:latest-kafka-3.0.0"
+     *   }
+     * }
      * @return LogicalKafkaVersion the previous minor release
      */
-    public LogicalKafkaVersion previousMinor() {
+    public KafkaVersion previousMinor() {
         if (this.logicalKafkaVersionEntities == null || this.logicalKafkaVersionEntities.size() < 1) {
             throw new IllegalStateException("Wrong json schema! It must have at least one release");
         }
 
         // sort in this case always order the latest release at the end so the previous one is the previous minor release
-        this.logicalKafkaVersionEntities.sort(LogicalKafkaVersion::compareTo);
+        this.logicalKafkaVersionEntities.sort(KafkaVersion::compareTo);
 
         // 1.0.0
         // 2.40.50
         // 3.0.0 <- previous minor (it will be always previous last)
         // 4.1.2 <- latest release
-        final LogicalKafkaVersion previousMinorRelease = this.logicalKafkaVersionEntities.get(this.logicalKafkaVersionEntities.size() - 2);
+        final KafkaVersion previousMinorRelease = this.logicalKafkaVersionEntities.get(this.logicalKafkaVersionEntities.size() - 2);
         LOGGER.info("Previous minor release of Kafka is:{}", previousMinorRelease);
         return previousMinorRelease;
     }
@@ -174,7 +192,7 @@ public class LogicalKafkaVersionEntity {
 
             for (Iterator<Map.Entry<String, JsonNode>> iter = rootNode.get("kafkaVersions").fields(); iter.hasNext(); ) {
                 Map.Entry<String, JsonNode> fields = iter.next();
-                LogicalKafkaVersion logicalKafkaVersion = new LogicalKafkaVersion(fields.getKey(), fields.getValue().asText());
+                KafkaVersion logicalKafkaVersion = new KafkaVersion(fields.getKey(), fields.getValue().asText());
                 this.logicalKafkaVersionEntities.add(logicalKafkaVersion);
             }
         } catch (IOException e) {

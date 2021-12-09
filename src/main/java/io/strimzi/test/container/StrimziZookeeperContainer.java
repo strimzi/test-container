@@ -7,7 +7,7 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.strimzi.utils.Constants;
-import io.strimzi.utils.LogicalKafkaVersionEntity;
+import io.strimzi.utils.KafkaVersionService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
@@ -27,11 +27,11 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainer.class);
-    private static final LogicalKafkaVersionEntity LOGICAL_KAFKA_VERSION_ENTITY;
+    private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     static {
-        LOGICAL_KAFKA_VERSION_ENTITY = new LogicalKafkaVersionEntity();
+        LOGICAL_KAFKA_VERSION_ENTITY = new KafkaVersionService();
     }
 
     // instance attributes
