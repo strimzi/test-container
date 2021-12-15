@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -39,7 +40,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
     private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
 
-    private static int brokerIdCounter = 0;
+    private static final AtomicInteger BROKER_ID_COUNTER = new AtomicInteger(0);
 
     // instance attributes
     private int kafkaDynamicKafkaPort;
@@ -107,10 +108,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super.containerIsStarting(containerInfo, reused);
 
         if (this.brokerId == 0) {
-            this.brokerId = brokerIdCounter;
-            LOGGER.info("No broker.id specified. Using broker.id={}", this.brokerId);
             // increment for next Kafka Broker
-            brokerIdCounter++;
+            this.brokerId = BROKER_ID_COUNTER.getAndIncrement();
+            LOGGER.info("No broker.id specified. Using broker.id={}", this.brokerId);
         }
 
         kafkaDynamicKafkaPort = getMappedPort(Constants.KAFKA_PORT);
@@ -286,7 +286,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @Override
     public void stop() {
         super.stop();
-        brokerIdCounter--;
+        BROKER_ID_COUNTER.decrementAndGet();
     }
 
     /**
@@ -295,6 +295,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return broker.id
      */
     public static int getBrokerIdCounter() {
-        return brokerIdCounter;
+        return BROKER_ID_COUNTER.get();
     }
 }

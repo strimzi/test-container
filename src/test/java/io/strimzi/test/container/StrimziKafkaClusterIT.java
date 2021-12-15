@@ -125,6 +125,7 @@ public class StrimziKafkaClusterIT {
             });
 
         consumer.unsubscribe();
+        producer.close();
     }
 
     @BeforeEach
