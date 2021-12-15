@@ -115,7 +115,7 @@ strimziKafkaContainer.start();
 
 #### v) Specify Kafka or Strimzi test container version
 
-Supported versions can be find [kafka_versions.yaml](https://github.com/strimzi/test-container-images/blob/main/kafka_versions.yaml) file.
+Supported versions can be find [kafka_versions.json](https://github.com/strimzi/test-container-images/blob/main/kafka_versions.yaml) file.
 Note that this is for a main branch, and you should check for release branches (i.e., `0.1.0`). In case of `0.1.0` 
 supported Kafka versions are `2.8.1` and `3.0.0`.
 
