@@ -40,8 +40,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
     private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
 
-    private static final AtomicInteger BROKER_ID_COUNTER = new AtomicInteger(0);
-
     // instance attributes
     private int kafkaDynamicKafkaPort;
     private Map<String, String> kafkaConfigurationMap;
