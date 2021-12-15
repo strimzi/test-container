@@ -14,7 +14,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,51 +39,57 @@ public class StrimziKafkaKraftContainerIT {
     void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer()
-            .withBrokerId(1)
-            .withKraft()
-            .waitForRunning();
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .withBrokerId(1)
+                .withKraft()
+                .waitForRunning();
 
-        systemUnderTest.start();
+            systemUnderTest.start();
 
-        String logsFromKafka = systemUnderTest.getLogs();
-        assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
+            String logsFromKafka = systemUnderTest.getLogs();
+            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
 
-        verify();
+            verify();
 
-        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));
+            assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));
+        } finally {
+            systemUnderTest.stop();
+        }
     }
 
     @Test
-    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException, IOException {
+    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException {
         assumeDocker();
 
-        Map<String, String> kafkaConfiguration = new HashMap<>();
+        try {
+            Map<String, String> kafkaConfiguration = new HashMap<>();
 
-        kafkaConfiguration.put("log.cleaner.enable", "false");
-        kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
-        kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
-        kafkaConfiguration.put("log.index.interval.bytes", "2048");
+            kafkaConfiguration.put("log.cleaner.enable", "false");
+            kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
+            kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
+            kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-        systemUnderTest = new StrimziKafkaContainer()
-            .withBrokerId(1)
-            .withKraft()
-            .withKafkaConfigurationMap(kafkaConfiguration)
-            .waitForRunning();
+            systemUnderTest = new StrimziKafkaContainer()
+                .withBrokerId(1)
+                .withKraft()
+                .withKafkaConfigurationMap(kafkaConfiguration)
+                .waitForRunning();
 
-        systemUnderTest.start();
+            systemUnderTest.start();
 
-        String logsFromKafka = systemUnderTest.getLogs();
+            String logsFromKafka = systemUnderTest.getLogs();
 
-        assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
-        assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
-        assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
-        assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
-        assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
+            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
+            assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
+            assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
+            assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
+            assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
 
-        verify();
-
-        systemUnderTest.stop();
+            verify();
+        } finally {
+            systemUnderTest.stop();
+        }
     }
 
     private void verify() throws InterruptedException, ExecutionException {

@@ -107,12 +107,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        if (this.brokerId == 0) {
-            // increment for next Kafka Broker
-            this.brokerId = BROKER_ID_COUNTER.getAndIncrement();
-            LOGGER.info("No broker.id specified. Using broker.id={}", this.brokerId);
-        }
-
         kafkaDynamicKafkaPort = getMappedPort(Constants.KAFKA_PORT);
 
         LOGGER.info("Mapped port: {}", kafkaDynamicKafkaPort);
@@ -281,20 +275,5 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withKraft() {
         this.useKraft = true;
         return self();
-    }
-
-    @Override
-    public void stop() {
-        super.stop();
-        BROKER_ID_COUNTER.decrementAndGet();
-    }
-
-    /**
-     * Getter method for broker.id counter
-     *
-     * @return broker.id
-     */
-    public static int getBrokerIdCounter() {
-        return BROKER_ID_COUNTER.get();
     }
 }
