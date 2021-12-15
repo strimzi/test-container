@@ -6,8 +6,8 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.strimzi.utils.Constants;
-import io.strimzi.utils.KafkaVersionService;
+import io.strimzi.test.container.utils.Constants;
+import io.strimzi.test.container.utils.KafkaVersionService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
@@ -23,6 +23,7 @@ import java.util.Collections;
  * directly @StrimziKafkaCluster for more complicated testing.
  */
 @SuppressFBWarnings("EQ_DOESNT_OVERRIDE_EQUALS")
+@SuppressWarnings("deprecation")
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
 
     // class attributes

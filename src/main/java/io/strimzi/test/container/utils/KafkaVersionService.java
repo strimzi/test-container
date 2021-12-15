@@ -2,7 +2,7 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.utils;
+package io.strimzi.test.container.utils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -181,7 +181,7 @@ public class KafkaVersionService {
      * {
      *   "version": 1,
      *   "kafkaVersions": {
-     *      2.8.1": "test-container:latest-kafka-2.8.1",
+     *     "2.8.1": "test-container:latest-kafka-2.8.1",
      *     "2.8.2": "test-container:latest-kafka-2.8.2",
      *     "3.0.0": "test-container:latest-kafka-3.0.0"
      *   }
@@ -196,10 +196,6 @@ public class KafkaVersionService {
         // sort in this case always order the latest release at the end so the previous one is the previous minor release
         this.logicalKafkaVersionEntities.sort(KafkaVersion::compareTo);
 
-        // 1.0.0
-        // 2.40.50
-        // 3.0.0 <- previous minor (it will be always previous last)
-        // 4.1.2 <- latest release
         final KafkaVersion previousMinorRelease = this.logicalKafkaVersionEntities.get(this.logicalKafkaVersionEntities.size() - 2);
         LOGGER.info("Previous minor release of Kafka is:{}", previousMinorRelease);
         return previousMinorRelease;

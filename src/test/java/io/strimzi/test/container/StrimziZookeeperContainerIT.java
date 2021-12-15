@@ -4,7 +4,7 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.utils.Constants;
+import io.strimzi.test.container.utils.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.utils;
+package io.strimzi.test.container.utils;
 
 import org.apache.kafka.common.Uuid;
 import org.apache.logging.log4j.LogManager;

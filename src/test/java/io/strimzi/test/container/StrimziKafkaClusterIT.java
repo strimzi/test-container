@@ -4,8 +4,8 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.utils.Constants;
-import io.strimzi.utils.Utils;
+import io.strimzi.test.container.utils.Constants;
+import io.strimzi.test.container.utils.Utils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;

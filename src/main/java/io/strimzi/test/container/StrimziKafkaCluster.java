@@ -4,8 +4,8 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.utils.Constants;
-import io.strimzi.utils.Utils;
+import io.strimzi.test.container.utils.Constants;
+import io.strimzi.test.container.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.Container;
@@ -85,7 +85,7 @@ public class StrimziKafkaCluster implements Startable {
                     .withNetworkAliases("broker-" + brokerId)
                     .dependsOn(this.zookeeper);
 
-                LOGGER.info("Started broker with id:{}", kafkaContainer);
+                LOGGER.info("Started broker with id: {}", kafkaContainer);
 
                 return kafkaContainer;
             })

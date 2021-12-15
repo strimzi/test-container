@@ -6,9 +6,9 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
-import io.strimzi.utils.Constants;
-import io.strimzi.utils.KafkaVersionService;
-import io.strimzi.utils.Utils;
+import io.strimzi.test.container.utils.Constants;
+import io.strimzi.test.container.utils.KafkaVersionService;
+import io.strimzi.test.container.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
@@ -32,6 +32,7 @@ import java.util.Map;
  * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
  * integration testing but for more hardcore testing we suggest using @StrimziKafkaCluster.
  */
+@SuppressWarnings("deprecation")
 public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> {
 
     // class attributes
