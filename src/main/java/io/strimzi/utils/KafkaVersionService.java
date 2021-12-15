@@ -30,7 +30,7 @@ public class KafkaVersionService {
     private static final Logger LOGGER = LogManager.getLogger(KafkaVersionService.class);
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
-    private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.yaml"; // this would be replaced by test-container-images url where json will be stored
+    private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.json";
 
     private String jsonVersion;
     private final List<KafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();

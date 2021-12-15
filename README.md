@@ -60,7 +60,7 @@ Examples:
 #### i) default configuration 
 
 ```java
-final int brokerId = 1;
+final int brokerId = 5; // (optional - explictily set broker.id)
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withBrokerId(brokerId);
@@ -70,8 +70,6 @@ strimziKafkaContainer.start();
 #### ii) (Optional) Run Strimzi test container with additional configuration
 
 ```java
-final int brokerId = 1;
-
 // additional configuration
 Map<String, String> additionalKafkaConfiguration = Map.of(
     "log.cleaner.enable", "false", 
@@ -81,7 +79,6 @@ Map<String, String> additionalKafkaConfiguration = Map.of(
 );
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(1)
     .withKafkaConfigurationMap(additionalKafkaConfiguration);
 // startup of the Kafka container
 strimziKafkaContainer.start();
@@ -93,7 +90,6 @@ strimziKafkaContainer.start();
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(1)
     .withKraft(true);
 
 strimziKafkaContainer.start();
@@ -106,7 +102,6 @@ Before starting the container, use the following code configuring Test Container
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(1)
     .withKraft(true)
     .waitForRunning();
 
@@ -124,7 +119,6 @@ supported Kafka versions are `2.8.1` and `3.0.0`.
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withStrimziTestContainerImageVersion("0.1.0")
     .withKafkaVersion("2.8.1")
-    .withBrokerId(1)
     .withKraft(true)
     .waitForRunning();
 

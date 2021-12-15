@@ -39,6 +39,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
     private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
 
+    private static int brokerIdCounter = 0;
+
     // instance attributes
     private int kafkaDynamicKafkaPort;
     private Map<String, String> kafkaConfigurationMap;
@@ -47,7 +49,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String kafkaVersion;
     private String strimziTestContainerImageVersion;
     private boolean useKraft;
-    private String storageUUID;
 
     static {
         LOGICAL_KAFKA_VERSION_ENTITY = new KafkaVersionService();
@@ -68,7 +69,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         } else {
             kafkaVersion = this.kafkaVersion;
         }
-        this.storageUUID = this.storageUUID == null ? Utils.randomUuid().toString() : this.storageUUID;
 
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
         // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
@@ -105,6 +105,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
+
+        if (this.brokerId == 0) {
+            this.brokerId = brokerIdCounter;
+            LOGGER.info("No broker.id specified. Using broker.id={}", this.brokerId);
+            // increment for next Kafka Broker
+            brokerIdCounter++;
+        }
 
         kafkaDynamicKafkaPort = getMappedPort(Constants.KAFKA_PORT);
 
@@ -184,7 +191,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfiguration;
         } else {
-            command += "bin/kafka-storage.sh format -t " + this.storageUUID + " -c config/kraft/server.properties \n";
+            command += "bin/kafka-storage.sh format -t " + Utils.randomUuid().toString() + " -c config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfiguration;
         }
 
@@ -269,31 +276,25 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      *
      * Flag to signal if we deploy Kafka with ZooKeeper or not.
      *
-     * @param useKraft flag if we use Kraft
      * @return StrimziKafkaContainer instance
      */
-    public StrimziKafkaContainer withKraft(final boolean useKraft) {
-        this.useKraft = useKraft;
+    public StrimziKafkaContainer withKraft() {
+        this.useKraft = true;
         return self();
     }
 
+    @Override
+    public void stop() {
+        super.stop();
+        brokerIdCounter--;
+    }
+
     /**
-     * Fluent method, which sets @code{storageUUID}.
-     * The storage UUID must be the 16 bytes of a base64-encoded UUID.
+     * Getter method for broker.id counter
      *
-     * This method requires the broker to be created using Kraft.
-     *
-     * @param uuid the uuid, must not be {@code null} or blank.
-     * @return StrimziKafkaContainerBuilder instance
+     * @return broker.id
      */
-    public StrimziKafkaContainer withStorageUUID(final String uuid) {
-        if (!useKraft) {
-            throw new IllegalStateException("Setting the storage UUID requires Kraft");
-        }
-        if (uuid == null || uuid.trim().isEmpty()) {
-            throw new IllegalStateException("The UUID must not be blank");
-        }
-        this.storageUUID = uuid;
-        return self();
+    public static int getBrokerIdCounter() {
+        return brokerIdCounter;
     }
 }

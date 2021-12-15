@@ -29,9 +29,7 @@ public class StrimziKafkaContainerIT {
     @Test
     void testStartContainerWithEmptyConfiguration() {
         assumeDocker();
-        systemUnderTest = new StrimziKafkaContainer()
-            .withBrokerId(1);
-
+        systemUnderTest = new StrimziKafkaContainer();
         systemUnderTest.start();
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));

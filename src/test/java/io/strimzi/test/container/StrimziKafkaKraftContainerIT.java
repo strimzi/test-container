@@ -42,7 +42,7 @@ public class StrimziKafkaKraftContainerIT {
 
         systemUnderTest = new StrimziKafkaContainer()
             .withBrokerId(1)
-            .withKraft(true)
+            .withKraft()
             .waitForRunning();
 
         systemUnderTest.start();
@@ -68,8 +68,7 @@ public class StrimziKafkaKraftContainerIT {
 
         systemUnderTest = new StrimziKafkaContainer()
             .withBrokerId(1)
-            .withKraft(true)
-            .withStorageUUID("xtzWWN5bTjitdL4efd9g6g")
+            .withKraft()
             .withKafkaConfigurationMap(kafkaConfiguration)
             .waitForRunning();
 
