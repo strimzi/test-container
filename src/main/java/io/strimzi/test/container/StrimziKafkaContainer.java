@@ -32,6 +32,7 @@ import java.util.Map;
  * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
  * integration testing but for more hardcore testing we suggest using @StrimziKafkaCluster.
  */
+// reason of deprecation: Test container from version 1.15.x, provide standard constructor GenericContainer() with deprecation.
 @SuppressWarnings("deprecation")
 public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> {
 

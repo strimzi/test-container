@@ -23,6 +23,7 @@ import java.util.Collections;
  * directly @StrimziKafkaCluster for more complicated testing.
  */
 @SuppressFBWarnings("EQ_DOESNT_OVERRIDE_EQUALS")
+// reason of deprecation: Test container from version 1.15.x, provide standard constructor GenericContainer() with deprecation.
 @SuppressWarnings("deprecation")
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
 
