@@ -22,7 +22,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- *  A logical Kafka version
+ *  A service for querying for Kafka versions using abstract criteria such as "latest version",
+ *  the result of which may change over time (and thus, non-deterministically).
  */
 public class KafkaVersionService {
 

@@ -36,24 +36,24 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     // instance attributes
     private String kafkaVersion;
-    private String strimziTestContainerVersion;
+    private String strimziTestContainerImageVersion;
 
     /**
      * Auxiliary method, which construct and set defaults values to the @code{StrimziZookeeperContainer} instance.
      */
     public void buildDefaults() {
-        if (this.strimziTestContainerVersion == null || this.strimziTestContainerVersion.isEmpty()) {
-            this.strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", this.strimziTestContainerVersion);
+        if (this.strimziTestContainerImageVersion == null || this.strimziTestContainerImageVersion.isEmpty()) {
+            this.strimziTestContainerImageVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
+            LOGGER.info("No Strimzi test container version specified. Using latest release:{}", this.strimziTestContainerImageVersion);
         }
 
         if (this.kafkaVersion == null || this.kafkaVersion.isEmpty()) {
             this.kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
-            LOGGER.info("You did not specify Kafka version. Using latest release:{}", this.kafkaVersion);
+            LOGGER.info("No Kafka version specified. Using latest release:{}", this.kafkaVersion);
         }
 
         this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
-            this.strimziTestContainerVersion + "-kafka-" +
+            this.strimziTestContainerImageVersion + "-kafka-" +
             this.kafkaVersion);
         // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
         // instance and by default each container has its own network
@@ -109,11 +109,11 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     /**
      * Fluent method, which sets @code{strimziTestContainerVersion}.
      *
-     * @param strimziTestContainerVersion strimzi test container version
+     * @param strimziTestContainerImageVersion strimzi test container image version
      * @return StrimziKafkaContainer instance
      */
-    public StrimziZookeeperContainer withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
-        this.strimziTestContainerVersion = strimziTestContainerVersion;
+    public StrimziZookeeperContainer withStrimziTestContainerImageVersion(final String strimziTestContainerImageVersion) {
+        this.strimziTestContainerImageVersion = strimziTestContainerImageVersion;
         return this;
     }
 }

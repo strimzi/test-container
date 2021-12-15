@@ -38,14 +38,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
     private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
-    private static int kafkaDynamicKafkaPort;
 
     // instance attributes
+    private int kafkaDynamicKafkaPort;
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
     private String kafkaVersion;
-    private String strimziTestContainerVersion;
+    private String strimziTestContainerImageVersion;
     private boolean useKraft;
     private String storageUUID;
 
@@ -55,16 +55,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     private void buildDefaults() {
         String strimziTestContainerVersion;
-        if (this.strimziTestContainerVersion == null || this.strimziTestContainerVersion.isEmpty()) {
+        if (this.strimziTestContainerImageVersion == null || this.strimziTestContainerImageVersion.isEmpty()) {
             strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("You did not specify Strimzi test container version. Using latest release:{}", strimziTestContainerVersion);
+            LOGGER.info("No Strimzi test container version specified. Using latest release:{}", strimziTestContainerVersion);
         } else {
-            strimziTestContainerVersion = this.strimziTestContainerVersion;
+            strimziTestContainerVersion = this.strimziTestContainerImageVersion;
         }
         String kafkaVersion;
         if (this.kafkaVersion == null || this.kafkaVersion.isEmpty()) {
             kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
-            LOGGER.info("You did not specify Kafka version. Using latest release:{}", kafkaVersion);
+            LOGGER.info("No Kafka version specified. Using latest release:{}", kafkaVersion);
         } else {
             kafkaVersion = this.kafkaVersion;
         }
@@ -225,7 +225,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withExternalZookeeperConnect(final String externalZookeeperConnect) {
         if (useKraft) {
-            throw new IllegalArgumentException("Cannot configure an external Zookeeper and use Kraft at the same time");
+            throw new IllegalStateException("Cannot configure an external Zookeeper and use Kraft at the same time");
         }
         this.externalZookeeperConnect = externalZookeeperConnect;
         return self();
@@ -254,13 +254,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{strimziTestContainerVersion}.
+     * Fluent method, which sets @code{withStrimziTestContainerImageVersion}.
      *
-     * @param strimziTestContainerVersion strimzi test container version
+     * @param strimziTestContainerImageVersion strimzi test container image version
      * @return StrimziKafkaContainer instance
      */
-    public StrimziKafkaContainer withStrimziTestContainerVersion(final String strimziTestContainerVersion) {
-        this.strimziTestContainerVersion = strimziTestContainerVersion;
+    public StrimziKafkaContainer withStrimziTestContainerImageVersion(final String strimziTestContainerImageVersion) {
+        this.strimziTestContainerImageVersion = strimziTestContainerImageVersion;
         return self();
     }
 
@@ -288,10 +288,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withStorageUUID(final String uuid) {
         if (!useKraft) {
-            throw new IllegalArgumentException("Setting the storage UUID requires Kraft");
+            throw new IllegalStateException("Setting the storage UUID requires Kraft");
         }
         if (uuid == null || uuid.trim().isEmpty()) {
-            throw new IllegalArgumentException("The UUID must not be blank");
+            throw new IllegalStateException("The UUID must not be blank");
         }
         this.storageUUID = uuid;
         return self();
