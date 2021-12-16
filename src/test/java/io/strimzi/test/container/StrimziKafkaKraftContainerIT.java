@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+@SuppressWarnings("ClassDataAbstractionCoupling")
 public class StrimziKafkaKraftContainerIT {
 
     private StrimziKafkaContainer systemUnderTest;
@@ -37,47 +38,58 @@ public class StrimziKafkaKraftContainerIT {
     @Test
     void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException {
         assumeDocker();
-        systemUnderTest = StrimziKafkaContainer.createWithKraft(1)
-                        .waitForRunning();
 
-        systemUnderTest.start();
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .withBrokerId(1)
+                .withKraft()
+                .waitForRunning();
 
-        String logsFromKafka = systemUnderTest.getLogs();
-        assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
+            systemUnderTest.start();
 
-        verify();
+            String logsFromKafka = systemUnderTest.getLogs();
+            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
 
-        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));
+            verify();
+
+            assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://localhost:" + systemUnderTest.getMappedPort(9092)));
+        } finally {
+            systemUnderTest.stop();
+        }
     }
 
     @Test
     void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException {
         assumeDocker();
 
-        Map<String, String> kafkaConfiguration = new HashMap<>();
+        try {
+            Map<String, String> kafkaConfiguration = new HashMap<>();
 
-        kafkaConfiguration.put("log.cleaner.enable", "false");
-        kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
-        kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
-        kafkaConfiguration.put("log.index.interval.bytes", "2048");
+            kafkaConfiguration.put("log.cleaner.enable", "false");
+            kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
+            kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
+            kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-        systemUnderTest = StrimziKafkaContainer.createWithAdditionalConfiguration(1, true, kafkaConfiguration)
-                .withStorageUUID("xtzWWN5bTjitdL4efd9g6g")
+            systemUnderTest = new StrimziKafkaContainer()
+                .withBrokerId(1)
+                .withKraft()
+                .withKafkaConfigurationMap(kafkaConfiguration)
                 .waitForRunning();
 
-        systemUnderTest.start();
+            systemUnderTest.start();
 
-        String logsFromKafka = systemUnderTest.getLogs();
+            String logsFromKafka = systemUnderTest.getLogs();
 
-        assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
-        assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
-        assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
-        assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
-        assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
+            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
+            assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
+            assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
+            assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
+            assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
 
-        verify();
-
-        systemUnderTest.stop();
+            verify();
+        } finally {
+            systemUnderTest.stop();
+        }
     }
 
     private void verify() throws InterruptedException, ExecutionException {

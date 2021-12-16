@@ -4,11 +4,13 @@
  */
 package io.strimzi.test.container;
 
+import io.strimzi.test.container.utils.Constants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -42,8 +44,13 @@ public class StrimziZookeeperContainerIT {
             systemUnderTest = new StrimziZookeeperContainer();
             systemUnderTest.start();
 
-            kafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(1, Collections.singletonMap("zookeeper.connect", "zookeeper:2181"))
-                .withExternalZookeeper("zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT);
+            Map<String, String> config = new HashMap<>();
+            config.put("zookeeper.connect", "zookeeper:2181");
+
+            kafkaContainer = new StrimziKafkaContainer()
+                .withBrokerId(1)
+                .withKafkaConfigurationMap(config)
+                .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT);
 
             kafkaContainer.start();
 

@@ -57,12 +57,13 @@ Add the Strimzi test container to the project as a Maven dependency:
 
 Examples:
 
-#### i) default configuration
+#### i) default configuration 
 
 ```java
 final int brokerId = 1;
 
-StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.create(brokerId);
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withBrokerId(brokerId);
 // startup of the Kafka container
 strimziKafkaContainer.start();
 ```
@@ -79,7 +80,9 @@ Map<String, String> additionalKafkaConfiguration = Map.of(
     "log.index.interval.bytes", "2048"
 );
 
-StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration);
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withBrokerId(1)
+    .withKafkaConfigurationMap(additionalKafkaConfiguration);
 // startup of the Kafka container
 strimziKafkaContainer.start();
 ```
@@ -89,7 +92,9 @@ strimziKafkaContainer.start();
 [KRaft (KIP-500)](https://github.com/apache/kafka/blob/trunk/config/kraft/README.md) allows running Apache Kafka without Apache ZooKeeper. To run Kafka in KRaft mode use:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = StrimziKafkaContainer.createWithKraft(1);
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withBrokerId(1)
+    .withKraft(true);
 
 strimziKafkaContainer.start();
 ```
@@ -100,9 +105,32 @@ Test Container can block waiting the container to be ready.
 Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer.waitForRunning();
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withBrokerId(1)
+    .withKraft(true)
+    .waitForRunning();
+
 strimziKafkaContainer.start();
 ```
+
+#### v) Specify Kafka or Strimzi test container version
+
+Supported versions can be find [kafka_versions.json](https://github.com/strimzi/test-container-images/blob/main/kafka_versions.yaml) file.
+Note that this is for a main branch, and you should check for release branches (i.e., `0.1.0`). In case of `0.1.0` 
+supported Kafka versions are `2.8.1` and `3.0.0`.
+
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withStrimziTestContainerImageVersion("0.1.0")
+    .withKafkaVersion("2.8.1")
+    .withBrokerId(1)
+    .withKraft(true)
+    .waitForRunning();
+
+strimziKafkaContainer.start();
+```
+
 
 ### Additional tips
 

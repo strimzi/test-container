@@ -2,13 +2,15 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.utils;
+package io.strimzi.test.container.utils;
 
+import org.apache.kafka.common.Uuid;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -77,5 +79,15 @@ public class Utils {
                 return deadline - System.currentTimeMillis();
             }
         }
+    }
+
+    /**
+     * Static factory method to get a type 4 (pseudo randomly generated) UUID.
+     * @return random Uuid
+     */
+    public static Uuid randomUuid() {
+        UUID uuid = UUID.randomUUID();
+
+        return new Uuid(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
     }
 }

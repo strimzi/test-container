@@ -96,6 +96,8 @@
         <docker-java.version>3.2.7</docker-java.version>
         <kafka.version>3.0.0</kafka.version>
         <slf4j.version>1.6.1</slf4j.version>
+        <fasterxml.jackson-core.version>2.11.3</fasterxml.jackson-core.version>
+        <fasterxml.jackson-databind.version>2.11.3</fasterxml.jackson-databind.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.7.0</jupiter.version>
@@ -163,6 +165,16 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${fasterxml.jackson-core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${fasterxml.jackson-databind.version}</version>
         </dependency>
 
         <!-- TEST DEPENDENCY -->

@@ -4,11 +4,11 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.utils.Utils;
+import io.strimzi.test.container.utils.Constants;
+import io.strimzi.test.container.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.Container;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
@@ -32,8 +32,10 @@ import java.util.stream.Stream;
  */
 public class StrimziKafkaCluster implements Startable {
 
+    // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaCluster.class);
 
+    // instance attributes
     private final int brokersNum;
     private final Network network;
     private final StrimziZookeeperContainer zookeeper;
@@ -59,9 +61,7 @@ public class StrimziKafkaCluster implements Startable {
         this.network = Network.newNetwork();
 
         this.zookeeper = new StrimziZookeeperContainer()
-            .withNetwork(this.network)
-            .withNetworkAliases("zookeeper")
-            .withEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(StrimziZookeeperContainer.ZOOKEEPER_PORT));
+            .withNetwork(this.network);
 
         Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
         defaultKafkaConfigurationForMultiNode.put("offsets.topic.replication.factor", String.valueOf(internalTopicReplicationFactor));
@@ -77,11 +77,15 @@ public class StrimziKafkaCluster implements Startable {
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
                 // adding broker id for each kafka container
-                StrimziKafkaContainer kafkaContainer = StrimziKafkaContainer.createWithAdditionalConfiguration(brokerId, additionalKafkaConfiguration)
+                StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+                    .withBrokerId(brokerId)
+                    .withKafkaConfigurationMap(additionalKafkaConfiguration)
+                    .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT)
                     .withNetwork(this.network)
                     .withNetworkAliases("broker-" + brokerId)
-                    .dependsOn(this.zookeeper)
-                    .withExternalZookeeper("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
+                    .dependsOn(this.zookeeper);
+
+                LOGGER.info("Started broker with id: {}", kafkaContainer);
 
                 return kafkaContainer;
             })
@@ -122,7 +126,7 @@ public class StrimziKafkaCluster implements Startable {
                 try {
                     result = this.zookeeper.execInContainer(
                         "sh", "-c",
-                        "bin/zookeeper-shell.sh zookeeper:" + StrimziKafkaContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+                        "bin/zookeeper-shell.sh zookeeper:" + Constants.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
                     );
                     String brokers = result.getStdout();
 
@@ -145,7 +149,7 @@ public class StrimziKafkaCluster implements Startable {
         // stop all kafka containers in parallel
         this.brokers.stream()
             .parallel()
-            .forEach(GenericContainer::stop);
+            .forEach(StrimziKafkaContainer::stop);
     }
 
     /**
