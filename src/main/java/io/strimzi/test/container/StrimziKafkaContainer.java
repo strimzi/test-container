@@ -9,8 +9,8 @@ import com.github.dockerjava.api.model.ContainerNetwork;
 import io.strimzi.test.container.utils.Constants;
 import io.strimzi.test.container.utils.KafkaVersionService;
 import io.strimzi.test.container.utils.Utils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -38,7 +38,7 @@ import java.util.function.Function;
 public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> {
 
     // class attributes
-    private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     // instance attributes

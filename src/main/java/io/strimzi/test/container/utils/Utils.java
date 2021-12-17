@@ -5,8 +5,8 @@
 package io.strimzi.test.container.utils;
 
 import org.apache.kafka.common.Uuid;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -18,7 +18,7 @@ import java.util.function.BooleanSupplier;
  */
 public class Utils {
 
-    private static final Logger LOGGER = LogManager.getLogger(Utils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
 
     /**
      * Poll the given {@code ready} function every {@code pollIntervalMs} milliseconds until it returns true,

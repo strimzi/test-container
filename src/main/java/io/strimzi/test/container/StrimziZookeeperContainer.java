@@ -8,8 +8,8 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.strimzi.test.container.utils.Constants;
 import io.strimzi.test.container.utils.KafkaVersionService;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
 
     // class attributes
-    private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrimziZookeeperContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     // instance attributes

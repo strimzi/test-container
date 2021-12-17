@@ -4,8 +4,8 @@
  */
 package io.strimzi.test.container;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public class StrimziKafkaContainerIT {
 
-    private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainerIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
 
     private StrimziKafkaContainer systemUnderTest;
 

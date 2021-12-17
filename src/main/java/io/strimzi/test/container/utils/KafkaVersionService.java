@@ -4,8 +4,8 @@
  */
 package io.strimzi.test.container.utils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  */
 public class KafkaVersionService {
 
-    private static final Logger LOGGER = LogManager.getLogger(KafkaVersionService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
     private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.json";
