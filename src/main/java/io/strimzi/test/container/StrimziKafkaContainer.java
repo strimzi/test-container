@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -34,14 +35,11 @@ import java.util.function.Function;
  * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
  * integration testing but for more hardcore testing we suggest using @StrimziKafkaCluster.
  */
-// reason of deprecation: Test container from version 1.15.x, provide standard constructor GenericContainer() with deprecation.
-@SuppressWarnings("deprecation")
 public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> {
 
     // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
-    private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
 
     // instance attributes
     private int kafkaExposedPort;
@@ -54,40 +52,22 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
         c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
 
-    static {
-        LOGICAL_KAFKA_VERSION_ENTITY = new KafkaVersionService();
-    }
-
-    private void buildDefaults() {
-        String strimziTestContainerVersion;
-        if (this.strimziTestContainerImageVersion == null || this.strimziTestContainerImageVersion.isEmpty()) {
-            strimziTestContainerVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("No Strimzi test container version specified. Using latest release:{}", strimziTestContainerVersion);
-        } else {
-            strimziTestContainerVersion = this.strimziTestContainerImageVersion;
-        }
-        String kafkaVersion;
-        if (this.kafkaVersion == null || this.kafkaVersion.isEmpty()) {
-            kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
-            LOGGER.info("No Kafka version specified. Using latest release:{}", kafkaVersion);
-        } else {
-            kafkaVersion = this.kafkaVersion;
-        }
-
+    /**
+     * Image name is lazily set in {@link #doStart()} method
+     */
+    public StrimziKafkaContainer() {
+        super(CompletableFuture.completedFuture(null));
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
         // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
         super.setNetwork(Network.SHARED);
         // exposing kafka port from the container
         super.setExposedPorts(Collections.singletonList(Constants.KAFKA_PORT));
         super.addEnv("LOG_DIR", "/tmp");
-        super.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
-            strimziTestContainerVersion + "-kafka-" +
-            kafkaVersion);
     }
 
     @Override
     protected void doStart() {
-        buildDefaults();
+        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziTestContainerImageVersion, kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();

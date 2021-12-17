@@ -16,6 +16,7 @@ import org.testcontainers.images.builder.Transferable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * StrimziZookeeperContainer is an instance of the Zookeeper encapsulated inside a docker container using image from
@@ -23,40 +24,21 @@ import java.util.Collections;
  * directly @StrimziKafkaCluster for more complicated testing.
  */
 @SuppressFBWarnings("EQ_DOESNT_OVERRIDE_EQUALS")
-// reason of deprecation: Test container from version 1.15.x, provide standard constructor GenericContainer() with deprecation.
-@SuppressWarnings("deprecation")
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
 
     // class attributes
     private static final Logger LOGGER = LogManager.getLogger(StrimziZookeeperContainer.class);
-    private static final KafkaVersionService LOGICAL_KAFKA_VERSION_ENTITY;
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
-
-    static {
-        LOGICAL_KAFKA_VERSION_ENTITY = new KafkaVersionService();
-    }
 
     // instance attributes
     private String kafkaVersion;
     private String strimziTestContainerImageVersion;
 
     /**
-     * Auxiliary method, which construct and set defaults values to the @code{StrimziZookeeperContainer} instance.
+     * Image name is lazily set in {@link #doStart()} method
      */
-    public void buildDefaults() {
-        if (this.strimziTestContainerImageVersion == null || this.strimziTestContainerImageVersion.isEmpty()) {
-            this.strimziTestContainerImageVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("No Strimzi test container version specified. Using latest release:{}", this.strimziTestContainerImageVersion);
-        }
-
-        if (this.kafkaVersion == null || this.kafkaVersion.isEmpty()) {
-            this.kafkaVersion = LOGICAL_KAFKA_VERSION_ENTITY.latestRelease().getVersion();
-            LOGGER.info("No Kafka version specified. Using latest release:{}", this.kafkaVersion);
-        }
-
-        this.setDockerImageName("quay.io/strimzi-test-container/test-container:" +
-            this.strimziTestContainerImageVersion + "-kafka-" +
-            this.kafkaVersion);
+    public StrimziZookeeperContainer() {
+        super(CompletableFuture.completedFuture(null));
         // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
         // instance and by default each container has its own network
         super.setNetwork(Network.SHARED);
@@ -71,7 +53,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     @Override
     protected void doStart() {
-        buildDefaults();
+        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziTestContainerImageVersion, kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
