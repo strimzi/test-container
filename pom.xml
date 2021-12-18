@@ -92,7 +92,7 @@
         <!-- DEPENDENCY CODE VERSIONS       -->
         <test-containers.version>1.15.2</test-containers.version>
         <spotbugs.version>4.0.3</spotbugs.version>
-        <log4j.version>2.16.0</log4j.version>
+        <log4j.version>2.17.0</log4j.version>
         <docker-java.version>3.2.7</docker-java.version>
         <kafka.version>3.0.0</kafka.version>
         <slf4j.version>1.6.1</slf4j.version>
