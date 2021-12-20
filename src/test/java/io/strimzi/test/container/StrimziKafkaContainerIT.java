@@ -76,7 +76,7 @@ public class StrimziKafkaContainerIT {
         assumeDocker();
 
         systemUnderTest = new StrimziKafkaContainer()
-                .withFixedPort(9092)
+                .withPort(9092)
                 .waitForRunning();
 
         systemUnderTest.start();
@@ -114,6 +114,22 @@ public class StrimziKafkaContainerIT {
         String logsFromKafka = systemUnderTest.getLogs();
 
         assertThat(logsFromKafka, containsString("auto.create.topics.enable = false"));
+
+        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
+                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+
+        systemUnderTest.stop();
+    }
+
+    @Test
+    void testStartContainerWithStrimziKafkaImage() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+                .withStrimziBaseImage("quay.io/strimzi/kafka")
+                .waitForRunning();
+
+        systemUnderTest.start();
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));

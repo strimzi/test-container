@@ -31,6 +31,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     // instance attributes
+    private String strimziBaseImage;
     private String kafkaVersion;
     private String strimziTestContainerImageVersion;
 
@@ -53,7 +54,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     @Override
     protected void doStart() {
-        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziTestContainerImageVersion, kafkaVersion));
+        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -77,6 +78,17 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
             Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
             STARTER_SCRIPT
         );
+    }
+
+    /**
+     * Fluent method, which sets @code{strimziBaseImage}.
+     *
+     * @param strimziBaseImage strimzi test container image name
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziZookeeperContainer withStrimziBaseImage(final String strimziBaseImage) {
+        this.strimziBaseImage = strimziBaseImage;
+        return this;
     }
 
     /**

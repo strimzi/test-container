@@ -46,6 +46,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
+    private String strimziBaseImage;
     private String kafkaVersion;
     private String strimziTestContainerImageVersion;
     private boolean useKraft;
@@ -67,7 +68,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
-        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziTestContainerImageVersion, kafkaVersion));
+        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -98,8 +99,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         LOGGER.info("Mapped port: {}", kafkaExposedPort);
 
-        String bootstrapServers = getBootstrapServers();
-        String bsListenerName = extractListenerName(bootstrapServers);
+        final String bootstrapServers = getBootstrapServers();
+        final String bsListenerName = extractListenerName(bootstrapServers);
 
         StringBuilder advertisedListeners = new StringBuilder(bootstrapServers);
 
@@ -261,6 +262,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
+     * Fluent method, which sets @code{strimziBaseImage}.
+     *
+     * @param strimziBaseImage strimzi test container image name
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer withStrimziBaseImage(final String strimziBaseImage) {
+        this.strimziBaseImage = strimziBaseImage;
+        return self();
+    }
+
+    /**
      * Fluent method, which sets @code{withStrimziTestContainerImageVersion}.
      *
      * @param strimziTestContainerImageVersion strimzi test container image version
@@ -290,7 +302,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @param fixedPort fixed port to expose
      * @return StrimziKafkaContainer instance
      */
-    public StrimziKafkaContainer withFixedPort(final int fixedPort) {
+    public StrimziKafkaContainer withPort(final int fixedPort) {
+        if (fixedPort <= 0) {
+            throw new IllegalArgumentException("The fixed Kafka port must be greater than 0");
+        }
         addFixedExposedPort(fixedPort, Constants.KAFKA_PORT);
         return self();
     }

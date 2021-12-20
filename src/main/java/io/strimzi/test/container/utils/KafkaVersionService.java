@@ -31,7 +31,8 @@ public class KafkaVersionService {
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
     private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.json";
-    private static final String IMAGE_FORMAT = "quay.io/strimzi-test-container/test-container:%s-kafka-%s";
+    private static final String STRIMZI_BASE_IMAGE = "quay.io/strimzi-test-container/test-container";
+    private static final String IMAGE_FORMAT = "%s:%s-kafka-%s";
 
     private static class InstanceHolder {
         public static final KafkaVersionService INSTANCE = new KafkaVersionService();
@@ -64,11 +65,15 @@ public class KafkaVersionService {
      * If any of the given versions is {@code null} this method fetches the latest release versions using
      * {@link KafkaVersionService}.
      *
+     * @param strimziBaseImage Strimzi base image name
      * @param strimziTestContainerImageVersion Strimzi test container image version
      * @param kafkaVersion Kafka version
      * @return complete image name
      */
-    public static String strimziTestContainerImageName(String strimziTestContainerImageVersion, String kafkaVersion) {
+    public static String strimziTestContainerImageName(String strimziBaseImage, String strimziTestContainerImageVersion, String kafkaVersion) {
+        if (strimziBaseImage == null || strimziBaseImage.isEmpty()) {
+            strimziBaseImage = STRIMZI_BASE_IMAGE;
+        }
         if (strimziTestContainerImageVersion == null || strimziTestContainerImageVersion.isEmpty()) {
             strimziTestContainerImageVersion = KafkaVersionService.getInstance().latestRelease().getStrimziTestContainerVersion();
             LOGGER.info("No Strimzi test container version specified. Using latest release:{}", strimziTestContainerImageVersion);
@@ -78,7 +83,7 @@ public class KafkaVersionService {
             kafkaVersion = KafkaVersionService.getInstance().latestRelease().getVersion();
             LOGGER.info("No Kafka version specified. Using latest release:{}", kafkaVersion);
         }
-        return String.format(IMAGE_FORMAT, strimziTestContainerImageVersion, kafkaVersion);
+        return String.format(IMAGE_FORMAT, strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion);
     }
 
     /**
