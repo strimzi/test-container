@@ -95,7 +95,7 @@
         <log4j.version>2.17.1</log4j.version>
         <docker-java.version>3.2.7</docker-java.version>
         <kafka.version>3.0.0</kafka.version>
-        <slf4j.version>1.6.1</slf4j.version>
+        <slf4j.version>1.7.32</slf4j.version>
         <fasterxml.jackson-core.version>2.11.3</fasterxml.jackson-core.version>
         <fasterxml.jackson-databind.version>2.11.3</fasterxml.jackson-databind.version>
 
@@ -147,24 +147,15 @@
             <version>${docker-java.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

@@ -6,8 +6,9 @@ package io.strimzi.test.container;
 
 import io.strimzi.test.container.utils.Constants;
 import io.strimzi.test.container.utils.Utils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
@@ -33,7 +34,7 @@ import java.util.stream.Stream;
 public class StrimziKafkaCluster implements Startable {
 
     // class attributes
-    private static final Logger LOGGER = LogManager.getLogger(StrimziKafkaCluster.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaCluster.class);
 
     // instance attributes
     private final int brokersNum;

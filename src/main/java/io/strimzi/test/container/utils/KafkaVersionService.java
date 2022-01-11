@@ -4,8 +4,8 @@
  */
 package io.strimzi.test.container.utils;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
@@ -27,10 +27,16 @@ import java.util.regex.Pattern;
  */
 public class KafkaVersionService {
 
-    private static final Logger LOGGER = LogManager.getLogger(KafkaVersionService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
     private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.json";
+    private static final String STRIMZI_BASE_IMAGE = "quay.io/strimzi-test-container/test-container";
+    private static final String IMAGE_FORMAT = "%s:%s-kafka-%s";
+
+    private static class InstanceHolder {
+        public static final KafkaVersionService INSTANCE = new KafkaVersionService();
+    }
 
     private String jsonVersion;
     private final List<KafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
@@ -43,6 +49,41 @@ public class KafkaVersionService {
     public KafkaVersionService() {
         // scrape json schema and fill the inner list of versions
         this.resolveAndParse();
+    }
+
+    /**
+     * Get singleton instance lazily
+     *
+     * @return singleton instance
+     */
+    public static KafkaVersionService getInstance() {
+        return InstanceHolder.INSTANCE;
+    }
+
+    /**
+     * Get complete image name from given Kafka and Strimzi image version
+     * If any of the given versions is {@code null} this method fetches the latest release versions using
+     * {@link KafkaVersionService}.
+     *
+     * @param strimziBaseImage Strimzi base image name
+     * @param strimziTestContainerImageVersion Strimzi test container image version
+     * @param kafkaVersion Kafka version
+     * @return complete image name
+     */
+    public static String strimziTestContainerImageName(String strimziBaseImage, String strimziTestContainerImageVersion, String kafkaVersion) {
+        if (strimziBaseImage == null || strimziBaseImage.isEmpty()) {
+            strimziBaseImage = STRIMZI_BASE_IMAGE;
+        }
+        if (strimziTestContainerImageVersion == null || strimziTestContainerImageVersion.isEmpty()) {
+            strimziTestContainerImageVersion = KafkaVersionService.getInstance().latestRelease().getStrimziTestContainerVersion();
+            LOGGER.info("No Strimzi test container version specified. Using latest release:{}", strimziTestContainerImageVersion);
+        }
+
+        if (kafkaVersion == null || kafkaVersion.isEmpty()) {
+            kafkaVersion = KafkaVersionService.getInstance().latestRelease().getVersion();
+            LOGGER.info("No Kafka version specified. Using latest release:{}", kafkaVersion);
+        }
+        return String.format(IMAGE_FORMAT, strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion);
     }
 
     /**
