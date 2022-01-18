@@ -46,9 +46,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
-    private String strimziBaseImage;
     private String kafkaVersion;
-    private String strimziTestContainerImageVersion;
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
         c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
@@ -68,7 +66,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
-        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion));
+        System.out.println("What is this");
+        System.out.println(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
+        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -258,28 +258,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withKafkaVersion(final String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
-        return self();
-    }
-
-    /**
-     * Fluent method, which sets @code{strimziBaseImage}.
-     *
-     * @param strimziBaseImage strimzi test container image name
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withStrimziBaseImage(final String strimziBaseImage) {
-        this.strimziBaseImage = strimziBaseImage;
-        return self();
-    }
-
-    /**
-     * Fluent method, which sets @code{withStrimziTestContainerImageVersion}.
-     *
-     * @param strimziTestContainerImageVersion strimzi test container image version
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withStrimziTestContainerImageVersion(final String strimziTestContainerImageVersion) {
-        this.strimziTestContainerImageVersion = strimziTestContainerImageVersion;
         return self();
     }
 

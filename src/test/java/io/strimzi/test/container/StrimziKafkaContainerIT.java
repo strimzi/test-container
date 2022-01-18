@@ -125,8 +125,10 @@ public class StrimziKafkaContainerIT {
     void testStartContainerWithStrimziKafkaImage() {
         assumeDocker();
 
+        // explicitly set strimzi.custom.image
+        System.setProperty("strimzi.custom.image", "quay.io/strimzi/kafka:latest-kafka-3.0.0");
+
         systemUnderTest = new StrimziKafkaContainer()
-                .withStrimziBaseImage("quay.io/strimzi/kafka")
                 .waitForRunning();
 
         systemUnderTest.start();
@@ -135,5 +137,8 @@ public class StrimziKafkaContainerIT {
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         systemUnderTest.stop();
+
+        // empty
+        System.setProperty("strimzi.custom.image", "");
     }
 }

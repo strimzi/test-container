@@ -1,7 +1,7 @@
 {
   "version": 1,
   "kafkaVersions": {
-    "2.8.1": "test-container:latest-kafka-2.8.1",
-    "3.0.0": "test-container:latest-kafka-3.0.0"
+    "2.8.1": "quay.io/strimzi-test-container/test-container:latest-kafka-2.8.1",
+    "3.0.0": "quay.io/strimzi-test-container/test-container:latest-kafka-3.0.0"
   }
 }
