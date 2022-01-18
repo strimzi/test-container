@@ -126,7 +126,7 @@ public class StrimziKafkaContainerIT {
         assumeDocker();
 
         // explicitly set strimzi.custom.image
-        System.setProperty("strimzi.custom.image", "quay.io/strimzi/kafka:latest-kafka-3.0.0");
+        System.setProperty("strimzi.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
 
         systemUnderTest = new StrimziKafkaContainer()
                 .waitForRunning();
