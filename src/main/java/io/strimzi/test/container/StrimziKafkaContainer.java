@@ -66,8 +66,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
-        System.out.println("What is this");
-        System.out.println(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
         this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);

@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 /**
  *  A service for querying for Kafka versions using abstract criteria such as "latest version",
@@ -23,7 +22,6 @@ import java.util.Properties;
 public class KafkaVersionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
-    private static final Properties PROPERTIES = System.getProperties();
 
     private static class InstanceHolder {
         public static final KafkaVersionService INSTANCE = new KafkaVersionService();
@@ -52,20 +50,20 @@ public class KafkaVersionService {
     }
 
     /**
-     * Get whole image and if in @code{PROPERTIES} is specified field @code{strimzi.custom.image} then we use
+     * Get whole image and if in {@link System#getProperties()} is specified field @code{strimzi.custom.image} then we use
      * custom image. Moreover, if @code{kafkaVersion} is {@code null} this method fetches the latest release versions using
-     * {@link KafkaVersionService} instance.
+     * {@link KafkaVersionService#getInstance()} instance.
      *
      * @param kafkaVersion Kafka version
      * @return strimzi test container image path or custom image if Java property @code{strimzi.custom.image} is specified
      */
     public static String strimziTestContainerImageName(String kafkaVersion) {
         String imageName = null;
-        final Object strimziCustomImageName = PROPERTIES.get("strimzi.custom.image");
+        final Object strimziCustomImageName = System.getProperties().get("strimzi.custom.image");
 
         if (strimziCustomImageName != null && !strimziCustomImageName.toString().isEmpty()) {
             final String customImage = strimziCustomImageName.toString();
-            LOGGER.info("Using custom image:{}", customImage);
+            LOGGER.info("Using custom image: {}", customImage);
             // using custom image provided from SystemProperty
             imageName = customImage;
         } else {
@@ -73,7 +71,7 @@ public class KafkaVersionService {
             if (kafkaVersion == null || kafkaVersion.isEmpty()) {
                 imageName = KafkaVersionService.getInstance().latestRelease().getImage();
                 kafkaVersion = KafkaVersionService.getInstance().latestRelease().getImage();
-                LOGGER.info("No Kafka version specified. Using latest release:{}", kafkaVersion);
+                LOGGER.info("No Kafka version specified. Using latest release: {}", kafkaVersion);
             } else {
                 for (KafkaVersion kv : KafkaVersionService.getInstance().logicalKafkaVersionEntities) {
                     if (kv.getVersion().equals(kafkaVersion)) {
@@ -226,7 +224,6 @@ public class KafkaVersionService {
      * Resolve the logical version to an actual version
      */
     private void resolveAndParse() {
-        // Connect to the URL using java's native library
         try {
             final JsonNode rootNode = new ObjectMapper().readValue(KafkaVersionService.class.getResourceAsStream("/kafka_versions.json"), JsonNode.class);
 
