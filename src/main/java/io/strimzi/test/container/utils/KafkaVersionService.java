@@ -50,12 +50,12 @@ public class KafkaVersionService {
     }
 
     /**
-     * Get whole image and if in {@link System#getProperties()} is specified field @code{strimzi.custom.image} then we use
-     * custom image. Moreover, if @code{kafkaVersion} is {@code null} this method fetches the latest release versions using
+     * Get whole image and if in {@link System#getProperties()} is specified field {@code strimzi.custom.image} then we use
+     * custom image. Moreover, if {@code kafkaVersion} is {@code null} this method fetches the latest release versions using
      * {@link KafkaVersionService#getInstance()} instance.
      *
      * @param kafkaVersion Kafka version
-     * @return strimzi test container image path or custom image if Java property @code{strimzi.custom.image} is specified
+     * @return strimzi test container image path or custom image if Java property {@code strimzi.custom.image} is specified
      */
     public static String strimziTestContainerImageName(String kafkaVersion) {
         String imageName = null;
