@@ -30,7 +30,6 @@ public class KafkaVersionService {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
 
     private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
-    private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.json";
     private static final String STRIMZI_BASE_IMAGE = "quay.io/strimzi-test-container/test-container";
     private static final String IMAGE_FORMAT = "%s:%s-kafka-%s";
 
@@ -249,9 +248,8 @@ public class KafkaVersionService {
         // Connect to the URL using java's native library
         try {
             StringWriter writer = new StringWriter();
-            IOUtils.copy(new URL(KAFKA_VERSIONS_URL_JSON).openStream(), writer, StandardCharsets.UTF_8);
-            String pureStringJson = writer.toString().replaceAll("(?m)^#.*(?:\\r?\\n)", "");
-            JsonNode rootNode = new ObjectMapper().readValue(pureStringJson, JsonNode.class);
+            IOUtils.copy(KafkaVersionService.class.getResourceAsStream("/kafka_versions.json"), writer, StandardCharsets.UTF_8);
+            JsonNode rootNode = new ObjectMapper().readValue(writer.toString(), JsonNode.class);
 
             this.jsonVersion = rootNode.get("version").toString();
 
