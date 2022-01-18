@@ -8,11 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
-import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -246,9 +243,7 @@ public class KafkaVersionService {
     private void resolveAndParse() {
         // Connect to the URL using java's native library
         try {
-            StringWriter writer = new StringWriter();
-            IOUtils.copy(KafkaVersionService.class.getResourceAsStream("/kafka_versions.json"), writer, StandardCharsets.UTF_8);
-            JsonNode rootNode = new ObjectMapper().readValue(writer.toString(), JsonNode.class);
+            final JsonNode rootNode = new ObjectMapper().readValue(KafkaVersionService.class.getResourceAsStream("/kafka_versions.json"), JsonNode.class);
 
             this.jsonVersion = rootNode.get("version").toString();
 
