@@ -31,9 +31,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     // instance attributes
-    private String strimziBaseImage;
     private String kafkaVersion;
-    private String strimziTestContainerImageVersion;
 
     /**
      * Image name is lazily set in {@link #doStart()} method
@@ -81,17 +79,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     }
 
     /**
-     * Fluent method, which sets @code{strimziBaseImage}.
-     *
-     * @param strimziBaseImage strimzi test container image name
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziZookeeperContainer withStrimziBaseImage(final String strimziBaseImage) {
-        this.strimziBaseImage = strimziBaseImage;
-        return this;
-    }
-
-    /**
      * Fluent method, which sets @code{kafkaVersion}.
      *
      * @param kafkaVersion kafka version
@@ -102,14 +89,4 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         return this;
     }
 
-    /**
-     * Fluent method, which sets @code{strimziTestContainerVersion}.
-     *
-     * @param strimziTestContainerImageVersion strimzi test container image version
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziZookeeperContainer withStrimziTestContainerImageVersion(final String strimziTestContainerImageVersion) {
-        this.strimziTestContainerImageVersion = strimziTestContainerImageVersion;
-        return this;
-    }
 }
