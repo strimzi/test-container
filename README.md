@@ -117,7 +117,7 @@ Note that configuration properties `listeners`, `advertised.listeners`, `listene
 `inter.broker.listener.name`, `controller.listener.names`, `zookeeper.connect` will be overridden during container startup.
 Properties configured through `withKafkaConfigurationMap` will also precede those configured in `server.properties` file.
 
-#### v) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
+#### vi) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
 
 You can customize the bootstrap servers, thus the advertised listeners property by:
 
@@ -129,7 +129,7 @@ strimziKafkaContainer.start();
 
 Note that this won't change the port exposed from the container.
 
-#### vi) (Optional) Waiting for Kafka to be ready
+#### vii) (Optional) Waiting for Kafka to be ready
 
 Test Container can block waiting the container to be ready.
 Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
@@ -143,7 +143,7 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### v) (Optional) Specify Kafka version
+#### vii) (Optional) Specify Kafka version
 
 Strimzi test container supported versions can be find in `src/main/java/resources/kafka_versions.json` file.
 
@@ -159,7 +159,7 @@ strimziKafkaContainer.start();
 ```
 If kafka version is not set then the latest version is configured automatically.
 
-#### vi) (Optional) Specify custom image
+#### viii) (Optional) Specify custom image
 
 In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and 
 use for instance Strimzi base image you can achieve it via System property `strimzi.custom.image`.
