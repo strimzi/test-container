@@ -4,6 +4,8 @@
  */
 package io.strimzi.test.container.utils;
 
+import io.strimzi.test.container.KafkaVersionService;
+
 /**
  * Provides a handler, when {@link KafkaVersionService#strimziTestContainerImageName(String)} does not know the concrete
  * Kafka version.

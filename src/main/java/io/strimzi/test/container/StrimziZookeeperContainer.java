@@ -7,7 +7,6 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.strimzi.test.container.utils.Constants;
-import io.strimzi.test.container.utils.KafkaVersionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;

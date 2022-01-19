@@ -2,8 +2,9 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.test.container.utils;
+package io.strimzi.test.container;
 
+import io.strimzi.test.container.utils.UnknownKafkaVersionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -35,7 +36,7 @@ public class KafkaVersionService {
      * data from @code{KAFKA_VERSIONS_URL_JSON} and then we parse that json scheme, which gives us list of @code{KafkaVersion}
      * objects.
      */
-    public KafkaVersionService() {
+    private KafkaVersionService() {
         // scrape json schema and fill the inner list of versions
         this.resolveAndParse();
     }
@@ -59,7 +60,7 @@ public class KafkaVersionService {
      * @throws UnknownKafkaVersionException when Strimzi test container does not support that specified Kafka version
      * @return strimzi test container image path or custom image if Java property {@code kafka.custom.image} is specified
      */
-    public static String strimziTestContainerImageName(String kafkaVersion) {
+    protected static String strimziTestContainerImageName(String kafkaVersion) {
         final String imageName;
         final Object strimziCustomImageName = System.getProperties().get("kafka.custom.image");
 

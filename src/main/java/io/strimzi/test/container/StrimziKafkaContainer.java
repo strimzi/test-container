@@ -7,7 +7,6 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import io.strimzi.test.container.utils.Constants;
-import io.strimzi.test.container.utils.KafkaVersionService;
 import io.strimzi.test.container.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
