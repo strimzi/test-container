@@ -33,7 +33,7 @@ public class KafkaVersionService {
 
     /**
      * Constructor of the KafkaVersionService, which invokes resolution and parsing phase. In resolution, we fetch
-     * data from @code{KAFKA_VERSIONS_URL_JSON} and then we parse that json scheme, which gives us list of @code{KafkaVersion}
+     * data from {@code KAFKA_VERSIONS_URL_JSON} and then we parse that json scheme, which gives us list of {@code KafkaVersion}
      * objects.
      */
     private KafkaVersionService() {
