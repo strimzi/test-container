@@ -6,8 +6,7 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
-import io.strimzi.test.container.utils.Constants;
-import io.strimzi.test.container.utils.Utils;
+import org.apache.kafka.common.Uuid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -24,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -39,6 +39,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
+
+    /**
+     * Default Kafka port
+     */
+    public static final int KAFKA_PORT = 9092;
 
     // instance attributes
     private int kafkaExposedPort;
@@ -59,7 +64,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
         super.setNetwork(Network.SHARED);
         // exposing kafka port from the container
-        super.setExposedPorts(Collections.singletonList(Constants.KAFKA_PORT));
+        super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
         super.addEnv("LOG_DIR", "/tmp");
     }
 
@@ -92,7 +97,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        this.kafkaExposedPort = getMappedPort(Constants.KAFKA_PORT);
+        this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
 
         LOGGER.info("Mapped port: {}", kafkaExposedPort);
 
@@ -132,7 +137,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 .append(",");
         });
 
-        kafkaListeners.append(bsListenerName).append("://0.0.0.0:").append(Constants.KAFKA_PORT);
+        kafkaListeners.append(bsListenerName).append("://0.0.0.0:").append(KAFKA_PORT);
         kafkaListenerSecurityProtocol.append("PLAINTEXT:PLAINTEXT");
         if (!bsListenerName.equals("PLAINTEXT")) {
             kafkaListenerSecurityProtocol.append(",").append(bsListenerName).append(":").append(bsListenerName);
@@ -149,7 +154,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (useKraft) {
             kafkaConfiguration.put("controller.listener.names", "BROKER1");
         } else {
-            kafkaConfiguration.put("zookeeper.connect", "localhost:" + Constants.ZOOKEEPER_PORT);
+            kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
         // additional kafka config
@@ -168,7 +173,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
-            command += "bin/kafka-storage.sh format -t " + Utils.randomUuid() + " -c config/kraft/server.properties \n";
+            command += "bin/kafka-storage.sh format -t " + randomUuid() + " -c config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
@@ -178,6 +183,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
             STARTER_SCRIPT
         );
+    }
+
+    /**
+     * Static factory method to get a type 4 (pseudo randomly generated) UUID.
+     * @return random Uuid
+     */
+    public static Uuid randomUuid() {
+        UUID uuid = UUID.randomUUID();
+
+        return new Uuid(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
     }
 
     private String extractListenerName(String bootstrapServers) {
@@ -281,7 +296,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (fixedPort <= 0) {
             throw new IllegalArgumentException("The fixed Kafka port must be greater than 0");
         }
-        addFixedExposedPort(fixedPort, Constants.KAFKA_PORT);
+        addFixedExposedPort(fixedPort, KAFKA_PORT);
         return self();
     }
 
