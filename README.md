@@ -157,16 +157,17 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 
 strimziKafkaContainer.start();
 ```
-If kafka version is not set then the latest version is configured automatically.
+If kafka version is not set then the latest version is configured automatically. Latest in this scope is recently 
+released minor version at the point of release of test-containers.
 
-#### viii) (Optional) Specify custom image
+#### viii) (Optional) Specify Kafka custom image
 
 In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and 
-use for instance Strimzi base image you can achieve it via System property `strimzi.custom.image`.
+use for instance Strimzi base image you can achieve it via System property `kafka.custom.image`.
 
 ```java
-// explicitly set strimzi.custom.image
-System.setProperty("strimzi.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
+// explicitly set kafka.custom.image
+System.setProperty("kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withBrokerId(1)

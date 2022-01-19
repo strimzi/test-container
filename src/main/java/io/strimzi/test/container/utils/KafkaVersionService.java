@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  *  A service for querying for Kafka versions using abstract criteria such as "latest version",
@@ -27,7 +28,6 @@ public class KafkaVersionService {
         public static final KafkaVersionService INSTANCE = new KafkaVersionService();
     }
 
-    private String jsonVersion;
     private final List<KafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
 
     /**
@@ -50,16 +50,18 @@ public class KafkaVersionService {
     }
 
     /**
-     * Get whole image and if in {@link System#getProperties()} is specified field {@code strimzi.custom.image} then we use
+     * Get whole image and if in {@link System#getProperties()} is specified field {@code kafka.custom.image} then we use
      * custom image. Moreover, if {@code kafkaVersion} is {@code null} this method fetches the latest release versions using
      * {@link KafkaVersionService#getInstance()} instance.
      *
      * @param kafkaVersion Kafka version
-     * @return strimzi test container image path or custom image if Java property {@code strimzi.custom.image} is specified
+     *
+     * @throws UnknownKafkaVersionException when Strimzi test container does not support that specified Kafka version
+     * @return strimzi test container image path or custom image if Java property {@code kafka.custom.image} is specified
      */
     public static String strimziTestContainerImageName(String kafkaVersion) {
-        String imageName = null;
-        final Object strimziCustomImageName = System.getProperties().get("strimzi.custom.image");
+        final String imageName;
+        final Object strimziCustomImageName = System.getProperties().get("kafka.custom.image");
 
         if (strimziCustomImageName != null && !strimziCustomImageName.toString().isEmpty()) {
             final String customImage = strimziCustomImageName.toString();
@@ -78,6 +80,9 @@ public class KafkaVersionService {
                         return kv.getImage();
                     }
                 }
+                throw new UnknownKafkaVersionException("Doesn't know the specified Kafka version: " + kafkaVersion + ". " +
+                    "The supported Kafka versions are: " +
+                    KafkaVersionService.getInstance().logicalKafkaVersionEntities.stream().map(KafkaVersion::getVersion).collect(Collectors.toList()).toString());
             }
         }
         return imageName;
@@ -227,8 +232,6 @@ public class KafkaVersionService {
         try {
             final JsonNode rootNode = new ObjectMapper().readValue(KafkaVersionService.class.getResourceAsStream("/kafka_versions.json"), JsonNode.class);
 
-            this.jsonVersion = rootNode.get("version").toString();
-
             for (Iterator<Map.Entry<String, JsonNode>> iter = rootNode.get("kafkaVersions").fields(); iter.hasNext(); ) {
                 Map.Entry<String, JsonNode> fields = iter.next();
                 KafkaVersion logicalKafkaVersion = new KafkaVersion(fields.getKey(), fields.getValue().asText());
@@ -241,9 +244,8 @@ public class KafkaVersionService {
 
     @Override
     public String toString() {
-        return "LogicalKafkaVersion{" +
-            "jsonVersion='" + jsonVersion + '\'' +
-            ", logicalKafkaVersionEntities=" + logicalKafkaVersionEntities.toString() +
+        return "KafkaVersionService{" +
+            "logicalKafkaVersionEntities=" + logicalKafkaVersionEntities +
             '}';
     }
 }
