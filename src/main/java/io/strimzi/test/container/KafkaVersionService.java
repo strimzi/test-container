@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  *  A service for querying for Kafka versions using abstract criteria such as "latest version",
  *  the result of which may change over time (and thus, non-deterministically).
  */
-public class KafkaVersionService {
+class KafkaVersionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
 
@@ -91,7 +91,7 @@ public class KafkaVersionService {
     /**
      * Represents a concrete "Kafka version"
      */
-    public static class KafkaVersion implements Comparable<KafkaVersion> {
+    static class KafkaVersion implements Comparable<KafkaVersion> {
         private final String version;
         private final String image;
 
