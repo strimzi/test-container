@@ -4,9 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.test.container.utils.Constants;
-import io.strimzi.test.container.utils.Utils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -81,7 +78,7 @@ public class StrimziKafkaCluster implements Startable {
                 StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
                     .withBrokerId(brokerId)
                     .withKafkaConfigurationMap(additionalKafkaConfiguration)
-                    .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT)
+                    .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
                     .withNetwork(this.network)
                     .withNetworkAliases("broker-" + brokerId)
                     .dependsOn(this.zookeeper);
@@ -127,7 +124,7 @@ public class StrimziKafkaCluster implements Startable {
                 try {
                     result = this.zookeeper.execInContainer(
                         "sh", "-c",
-                        "bin/zookeeper-shell.sh zookeeper:" + Constants.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+                        "bin/zookeeper-shell.sh zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
                     );
                     String brokers = result.getStdout();
 

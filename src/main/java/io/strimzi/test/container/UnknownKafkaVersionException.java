@@ -2,9 +2,7 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.test.container.utils;
-
-import io.strimzi.test.container.KafkaVersionService;
+package io.strimzi.test.container;
 
 /**
  * Provides a handler, when {@link KafkaVersionService#strimziTestContainerImageName(String)} does not know the concrete

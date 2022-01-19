@@ -4,7 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.test.container.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.Test;
@@ -50,7 +49,7 @@ public class StrimziZookeeperContainerIT {
             kafkaContainer = new StrimziKafkaContainer()
                 .withBrokerId(1)
                 .withKafkaConfigurationMap(config)
-                .withExternalZookeeperConnect("zookeeper:" + Constants.ZOOKEEPER_PORT);
+                .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
 
             kafkaContainer.start();
 

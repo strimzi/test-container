@@ -4,7 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.test.container.utils.UnknownKafkaVersionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.hamcrest.CoreMatchers;
