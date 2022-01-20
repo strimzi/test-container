@@ -126,8 +126,8 @@ public class StrimziKafkaContainerIT {
     void testStartContainerWithStrimziKafkaImage() {
         assumeDocker();
 
-        // explicitly set kafka.custom.image
-        System.setProperty("kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
+        // explicitly set strimzi.test-container.kafka.custom.image
+        System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
 
         systemUnderTest = new StrimziKafkaContainer()
                 .waitForRunning();
@@ -140,7 +140,7 @@ public class StrimziKafkaContainerIT {
         systemUnderTest.stop();
 
         // empty
-        System.setProperty("kafka.custom.image", "");
+        System.setProperty("strimzi.test-container.kafka.custom.image", "");
     }
 
     @Test

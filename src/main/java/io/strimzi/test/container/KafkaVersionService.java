@@ -50,18 +50,18 @@ class KafkaVersionService {
     }
 
     /**
-     * Get whole image and if in {@link System#getProperties()} is specified field {@code kafka.custom.image} then we use
+     * Get whole image and if in {@link System#getProperties()} is specified field {@code strimzi.test-container.kafka.custom.image} then we use
      * custom image. Moreover, if {@code kafkaVersion} is {@code null} this method fetches the latest release versions using
      * {@link KafkaVersionService#getInstance()} instance.
      *
      * @param kafkaVersion Kafka version
      *
      * @throws UnknownKafkaVersionException when Strimzi test container does not support that specified Kafka version
-     * @return strimzi test container image path or custom image if Java property {@code kafka.custom.image} is specified
+     * @return strimzi test container image path or custom image if Java property {@code strimzi.test-container.kafka.custom.image} is specified
      */
     protected static String strimziTestContainerImageName(String kafkaVersion) {
         final String imageName;
-        final Object strimziCustomImageName = System.getProperties().get("kafka.custom.image");
+        final Object strimziCustomImageName = System.getProperties().get("strimzi.test-container.kafka.custom.image");
 
         if (strimziCustomImageName != null && !strimziCustomImageName.toString().isEmpty()) {
             final String customImage = strimziCustomImageName.toString();
