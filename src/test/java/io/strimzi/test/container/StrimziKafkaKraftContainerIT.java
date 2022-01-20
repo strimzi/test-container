@@ -104,8 +104,7 @@ public class StrimziKafkaKraftContainerIT {
 
         // using try-with-resources for KafkaProducer and KafkaConsumer (implicit closing connection)
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties, new StringSerializer(), new StringSerializer());
-             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties, new StringDeserializer(), new StringDeserializer());
-        ){
+             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties, new StringDeserializer(), new StringDeserializer())) {
             producer.send(new ProducerRecord<>("topic", "some-key", "1")).get();
             producer.send(new ProducerRecord<>("topic", "some-key", "2")).get();
             producer.send(new ProducerRecord<>("topic", "some-key", "3")).get();
