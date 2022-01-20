@@ -6,8 +6,6 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.strimzi.test.container.utils.Constants;
-import io.strimzi.test.container.utils.KafkaVersionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -29,11 +27,13 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziZookeeperContainer.class);
     private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
+    /**
+     * Default ZooKeeper port
+     */
+    public static final int ZOOKEEPER_PORT = 2181;
 
     // instance attributes
-    private String strimziBaseImage;
     private String kafkaVersion;
-    private String strimziTestContainerImageVersion;
 
     /**
      * Image name is lazily set in {@link #doStart()} method
@@ -44,17 +44,17 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         // instance and by default each container has its own network
         super.setNetwork(Network.SHARED);
         // exposing zookeeper port from the container
-        super.setExposedPorts(Collections.singletonList(Constants.ZOOKEEPER_PORT));
+        super.setExposedPorts(Collections.singletonList(ZOOKEEPER_PORT));
         super.setNetworkAliases(Collections.singletonList("zookeeper"));
         super.addEnv("LOG_DIR", "/tmp");
-        super.addEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(Constants.ZOOKEEPER_PORT));
+        super.addEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
         // env for readiness
         super.addEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
     }
 
     @Override
     protected void doStart() {
-        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion));
+        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -64,7 +64,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     protected void containerIsStarting(InspectContainerResponse containerInfo, boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        int zookeeperDynamicExposedPort = getMappedPort(Constants.ZOOKEEPER_PORT);
+        int zookeeperDynamicExposedPort = getMappedPort(ZOOKEEPER_PORT);
 
         LOGGER.info("This is mapped port {}", zookeeperDynamicExposedPort);
 
@@ -81,17 +81,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     }
 
     /**
-     * Fluent method, which sets @code{strimziBaseImage}.
-     *
-     * @param strimziBaseImage strimzi test container image name
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziZookeeperContainer withStrimziBaseImage(final String strimziBaseImage) {
-        this.strimziBaseImage = strimziBaseImage;
-        return this;
-    }
-
-    /**
      * Fluent method, which sets @code{kafkaVersion}.
      *
      * @param kafkaVersion kafka version
@@ -102,14 +91,4 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         return this;
     }
 
-    /**
-     * Fluent method, which sets @code{strimziTestContainerVersion}.
-     *
-     * @param strimziTestContainerImageVersion strimzi test container image version
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziZookeeperContainer withStrimziTestContainerImageVersion(final String strimziTestContainerImageVersion) {
-        this.strimziTestContainerImageVersion = strimziTestContainerImageVersion;
-        return this;
-    }
 }

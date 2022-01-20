@@ -94,23 +94,28 @@ public class StrimziKafkaKraftContainerIT {
     }
 
     private void verify() throws InterruptedException, ExecutionException {
-        Properties properties = new Properties();
-        properties.put("bootstrap.servers", systemUnderTest.getBootstrapServers());
+        Properties producerProperties = new Properties();
+        producerProperties.put("bootstrap.servers", systemUnderTest.getBootstrapServers());
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(properties, new StringSerializer(), new StringSerializer());
-        producer.send(new ProducerRecord<>("topic", "some-key", "1")).get();
-        producer.send(new ProducerRecord<>("topic", "some-key", "2")).get();
-        producer.send(new ProducerRecord<>("topic", "some-key", "3")).get();
+        Properties consumerProperties = new Properties();
+        consumerProperties.put("bootstrap.servers", systemUnderTest.getBootstrapServers());
+        consumerProperties.put("group.id", "my-group");
+        consumerProperties.put("auto.offset.reset", "earliest");
 
-        properties.put("group.id", "my-group");
-        properties.put("auto.offset.reset", "earliest");
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties, new StringDeserializer(), new StringDeserializer());
-        TopicPartition topic = new TopicPartition("topic", 0);
-        consumer.assign(Collections.singleton(topic));
-        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
-        assertThat(records.count(), equalTo(3));
-        assertThat(records.records(topic).get(0).value(), equalTo("1"));
-        assertThat(records.records(topic).get(1).value(), equalTo("2"));
-        assertThat(records.records(topic).get(2).value(), equalTo("3"));
+        // using try-with-resources for KafkaProducer and KafkaConsumer (implicit closing connection)
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties, new StringSerializer(), new StringSerializer());
+             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties, new StringDeserializer(), new StringDeserializer())) {
+            producer.send(new ProducerRecord<>("topic", "some-key", "1")).get();
+            producer.send(new ProducerRecord<>("topic", "some-key", "2")).get();
+            producer.send(new ProducerRecord<>("topic", "some-key", "3")).get();
+            TopicPartition topic = new TopicPartition("topic", 0);
+            consumer.assign(Collections.singleton(topic));
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
+            assertThat(records.count(), equalTo(3));
+            assertThat(records.records(topic).get(0).value(), equalTo("1"));
+            assertThat(records.records(topic).get(1).value(), equalTo("2"));
+            assertThat(records.records(topic).get(2).value(), equalTo("3"));
+        }
+
     }
 }

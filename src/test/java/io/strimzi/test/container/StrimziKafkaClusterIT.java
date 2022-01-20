@@ -4,8 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import io.strimzi.test.container.utils.Constants;
-import io.strimzi.test.container.utils.Utils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -56,7 +54,7 @@ public class StrimziKafkaClusterIT {
         // exercise (fetch the data)
         final Container.ExecResult result = this.systemUnderTest.getZookeeper().execInContainer(
             "sh", "-c",
-            "bin/zookeeper-shell.sh zookeeper:" + Constants.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+            "bin/zookeeper-shell.sh zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
         );
 
         final String brokers = result.getStdout();
@@ -69,62 +67,59 @@ public class StrimziKafkaClusterIT {
 
     @Test
     void testKafkaClusterFunctionality() throws InterruptedException, ExecutionException, TimeoutException {
-        final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
-            AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()
-        ));
+        // using try-with-resources for AdminClient, KafkaProducer and KafkaConsumer (implicit closing connection)
+        try (final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+            AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
+             KafkaProducer<String, String> producer = new KafkaProducer<>(
+                 ImmutableMap.of(
+                     ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
+                     ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString()
+                 ),
+                 new StringSerializer(),
+                 new StringSerializer()
+             );
+             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
+                 ImmutableMap.of(
+                     ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
+                     ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
+                     ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,  OffsetResetStrategy.EARLIEST.name().toLowerCase(Locale.ROOT)
+                 ),
+                 new StringDeserializer(),
+                 new StringDeserializer()
+             )
+        ) {
+            final String topicName = "example-topic";
+            final String recordKey = "strimzi";
+            final String recordValue = "the-best-project-in-the-world";
 
-        KafkaProducer<String, String> producer = new KafkaProducer<>(
-            ImmutableMap.of(
-                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
-                ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString()
-            ),
-            new StringSerializer(),
-            new StringSerializer()
-        );
+            final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, numberOfReplicas, (short) numberOfReplicas));
+            adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
 
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
-            ImmutableMap.of(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
-                ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
-                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,  OffsetResetStrategy.EARLIEST.name().toLowerCase(Locale.ROOT)
-            ),
-            new StringDeserializer(),
-            new StringDeserializer()
-        );
+            consumer.subscribe(Collections.singletonList(topicName));
 
-        final String topicName = "example-topic";
-        final String recordKey = "strimzi";
-        final String recordValue = "the-best-project-in-the-world";
+            producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-        final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, numberOfReplicas, (short) numberOfReplicas));
-        adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
+            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(1).toMillis(),
+                () -> {
+                    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
-        consumer.subscribe(Collections.singletonList(topicName));
+                    if (records.isEmpty()) {
+                        return false;
+                    }
 
-        producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
+                    // verify count
+                    assertThat(records.count(), is(1));
 
-        Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(1).toMillis(),
-            () -> {
-                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                    ConsumerRecord consumerRecord = records.records(topicName).iterator().next();
 
-                if (records.isEmpty()) {
-                    return false;
-                }
+                    // verify content of the record
+                    assertThat(consumerRecord.topic(), is(topicName));
+                    assertThat(consumerRecord.key(), is(recordKey));
+                    assertThat(consumerRecord.value(), is(recordValue));
 
-                // verify count
-                assertThat(records.count(), is(1));
-
-                ConsumerRecord consumerRecord = records.records(topicName).iterator().next();
-
-                // verify content of the record
-                assertThat(consumerRecord.topic(), is(topicName));
-                assertThat(consumerRecord.key(), is(recordKey));
-                assertThat(consumerRecord.value(), is(recordValue));
-
-                return true;
-            });
-
-        consumer.unsubscribe();
+                    return true;
+                });
+        }
     }
 
     @BeforeEach

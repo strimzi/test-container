@@ -2,21 +2,19 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.test.container.utils;
-
-import org.apache.kafka.common.Uuid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package io.strimzi.test.container;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.UUID;
 import java.util.function.BooleanSupplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utils contains auxiliary static methods, which are used in whole project.
  */
-public class Utils {
+class Utils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
 
@@ -31,7 +29,7 @@ public class Utils {
      * @param timeoutMs timeout in milliseconds
      * @param ready lambda predicate
      */
-    public static long waitFor(String description, long pollIntervalMs, long timeoutMs, BooleanSupplier ready) {
+    static long waitFor(String description, long pollIntervalMs, long timeoutMs, BooleanSupplier ready) {
         LOGGER.debug("Waiting for {}", description);
         long deadline = System.currentTimeMillis() + timeoutMs;
         String exceptionMessage = null;
@@ -81,13 +79,5 @@ public class Utils {
         }
     }
 
-    /**
-     * Static factory method to get a type 4 (pseudo randomly generated) UUID.
-     * @return random Uuid
-     */
-    public static Uuid randomUuid() {
-        UUID uuid = UUID.randomUUID();
 
-        return new Uuid(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
-    }
 }

@@ -117,7 +117,7 @@ Note that configuration properties `listeners`, `advertised.listeners`, `listene
 `inter.broker.listener.name`, `controller.listener.names`, `zookeeper.connect` will be overridden during container startup.
 Properties configured through `withKafkaConfigurationMap` will also precede those configured in `server.properties` file.
 
-#### v) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
+#### vi) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
 
 You can customize the bootstrap servers, thus the advertised listeners property by:
 
@@ -129,7 +129,7 @@ strimziKafkaContainer.start();
 
 Note that this won't change the port exposed from the container.
 
-#### vi) Waiting for Kafka to be ready
+#### vii) (Optional) Waiting for Kafka to be ready
 
 Test Container can block waiting the container to be ready.
 Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
@@ -143,17 +143,13 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### v) Specify Kafka or Strimzi test container version
+#### vii) (Optional) Specify Kafka version
 
-Supported versions can be find [kafka_versions.json](https://github.com/strimzi/test-container-images/blob/main/kafka_versions.json) file.
-Note that this is for a main branch, and you should check for release branches (i.e., `0.1.0`). In case of `0.1.0` 
-supported Kafka versions are `2.8.1` and `3.0.0`.
-
+Strimzi test container supported versions can be find in `src/main/java/resources/kafka_versions.json` file.
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withStrimziBaseImage("quay.io/strimzi/kafka")
-    .withStrimziTestContainerImageVersion("0.25.0")
     .withKafkaVersion("2.8.0")
     .withBrokerId(1)
     .withKraft(true)
@@ -161,8 +157,24 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 
 strimziKafkaContainer.start();
 ```
+If kafka version is not set then the latest version is configured automatically. Latest in this scope is recently 
+released minor version at the point of release of test-containers.
 
-If both Kafka and Strimzi test container version are not set, latest versions are configured automatically.
+#### viii) (Optional) Specify Kafka custom image
+
+In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and 
+use for instance Strimzi base image you can achieve it via System property `strimzi.test-container.kafka.custom.image`.
+
+```java
+// explicitly set strimzi.test-container.kafka.custom.image
+System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
+
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withBrokerId(1)
+    .waitForRunning();
+
+systemUnderTest.start();
+```
 
 ### Additional tips
 

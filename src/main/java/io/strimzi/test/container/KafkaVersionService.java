@@ -2,51 +2,40 @@
  * Copyright Strimzi authors.
  * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
  */
-package io.strimzi.test.container.utils;
+package io.strimzi.test.container;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
-import java.io.StringWriter;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  *  A service for querying for Kafka versions using abstract criteria such as "latest version",
  *  the result of which may change over time (and thus, non-deterministically).
  */
-public class KafkaVersionService {
+class KafkaVersionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
-
-    private static final Pattern STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION = Pattern.compile("^test-container:(\\d+\\.\\d+\\.\\d+|latest)-kafka-.*$");
-    private static final String KAFKA_VERSIONS_URL_JSON = "https://raw.githubusercontent.com/strimzi/test-container-images/main/kafka_versions.json";
-    private static final String STRIMZI_BASE_IMAGE = "quay.io/strimzi-test-container/test-container";
-    private static final String IMAGE_FORMAT = "%s:%s-kafka-%s";
 
     private static class InstanceHolder {
         public static final KafkaVersionService INSTANCE = new KafkaVersionService();
     }
 
-    private String jsonVersion;
     private final List<KafkaVersion> logicalKafkaVersionEntities = new ArrayList<>();
 
     /**
      * Constructor of the KafkaVersionService, which invokes resolution and parsing phase. In resolution, we fetch
-     * data from @code{KAFKA_VERSIONS_URL_JSON} and then we parse that json scheme, which gives us list of @code{KafkaVersion}
+     * data from {@code KAFKA_VERSIONS_URL_JSON} and then we parse that json scheme, which gives us list of {@code KafkaVersion}
      * objects.
      */
-    public KafkaVersionService() {
+    private KafkaVersionService() {
         // scrape json schema and fill the inner list of versions
         this.resolveAndParse();
     }
@@ -61,35 +50,48 @@ public class KafkaVersionService {
     }
 
     /**
-     * Get complete image name from given Kafka and Strimzi image version
-     * If any of the given versions is {@code null} this method fetches the latest release versions using
-     * {@link KafkaVersionService}.
+     * Get whole image and if in {@link System#getProperties()} is specified field {@code strimzi.test-container.kafka.custom.image} then we use
+     * custom image. Moreover, if {@code kafkaVersion} is {@code null} this method fetches the latest release versions using
+     * {@link KafkaVersionService#getInstance()} instance.
      *
-     * @param strimziBaseImage Strimzi base image name
-     * @param strimziTestContainerImageVersion Strimzi test container image version
      * @param kafkaVersion Kafka version
-     * @return complete image name
+     *
+     * @throws UnknownKafkaVersionException when Strimzi test container does not support that specified Kafka version
+     * @return strimzi test container image path or custom image if Java property {@code strimzi.test-container.kafka.custom.image} is specified
      */
-    public static String strimziTestContainerImageName(String strimziBaseImage, String strimziTestContainerImageVersion, String kafkaVersion) {
-        if (strimziBaseImage == null || strimziBaseImage.isEmpty()) {
-            strimziBaseImage = STRIMZI_BASE_IMAGE;
-        }
-        if (strimziTestContainerImageVersion == null || strimziTestContainerImageVersion.isEmpty()) {
-            strimziTestContainerImageVersion = KafkaVersionService.getInstance().latestRelease().getStrimziTestContainerVersion();
-            LOGGER.info("No Strimzi test container version specified. Using latest release:{}", strimziTestContainerImageVersion);
-        }
+    protected static String strimziTestContainerImageName(String kafkaVersion) {
+        final String imageName;
+        final Object strimziCustomImageName = System.getProperties().get("strimzi.test-container.kafka.custom.image");
 
-        if (kafkaVersion == null || kafkaVersion.isEmpty()) {
-            kafkaVersion = KafkaVersionService.getInstance().latestRelease().getVersion();
-            LOGGER.info("No Kafka version specified. Using latest release:{}", kafkaVersion);
+        if (strimziCustomImageName != null && !strimziCustomImageName.toString().isEmpty()) {
+            final String customImage = strimziCustomImageName.toString();
+            LOGGER.info("Using custom image: {}", customImage);
+            // using custom image provided from SystemProperty
+            imageName = customImage;
+        } else {
+            // using strimzi-test-container images
+            if (kafkaVersion == null || kafkaVersion.isEmpty()) {
+                imageName = KafkaVersionService.getInstance().latestRelease().getImage();
+                kafkaVersion = KafkaVersionService.getInstance().latestRelease().getImage();
+                LOGGER.info("No Kafka version specified. Using latest release: {}", kafkaVersion);
+            } else {
+                for (KafkaVersion kv : KafkaVersionService.getInstance().logicalKafkaVersionEntities) {
+                    if (kv.getVersion().equals(kafkaVersion)) {
+                        return kv.getImage();
+                    }
+                }
+                throw new UnknownKafkaVersionException("Doesn't know the specified Kafka version: " + kafkaVersion + ". " +
+                    "The supported Kafka versions are: " +
+                    KafkaVersionService.getInstance().logicalKafkaVersionEntities.stream().map(KafkaVersion::getVersion).collect(Collectors.toList()).toString());
+            }
         }
-        return String.format(IMAGE_FORMAT, strimziBaseImage, strimziTestContainerImageVersion, kafkaVersion);
+        return imageName;
     }
 
     /**
      * Represents a concrete "Kafka version"
      */
-    public static class KafkaVersion implements Comparable<KafkaVersion> {
+    static class KafkaVersion implements Comparable<KafkaVersion> {
         private final String version;
         private final String image;
 
@@ -149,25 +151,6 @@ public class KafkaVersionService {
          */
         public String getImage() {
             return image;
-        }
-
-        /**
-         * Auxiliary method, which fetch from @code{image} by using regex @code{STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION}
-         * the Strimzi test container version.
-         *
-         * @return strimzi test container version
-         */
-        public String getStrimziTestContainerVersion() {
-            Matcher regex = STRIMZI_TEST_CONTAINER_IMAGE_WITHOUT_KAFKA_VERSION.matcher(this.image);
-
-            // only one occurrence in the string
-            if (regex.find()) {
-                final String strimziContainerVersion = regex.group(1);
-                LOGGER.info("Find the version of Strimzi kafka container:{}", strimziContainerVersion);
-                return strimziContainerVersion;
-            } else {
-                throw new RuntimeException("Unable to find version of Strimzi kafka container from image name - " + this.image);
-            }
         }
 
         @Override
@@ -246,14 +229,8 @@ public class KafkaVersionService {
      * Resolve the logical version to an actual version
      */
     private void resolveAndParse() {
-        // Connect to the URL using java's native library
         try {
-            StringWriter writer = new StringWriter();
-            IOUtils.copy(new URL(KAFKA_VERSIONS_URL_JSON).openStream(), writer, StandardCharsets.UTF_8);
-            String pureStringJson = writer.toString().replaceAll("(?m)^#.*(?:\\r?\\n)", "");
-            JsonNode rootNode = new ObjectMapper().readValue(pureStringJson, JsonNode.class);
-
-            this.jsonVersion = rootNode.get("version").toString();
+            final JsonNode rootNode = new ObjectMapper().readValue(KafkaVersionService.class.getResourceAsStream("/kafka_versions.json"), JsonNode.class);
 
             for (Iterator<Map.Entry<String, JsonNode>> iter = rootNode.get("kafkaVersions").fields(); iter.hasNext(); ) {
                 Map.Entry<String, JsonNode> fields = iter.next();
@@ -267,9 +244,8 @@ public class KafkaVersionService {
 
     @Override
     public String toString() {
-        return "LogicalKafkaVersion{" +
-            "jsonVersion='" + jsonVersion + '\'' +
-            ", logicalKafkaVersionEntities=" + logicalKafkaVersionEntities.toString() +
+        return "KafkaVersionService{" +
+            "logicalKafkaVersionEntities=" + logicalKafkaVersionEntities +
             '}';
     }
 }

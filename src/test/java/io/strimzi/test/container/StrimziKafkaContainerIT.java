@@ -18,6 +18,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StrimziKafkaContainerIT {
 
@@ -125,8 +126,10 @@ public class StrimziKafkaContainerIT {
     void testStartContainerWithStrimziKafkaImage() {
         assumeDocker();
 
+        // explicitly set strimzi.test-container.kafka.custom.image
+        System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
+
         systemUnderTest = new StrimziKafkaContainer()
-                .withStrimziBaseImage("quay.io/strimzi/kafka")
                 .waitForRunning();
 
         systemUnderTest.start();
@@ -135,5 +138,19 @@ public class StrimziKafkaContainerIT {
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         systemUnderTest.stop();
+
+        // empty
+        System.setProperty("strimzi.test-container.kafka.custom.image", "");
+    }
+
+    @Test
+    void testUnsupportedKafkaVersion() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+            .withKafkaVersion("2.4.0")
+            .waitForRunning();
+
+        assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
     }
 }
