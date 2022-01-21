@@ -149,7 +149,6 @@ Strimzi test container supported versions can be find in `src/main/java/resource
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withStrimziBaseImage("quay.io/strimzi/kafka")
     .withKafkaVersion("2.8.0")
     .withBrokerId(1)
     .withKraft(true)
@@ -163,7 +162,17 @@ released minor version at the point of release of test-containers.
 #### viii) (Optional) Specify Kafka custom image
 
 In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and 
-use for instance Strimzi base image you can achieve it via System property `strimzi.test-container.kafka.custom.image`.
+use for instance Strimzi base image you can achieve it by passing the image name to the constructor:
+
+```java
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer("quay.io/strimzi/kafka:0.27.1-kafka-3.0.0")
+    .withBrokerId(1)
+    .waitForRunning();
+
+strimziKafkaContainer.start();
+```
+
+Alternatively you can set System property `strimzi.test-container.kafka.custom.image`:
 
 ```java
 // explicitly set strimzi.test-container.kafka.custom.image
@@ -173,7 +182,7 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withBrokerId(1)
     .waitForRunning();
 
-systemUnderTest.start();
+strimziKafkaContainer.start();
 ```
 
 ### Additional tips

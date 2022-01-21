@@ -45,6 +45,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
 
+    /**
+     * Lazy image name provider
+     */
+    private final CompletableFuture<String> imageNameProvider;
+
     // instance attributes
     private int kafkaExposedPort;
     private Map<String, String> kafkaConfigurationMap;
@@ -55,11 +60,21 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
         c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
 
+
+    public StrimziKafkaContainer() {
+        this(new CompletableFuture<>());
+    }
+
+    public StrimziKafkaContainer(String dockerImageName) {
+        this(CompletableFuture.completedFuture(dockerImageName));
+    }
+
     /**
      * Image name is lazily set in {@link #doStart()} method
      */
-    public StrimziKafkaContainer() {
-        super(CompletableFuture.completedFuture(null));
+    private StrimziKafkaContainer(CompletableFuture<String> imageName) {
+        super(imageName);
+        this.imageNameProvider = imageName;
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
         // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
         super.setNetwork(Network.SHARED);
@@ -70,7 +85,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
-        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
+        if (!imageNameProvider.isDone()) {
+            imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
+        }
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
