@@ -127,7 +127,8 @@ public class StrimziKafkaContainerIT {
         assumeDocker();
 
         // explicitly set strimzi.test-container.kafka.custom.image
-        System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
+        String imageName = "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0";
+        System.setProperty("strimzi.test-container.kafka.custom.image", imageName);
 
         systemUnderTest = new StrimziKafkaContainer()
                 .waitForRunning();
@@ -137,10 +138,28 @@ public class StrimziKafkaContainerIT {
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
+        assertThat(systemUnderTest.getDockerImageName(), is(imageName));
         systemUnderTest.stop();
 
         // empty
         System.setProperty("strimzi.test-container.kafka.custom.image", "");
+    }
+
+    @Test
+    void testStartContainerWithCustomImage() {
+        assumeDocker();
+
+        String imageName = "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0";
+        systemUnderTest = new StrimziKafkaContainer(imageName)
+                .waitForRunning();
+
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
+                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+
+        assertThat(systemUnderTest.getDockerImageName(), is(imageName));
+        systemUnderTest.stop();
     }
 
     @Test
