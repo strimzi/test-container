@@ -32,14 +32,28 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      */
     public static final int ZOOKEEPER_PORT = 2181;
 
+    /**
+     * Lazy image name provider
+     */
+    private final CompletableFuture<String> imageNameProvider;
+
     // instance attributes
     private String kafkaVersion;
+
+    public StrimziZookeeperContainer() {
+        this(new CompletableFuture<>());
+    }
+
+    public StrimziZookeeperContainer(String dockerImageName) {
+        this(CompletableFuture.completedFuture(dockerImageName));
+    }
 
     /**
      * Image name is lazily set in {@link #doStart()} method
      */
-    public StrimziZookeeperContainer() {
-        super(CompletableFuture.completedFuture(null));
+    private StrimziZookeeperContainer(CompletableFuture<String> imageName) {
+        super(imageName);
+        this.imageNameProvider = imageName;
         // we need this shared network in case we deploy StrimziKafkaCluster, which consist `StrimziZookeeperContainer`
         // instance and by default each container has its own network
         super.setNetwork(Network.SHARED);
@@ -54,7 +68,9 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
 
     @Override
     protected void doStart() {
-        this.setDockerImageName(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
+        if (!imageNameProvider.isDone()) {
+            imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
+        }
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         withCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
