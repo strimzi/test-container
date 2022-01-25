@@ -4,9 +4,10 @@
  */
 package io.strimzi.test.container;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,17 +16,18 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StrimziZookeeperContainerIT {
+public class StrimziZookeeperContainerIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziZookeeperContainerIT.class);
 
     private StrimziZookeeperContainer systemUnderTest;
     private StrimziKafkaContainer kafkaContainer;
 
-    @Test
-    void testZookeeperContainerStartup() {
+    @ParameterizedTest(name = "testZookeeperContainerStartup-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testZookeeperContainerStartup(final String imageName) {
         try {
-            systemUnderTest = new StrimziZookeeperContainer();
+            systemUnderTest = new StrimziZookeeperContainer(imageName);
             systemUnderTest.start();
 
             final String zookeeperLogs = systemUnderTest.getLogs();
@@ -37,10 +39,11 @@ public class StrimziZookeeperContainerIT {
         }
     }
 
-    @Test
-    void testZookeeperWithKafkaContainer() {
+    @ParameterizedTest(name = "testZookeeperWithKafkaContainer-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testZookeeperWithKafkaContainer(final String imageName) {
         try {
-            systemUnderTest = new StrimziZookeeperContainer();
+            systemUnderTest = new StrimziZookeeperContainer(imageName);
             systemUnderTest.start();
 
             Map<String, String> config = new HashMap<>();

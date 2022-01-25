@@ -14,8 +14,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.time.Duration;
@@ -34,20 +34,18 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 @SuppressWarnings("ClassDataAbstractionCoupling")
-public class StrimziKafkaKraftContainerIT {
+public class StrimziKafkaKraftContainerIT extends AbstractIT {
 
     private StrimziKafkaContainer systemUnderTest;
 
-    private void assumeDocker() {
-        Assumptions.assumeTrue(System.getenv("DOCKER_CMD") == null || "docker".equals(System.getenv("DOCKER_CMD")));
-    }
-
-    @Test
-    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException, TimeoutException {
+    @ParameterizedTest(name = "testStartContainerWithEmptyConfiguration-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithEmptyConfiguration(final String imageName) throws ExecutionException, InterruptedException, TimeoutException {
         assumeDocker();
+        supportsKraftMode(imageName);
 
         try {
-            systemUnderTest = new StrimziKafkaContainer()
+            systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withBrokerId(1)
                 .withKraft()
                 .waitForRunning();
@@ -66,9 +64,11 @@ public class StrimziKafkaKraftContainerIT {
         }
     }
 
-    @Test
-    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException, TimeoutException {
+    @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithSomeConfiguration(final String imageName) throws ExecutionException, InterruptedException, TimeoutException {
         assumeDocker();
+        supportsKraftMode(imageName);
 
         try {
             Map<String, String> kafkaConfiguration = new HashMap<>();
@@ -78,7 +78,7 @@ public class StrimziKafkaKraftContainerIT {
             kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
             kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-            systemUnderTest = new StrimziKafkaContainer()
+            systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withBrokerId(1)
                 .withKraft()
                 .withKafkaConfigurationMap(kafkaConfiguration)

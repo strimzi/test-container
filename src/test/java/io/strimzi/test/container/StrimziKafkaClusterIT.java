@@ -41,7 +41,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StrimziKafkaClusterIT {
+@SuppressWarnings("ClassFanOutComplexity")
+public class StrimziKafkaClusterIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
 
