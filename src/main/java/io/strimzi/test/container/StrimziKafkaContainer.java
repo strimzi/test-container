@@ -179,7 +179,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         kafkaConfiguration.put("listeners", kafkaListeners.toString());
         kafkaConfiguration.put("advertised.listeners", advertisedListeners.toString());
         kafkaConfiguration.put("listener.security.protocol.map", kafkaListenerSecurityProtocol.toString());
-        kafkaConfiguration.put("inter.broker.listener.name", "PLAINTEXT");
+        kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
         kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
 
         if (useKraft) {
