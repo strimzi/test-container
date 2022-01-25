@@ -48,7 +48,6 @@ public class StrimziKafkaKraftContainerIT {
 
         try {
             systemUnderTest = new StrimziKafkaContainer()
-                .withKafkaVersion("2.8.1")
                 .withBrokerId(1)
                 .withKraft()
                 .waitForRunning();
@@ -80,7 +79,6 @@ public class StrimziKafkaKraftContainerIT {
             kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
             systemUnderTest = new StrimziKafkaContainer()
-                .withKafkaVersion("2.8.1")
                 .withBrokerId(1)
                 .withKraft()
                 .withKafkaConfigurationMap(kafkaConfiguration)
