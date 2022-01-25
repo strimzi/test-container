@@ -60,11 +60,18 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
         c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
 
-
+    /**
+     * Image name is specified lazily automatically in {@link #doStart()} method
+     */
     public StrimziKafkaContainer() {
         this(new CompletableFuture<>());
     }
 
+    /**
+     * Image name is specified by {@code dockerImageName}
+     *
+     * @param dockerImageName specific docker image name provided by constructor parameter
+     */
     public StrimziKafkaContainer(String dockerImageName) {
         this(CompletableFuture.completedFuture(dockerImageName));
     }
@@ -111,6 +118,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
+    @SuppressWarnings("JavaNCSS")
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -160,6 +168,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaListenerSecurityProtocol.append(",").append(bsListenerName).append(":").append(bsListenerName);
         }
 
+        if (useKraft) {
+            // adding Controller listener for Kraft mode
+            kafkaListeners.append(",").append("CONTROLLER").append("://").append(getContainerIpAddress()).append(":").append("9094");
+            kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
+        }
+
         Map<String, String> kafkaConfiguration = new HashMap<>();
 
         kafkaConfiguration.put("listeners", kafkaListeners.toString());
@@ -169,7 +183,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
 
         if (useKraft) {
-            kafkaConfiguration.put("controller.listener.names", "BROKER1");
+            // explicitly say, which listener will be controller (in this case CONTROLLER)
+            kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
+            kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
         } else {
             kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }

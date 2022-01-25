@@ -40,10 +40,18 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     // instance attributes
     private String kafkaVersion;
 
+    /**
+     * Image name is specified lazily automatically in {@link #doStart()} method
+     */
     public StrimziZookeeperContainer() {
         this(new CompletableFuture<>());
     }
 
+    /**
+     * Image name is specified by {@code dockerImageName}
+     *
+     * @param dockerImageName specific docker image name provided by constructor parameter
+     */
     public StrimziZookeeperContainer(String dockerImageName) {
         this(CompletableFuture.completedFuture(dockerImageName));
     }
