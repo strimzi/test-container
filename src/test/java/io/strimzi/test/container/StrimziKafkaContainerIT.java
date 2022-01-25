@@ -4,10 +4,11 @@
  */
 package io.strimzi.test.container;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.hamcrest.CoreMatchers;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.utility.MountableFile;
 
@@ -20,20 +21,17 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class StrimziKafkaContainerIT {
+public class StrimziKafkaContainerIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
 
     private StrimziKafkaContainer systemUnderTest;
 
-    private void assumeDocker() {
-        Assumptions.assumeTrue(System.getenv("DOCKER_CMD") == null || "docker".equals(System.getenv("DOCKER_CMD")));
-    }
-
-    @Test
-    void testStartContainerWithEmptyConfiguration() {
+    @ParameterizedTest(name = "testStartContainerWithEmptyConfiguration-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithEmptyConfiguration(final String imageName) {
         assumeDocker();
-        systemUnderTest = new StrimziKafkaContainer()
+        systemUnderTest = new StrimziKafkaContainer(imageName)
             .withBrokerId(1)
             .waitForRunning();
         systemUnderTest.start();
@@ -44,8 +42,9 @@ public class StrimziKafkaContainerIT {
         systemUnderTest.stop();
     }
 
-    @Test
-    void testStartContainerWithSomeConfiguration() {
+    @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithSomeConfiguration(final String imageName) {
         assumeDocker();
 
         Map<String, String> kafkaConfiguration = new HashMap<>();
@@ -55,7 +54,7 @@ public class StrimziKafkaContainerIT {
         kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
         kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-        systemUnderTest = new StrimziKafkaContainer()
+        systemUnderTest = new StrimziKafkaContainer(imageName)
             .withBrokerId(1)
             .withKafkaConfigurationMap(kafkaConfiguration)
             .waitForRunning();
@@ -72,11 +71,12 @@ public class StrimziKafkaContainerIT {
         systemUnderTest.stop();
     }
 
-    @Test
-    void testStartContainerWithFixedExposedPort() {
+    @ParameterizedTest(name = "testStartContainerWithFixedExposedPort-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithFixedExposedPort(final String imageName) {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer()
+        systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withPort(9092)
                 .waitForRunning();
 
@@ -87,11 +87,12 @@ public class StrimziKafkaContainerIT {
         systemUnderTest.stop();
     }
 
-    @Test
-    void testStartContainerWithSSLBootstrapServers() {
+    @ParameterizedTest(name = "testStartContainerWithSSLBootstrapServers-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithSSLBootstrapServers(final String imageName) {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer()
+        systemUnderTest = new StrimziKafkaContainer(imageName)
                 .waitForRunning()
                 .withBootstrapServers(c -> String.format("SSL://%s:%s", c.getHost(), c.getMappedPort(9092)));
         systemUnderTest.start();
@@ -102,11 +103,12 @@ public class StrimziKafkaContainerIT {
         systemUnderTest.stop();
     }
 
-    @Test
-    void testStartContainerWithServerProperties() {
+    @ParameterizedTest(name = "testStartContainerWithServerProperties-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithServerProperties(final String imageName) {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer()
+        systemUnderTest = new StrimziKafkaContainer(imageName)
                 .waitForRunning()
                 .withServerProperties(MountableFile.forClasspathResource("server.properties"));
 
