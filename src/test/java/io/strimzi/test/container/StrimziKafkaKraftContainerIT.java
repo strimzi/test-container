@@ -4,6 +4,9 @@
  */
 package io.strimzi.test.container;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -13,13 +16,17 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -36,11 +43,12 @@ public class StrimziKafkaKraftContainerIT {
     }
 
     @Test
-    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException {
+    void testStartContainerWithEmptyConfiguration() throws ExecutionException, InterruptedException, TimeoutException {
         assumeDocker();
 
         try {
             systemUnderTest = new StrimziKafkaContainer()
+                .withKafkaVersion("2.8.1")
                 .withBrokerId(1)
                 .withKraft()
                 .waitForRunning();
@@ -60,7 +68,7 @@ public class StrimziKafkaKraftContainerIT {
     }
 
     @Test
-    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException {
+    void testStartContainerWithSomeConfiguration() throws ExecutionException, InterruptedException, TimeoutException {
         assumeDocker();
 
         try {
@@ -72,6 +80,7 @@ public class StrimziKafkaKraftContainerIT {
             kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
             systemUnderTest = new StrimziKafkaContainer()
+                .withKafkaVersion("2.8.1")
                 .withBrokerId(1)
                 .withKraft()
                 .withKafkaConfigurationMap(kafkaConfiguration)
@@ -93,7 +102,9 @@ public class StrimziKafkaKraftContainerIT {
         }
     }
 
-    private void verify() throws InterruptedException, ExecutionException {
+    private void verify() throws InterruptedException, ExecutionException, TimeoutException {
+        final String topicName = "topic";
+
         Properties producerProperties = new Properties();
         producerProperties.put("bootstrap.servers", systemUnderTest.getBootstrapServers());
 
@@ -102,13 +113,17 @@ public class StrimziKafkaKraftContainerIT {
         consumerProperties.put("group.id", "my-group");
         consumerProperties.put("auto.offset.reset", "earliest");
 
-        // using try-with-resources for KafkaProducer and KafkaConsumer (implicit closing connection)
+        // using try-with-resources for KafkaProducer, KafkaConsumer and AdminClient (implicit closing connection)
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties, new StringSerializer(), new StringSerializer());
-             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties, new StringDeserializer(), new StringDeserializer())) {
-            producer.send(new ProducerRecord<>("topic", "some-key", "1")).get();
-            producer.send(new ProducerRecord<>("topic", "some-key", "2")).get();
-            producer.send(new ProducerRecord<>("topic", "some-key", "3")).get();
-            TopicPartition topic = new TopicPartition("topic", 0);
+             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties, new StringDeserializer(), new StringDeserializer());
+             final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()))) {
+            final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, 1, (short) 1));
+            adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
+            producer.send(new ProducerRecord<>(topicName, "some-key", "1")).get();
+            producer.send(new ProducerRecord<>(topicName, "some-key", "2")).get();
+            producer.send(new ProducerRecord<>(topicName, "some-key", "3")).get();
+            TopicPartition topic = new TopicPartition(topicName, 0);
             consumer.assign(Collections.singleton(topic));
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
             assertThat(records.count(), equalTo(3));
