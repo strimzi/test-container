@@ -102,6 +102,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
         } catch (InterruptedException | ExecutionException e) {
             LOGGER.error("Error occurred during retrieving of image name provider", e);
+            throw new RuntimeException(e);
         }
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
