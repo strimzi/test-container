@@ -42,7 +42,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithEmptyConfiguration(final String imageName) throws ExecutionException, InterruptedException, TimeoutException {
         assumeDocker();
-        assumeKafkaThirdVersionAndMore(imageName);
+        supportsKraftMode(imageName);
 
         try {
             systemUnderTest = new StrimziKafkaContainer(imageName)
@@ -68,7 +68,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithSomeConfiguration(final String imageName) throws ExecutionException, InterruptedException, TimeoutException {
         assumeDocker();
-        assumeKafkaThirdVersionAndMore(imageName);
+        supportsKraftMode(imageName);
 
         try {
             Map<String, String> kafkaConfiguration = new HashMap<>();

@@ -168,7 +168,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaListenerSecurityProtocol.append(",").append(bsListenerName).append(":").append(bsListenerName);
         }
 
-        if (useKraft) {
+        if (this.useKraft) {
             // adding Controller listener for Kraft mode
             kafkaListeners.append(",").append("CONTROLLER").append("://").append(getContainerIpAddress()).append(":").append("9094");
             kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
@@ -182,7 +182,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
         kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
 
-        if (useKraft) {
+        if (this.useKraft) {
             // explicitly say, which listener will be controller (in this case CONTROLLER)
             kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
             kafkaConfiguration.put("controller.listener.names", "CONTROLLER");

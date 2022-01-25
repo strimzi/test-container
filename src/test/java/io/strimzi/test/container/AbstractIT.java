@@ -43,7 +43,7 @@ public class AbstractIT {
         Assumptions.assumeTrue(System.getenv("DOCKER_CMD") == null || "docker".equals(System.getenv("DOCKER_CMD")));
     }
 
-    protected void assumeKafkaThirdVersionAndMore(final String imageName) {
+    protected void supportsKraftMode(final String imageName) {
         Assumptions.assumeTrue(!imageName.contains("-kafka-2."));
     }
 }
