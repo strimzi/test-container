@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 /**
@@ -92,8 +93,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
-        if (!imageNameProvider.isDone()) {
-            imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
+        if (!this.imageNameProvider.isDone()) {
+            this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
+        }
+        try {
+            if (this.useKraft && ((this.kafkaVersion != null && this.kafkaVersion.equals("2.8.1")) || this.imageNameProvider.get().contains("2.8.1"))) {
+                throw new UnsupportedKraftKafkaVersionException("Specified Kafka version " + this.kafkaVersion + " is not supported in KRaft mode.");
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            LOGGER.error("Error occurred during retrieving of image name provider", e);
+            throw new RuntimeException(e);
         }
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);

@@ -14,6 +14,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -32,6 +33,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SuppressWarnings("ClassDataAbstractionCoupling")
 public class StrimziKafkaKraftContainerIT extends AbstractIT {
@@ -100,6 +102,31 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
         }
     }
 
+    @Test
+    void testUnsupportedKRaftUsingKafkaVersion() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+            .withKafkaVersion("2.8.1")
+            .withBrokerId(1)
+            .withKraft()
+            .waitForRunning();
+
+        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+    }
+
+    @Test
+    void testUnsupportedKRaftUsingImageName() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.1")
+            .withBrokerId(1)
+            .withKraft()
+            .waitForRunning();
+
+        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+    }
+
     private void verify() throws InterruptedException, ExecutionException, TimeoutException {
         final String topicName = "topic";
 
@@ -129,6 +156,5 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
             assertThat(records.records(topic).get(1).value(), equalTo("2"));
             assertThat(records.records(topic).get(2).value(), equalTo("3"));
         }
-
     }
 }
