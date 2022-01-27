@@ -179,7 +179,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.useKraft) {
             // adding Controller listener for Kraft mode
-            kafkaListeners.append(",").append("CONTROLLER").append("://").append(getContainerIpAddress()).append(":").append("9094");
+            kafkaListeners.append(",").append("CONTROLLER://localhost:9094");
             kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
         }
 
