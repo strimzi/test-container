@@ -115,4 +115,12 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         return this;
     }
 
+    /**
+     * Provides host and mapped port, by which it connects to the ZooKeeper instance
+     *
+     * @return zookeeper connect string `host:port`
+     */
+    public String getConnectString() {
+        return this.getHost() + ":" + this.getFirstMappedPort();
+    }
 }
