@@ -67,7 +67,7 @@ public class StrimziKafkaCluster implements Startable {
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.replication.factor", String.valueOf(internalTopicReplicationFactor));
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.min.isr", String.valueOf(internalTopicReplicationFactor));
 
-        additionalKafkaConfiguration.putAll(defaultKafkaConfigurationForMultiNode);
+        defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
 
         // multi-node set up
         this.brokers = IntStream
@@ -77,7 +77,7 @@ public class StrimziKafkaCluster implements Startable {
                 // adding broker id for each kafka container
                 StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
                     .withBrokerId(brokerId)
-                    .withKafkaConfigurationMap(additionalKafkaConfiguration)
+                    .withKafkaConfigurationMap(defaultKafkaConfigurationForMultiNode)
                     .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
                     .withNetwork(this.network)
                     .withNetworkAliases("broker-" + brokerId)
