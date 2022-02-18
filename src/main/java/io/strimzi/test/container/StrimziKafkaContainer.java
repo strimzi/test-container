@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
@@ -215,7 +214,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
-            command += "bin/kafka-storage.sh format -t " + randomUuid() + " -c config/kraft/server.properties \n";
+            command += "bin/kafka-storage.sh format -t \"" + Uuid.randomUuid() + "\" -c config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
@@ -225,16 +224,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
             STARTER_SCRIPT
         );
-    }
-
-    /**
-     * Static factory method to get a type 4 (pseudo randomly generated) UUID.
-     * @return random Uuid
-     */
-    public static Uuid randomUuid() {
-        UUID uuid = UUID.randomUUID();
-
-        return new Uuid(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
     }
 
     private String extractListenerName(String bootstrapServers) {
