@@ -67,7 +67,9 @@ public class StrimziKafkaCluster implements Startable {
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.replication.factor", String.valueOf(internalTopicReplicationFactor));
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.min.isr", String.valueOf(internalTopicReplicationFactor));
 
-        defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
+        if (additionalKafkaConfiguration != null) {
+            defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
+        }
 
         // multi-node set up
         this.brokers = IntStream
@@ -88,6 +90,15 @@ public class StrimziKafkaCluster implements Startable {
                 return kafkaContainer;
             })
             .collect(Collectors.toList());
+    }
+
+    /**
+     * Constructor of StrimziKafkaCluster without specifying additional configuration
+     *
+     * @param brokersNum number of brokers to be deployed
+     */
+    public StrimziKafkaCluster(final int brokersNum) {
+        this(brokersNum, brokersNum, null);
     }
 
     /**

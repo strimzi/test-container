@@ -29,9 +29,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -126,14 +124,9 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     @BeforeEach
     void setUp() {
         numberOfBrokers = 3;
-        numberOfReplicas = 2;
-        final Map<String, String> kafkaClusterConfiguration = new HashMap<>();
-        kafkaClusterConfiguration.put("zookeeper.connect", "zookeeper:2181");
+        numberOfReplicas = numberOfBrokers;
 
-        systemUnderTest = new StrimziKafkaCluster(
-            numberOfBrokers,
-            numberOfReplicas,
-            kafkaClusterConfiguration);
+        systemUnderTest = new StrimziKafkaCluster(numberOfBrokers);
         systemUnderTest.start();
     }
 
