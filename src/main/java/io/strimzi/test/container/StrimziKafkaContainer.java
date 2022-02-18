@@ -84,17 +84,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private StrimziKafkaContainer(CompletableFuture<String> imageName) {
         super(imageName);
         this.imageNameProvider = imageName;
-        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
-        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
-        super.setNetwork(Network.SHARED);
-        // exposing Kafka and internal ZooKeeper port from the container
-        if (!this.useKraft && this.externalZookeeperConnect == null) {
-            super.setExposedPorts(Arrays.asList(KAFKA_PORT, StrimziZookeeperContainer.ZOOKEEPER_PORT));
-        } else {
-            // exposing Kafka and port from the container
-            super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
-        }
-        super.addEnv("LOG_DIR", "/tmp");
     }
 
     @Override
@@ -110,6 +99,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             LOGGER.error("Error occurred during retrieving of image name provider", e);
             throw new RuntimeException(e);
         }
+        // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
+        if (!this.useKraft || this.externalZookeeperConnect == null) {
+            super.setExposedPorts(Arrays.asList(KAFKA_PORT, StrimziZookeeperContainer.ZOOKEEPER_PORT));
+        } else {
+            // exposing Kafka and port from the container
+            super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
+        }
+        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
+        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
+        super.setNetwork(Network.SHARED);
+        super.addEnv("LOG_DIR", "/tmp");
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -124,7 +124,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer waitForRunning() {
-        if (useKraft) {
+        if (this.useKraft) {
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         } else {
             super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use broker.*", 1));
@@ -139,7 +139,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
 
-        if (!this.useKraft && this.externalZookeeperConnect == null) {
+        // retrieve internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
+        if (!this.useKraft || this.externalZookeeperConnect == null) {
             this.internalZookeeperExposedPort = getMappedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
