@@ -129,7 +129,7 @@ public class StrimziKafkaCluster implements Startable {
             e.printStackTrace();
         }
 
-        Utils.waitFor("Broker node", Duration.ofSeconds(1).toMillis(), Duration.ofSeconds(30).toMillis(),
+        Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(5).toMillis(), Duration.ofMinutes(1).toMillis(),
             () -> {
                 Container.ExecResult result;
                 try {
@@ -139,7 +139,7 @@ public class StrimziKafkaCluster implements Startable {
                     );
                     String brokers = result.getStdout();
 
-                    LOGGER.info("Stdout from zookeeper container....{}", result.getStdout());
+                    LOGGER.info("Running Kafka brokers: {}", result.getStdout());
 
                     return brokers != null && brokers.split(",").length == this.brokersNum;
                 } catch (IOException | InterruptedException e) {

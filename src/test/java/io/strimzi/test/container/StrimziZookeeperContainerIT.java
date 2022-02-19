@@ -68,14 +68,18 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
     void testStartContainerWithZooKeeperProperties(final String imageName) {
         assumeDocker();
 
-        systemUnderTest = new StrimziZookeeperContainer(imageName)
-            .withZooKeeperPropertiesFile(MountableFile.forClasspathResource("zookeeper.properties"));
+        try {
+            systemUnderTest = new StrimziZookeeperContainer(imageName)
+                .withZooKeeperPropertiesFile(MountableFile.forClasspathResource("zookeeper.properties"));
+            systemUnderTest.start();
 
-        systemUnderTest.start();
+            String logsFromZooKeeper = systemUnderTest.getLogs();
 
-        String logsFromZooKeeper = systemUnderTest.getLogs();
+            assertThat(logsFromZooKeeper, CoreMatchers.containsString("Reading configuration from: config/zookeeper.properties"));
+            assertThat(logsFromZooKeeper, CoreMatchers.containsString("clientPortAddress is 0.0.0.0:2181"));
 
-        assertThat(logsFromZooKeeper, CoreMatchers.containsString("Reading configuration from: config/zookeeper.properties"));
-        assertThat(logsFromZooKeeper, CoreMatchers.containsString("clientPortAddress is 0.0.0.0:2181"));
+        } finally {
+            systemUnderTest.stop();
+        }
     }
 }

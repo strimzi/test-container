@@ -175,11 +175,15 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     void testUnsupportedKafkaVersion() {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer()
-            .withKafkaVersion("2.4.0")
-            .waitForRunning();
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .withKafkaVersion("2.4.0")
+                .waitForRunning();
 
-        assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
+            assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
+        } finally {
+            systemUnderTest.stop();
+        }
     }
 
     @ParameterizedTest(name = "testKafkaContainerConnectFromOutsideToInternalZooKeeper-{0}")
