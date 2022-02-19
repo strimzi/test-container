@@ -213,9 +213,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
             kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
         } else if (this.hasExternalZooKeeperEnabled.test(this)) {
+            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
             kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
         } else {
             // using internal ZooKeeper
+            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
             kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
