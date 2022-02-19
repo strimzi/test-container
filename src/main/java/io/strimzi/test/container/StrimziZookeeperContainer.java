@@ -133,6 +133,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      * @return zookeeper connect string `host:port`
      */
     public String getConnectString() {
-        return this.getHost() + ":" + this.getFirstMappedPort();
+        return this.getHost() + ":" + this.getMappedPort(ZOOKEEPER_PORT);
     }
 }

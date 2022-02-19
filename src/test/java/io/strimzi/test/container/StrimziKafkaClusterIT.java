@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.hamcrest.CoreMatchers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -59,7 +60,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         final String brokers = result.getStdout();
         // verify that all kafka brokers are bind to zookeeper
         assertThat(brokers, notNullValue());
-        assertThat(brokers.split(",").length, is(numberOfBrokers));
+        // three brokers
+        assertThat(brokers, CoreMatchers.containsString("[0, 1, 2]"));
 
         LOGGER.info("Brokers are {}", systemUnderTest.getBootstrapServers());
     }
