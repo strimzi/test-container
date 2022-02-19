@@ -46,7 +46,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
 
     private StrimziKafkaCluster systemUnderTest;
-    private int numberOfBrokers;
     private int numberOfReplicas;
 
     @Test
@@ -61,7 +60,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         // verify that all kafka brokers are bind to zookeeper
         assertThat(brokers, notNullValue());
         // three brokers
-        assertThat(brokers, CoreMatchers.containsString("[0, 1, 2]"));
+        assertThat(brokers, CoreMatchers.containsString("[0, 1]"));
 
         LOGGER.info("Brokers are {}", systemUnderTest.getBootstrapServers());
     }
@@ -125,7 +124,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
     @BeforeEach
     void setUp() {
-        numberOfBrokers = 3;
+        final int numberOfBrokers = 2;
         numberOfReplicas = numberOfBrokers;
 
         systemUnderTest = new StrimziKafkaCluster(numberOfBrokers);
