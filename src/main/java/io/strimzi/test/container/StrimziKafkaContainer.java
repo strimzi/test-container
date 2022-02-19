@@ -215,6 +215,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         } else if (this.hasExternalZooKeeperEnabled.test(this)) {
             kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
         } else {
+            // using internal ZooKeeper
             kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 

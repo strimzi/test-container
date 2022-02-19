@@ -98,7 +98,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(1).toMillis(),
+            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(2).toMillis(),
                 () -> {
                     ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
@@ -109,7 +109,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                     // verify count
                     assertThat(records.count(), is(1));
 
-                    ConsumerRecord consumerRecord = records.records(topicName).iterator().next();
+                    ConsumerRecord<String, String> consumerRecord = records.records(topicName).iterator().next();
 
                     // verify content of the record
                     assertThat(consumerRecord.topic(), is(topicName));

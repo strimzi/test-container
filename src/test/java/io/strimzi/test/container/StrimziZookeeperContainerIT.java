@@ -11,9 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.utility.MountableFile;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,12 +45,8 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
             systemUnderTest = new StrimziZookeeperContainer(imageName);
             systemUnderTest.start();
 
-            Map<String, String> config = new HashMap<>();
-            config.put("zookeeper.connect", "zookeeper:2181");
-
             kafkaContainer = new StrimziKafkaContainer()
                 .withBrokerId(1)
-                .withKafkaConfigurationMap(config)
                 .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
 
             kafkaContainer.start();
