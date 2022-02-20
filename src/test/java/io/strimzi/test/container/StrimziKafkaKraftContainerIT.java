@@ -106,25 +106,35 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     void testUnsupportedKRaftUsingKafkaVersion() {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer()
-            .withKafkaVersion("2.8.1")
-            .withBrokerId(1)
-            .withKraft()
-            .waitForRunning();
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .withKafkaVersion("2.8.1")
+                .withBrokerId(1)
+                .withKraft()
+                .waitForRunning();
 
-        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+            assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+        } finally {
+            systemUnderTest.stop();
+        }
+
     }
 
     @Test
     void testUnsupportedKRaftUsingImageName() {
         assumeDocker();
 
-        systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.1")
-            .withBrokerId(1)
-            .withKraft()
-            .waitForRunning();
+        try {
+            systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.1")
+                .withBrokerId(1)
+                .withKraft()
+                .waitForRunning();
 
-        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+            assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+        } finally {
+            systemUnderTest.stop();
+
+        }
     }
 
     private void verify() throws InterruptedException, ExecutionException, TimeoutException {

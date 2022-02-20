@@ -4,13 +4,12 @@
  */
 package io.strimzi.test.container;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.testcontainers.utility.MountableFile;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -46,12 +45,8 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
             systemUnderTest = new StrimziZookeeperContainer(imageName);
             systemUnderTest.start();
 
-            Map<String, String> config = new HashMap<>();
-            config.put("zookeeper.connect", "zookeeper:2181");
-
             kafkaContainer = new StrimziKafkaContainer()
                 .withBrokerId(1)
-                .withKafkaConfigurationMap(config)
                 .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
 
             kafkaContainer.start();
@@ -64,6 +59,26 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
             assertThat(kafkaLogs, containsString("Session establishment complete on server zookeeper"));
         } finally {
             kafkaContainer.stop();
+            systemUnderTest.stop();
+        }
+    }
+
+    @ParameterizedTest(name = "testStartContainerWithZooKeeperProperties-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartContainerWithZooKeeperProperties(final String imageName) {
+        assumeDocker();
+
+        try {
+            systemUnderTest = new StrimziZookeeperContainer(imageName)
+                .withZooKeeperPropertiesFile(MountableFile.forClasspathResource("zookeeper.properties"));
+            systemUnderTest.start();
+
+            String logsFromZooKeeper = systemUnderTest.getLogs();
+
+            assertThat(logsFromZooKeeper, CoreMatchers.containsString("Reading configuration from: config/zookeeper.properties"));
+            assertThat(logsFromZooKeeper, CoreMatchers.containsString("clientPortAddress is 0.0.0.0:2181"));
+
+        } finally {
             systemUnderTest.stop();
         }
     }

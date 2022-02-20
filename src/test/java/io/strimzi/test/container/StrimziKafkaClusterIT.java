@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.hamcrest.CoreMatchers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -29,9 +30,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +46,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
 
     private StrimziKafkaCluster systemUnderTest;
-    private int numberOfBrokers;
     private int numberOfReplicas;
 
     @Test
@@ -61,7 +59,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         final String brokers = result.getStdout();
         // verify that all kafka brokers are bind to zookeeper
         assertThat(brokers, notNullValue());
-        assertThat(brokers.split(",").length, is(numberOfBrokers));
+        // three brokers
+        assertThat(brokers, CoreMatchers.containsString("[0, 1, 2]"));
 
         LOGGER.info("Brokers are {}", systemUnderTest.getBootstrapServers());
     }
@@ -100,7 +99,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(1).toMillis(),
+            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(2).toMillis(),
                 () -> {
                     ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
@@ -111,7 +110,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                     // verify count
                     assertThat(records.count(), is(1));
 
-                    ConsumerRecord consumerRecord = records.records(topicName).iterator().next();
+                    ConsumerRecord<String, String> consumerRecord = records.records(topicName).iterator().next();
 
                     // verify content of the record
                     assertThat(consumerRecord.topic(), is(topicName));
@@ -125,15 +124,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
     @BeforeEach
     void setUp() {
-        numberOfBrokers = 3;
-        numberOfReplicas = 2;
-        final Map<String, String> kafkaClusterConfiguration = new HashMap<>();
-        kafkaClusterConfiguration.put("zookeeper.connect", "zookeeper:2181");
+        final int numberOfBrokers = 3;
+        numberOfReplicas = numberOfBrokers;
 
-        systemUnderTest = new StrimziKafkaCluster(
-            numberOfBrokers,
-            numberOfReplicas,
-            kafkaClusterConfiguration);
+        systemUnderTest = new StrimziKafkaCluster(numberOfBrokers);
         systemUnderTest.start();
     }
 

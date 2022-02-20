@@ -18,6 +18,7 @@ import org.testcontainers.utility.MountableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,6 +53,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     // instance attributes
     private int kafkaExposedPort;
+    private int internalZookeeperExposedPort;
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
@@ -82,12 +84,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private StrimziKafkaContainer(CompletableFuture<String> imageName) {
         super(imageName);
         this.imageNameProvider = imageName;
-        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
-        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
-        super.setNetwork(Network.SHARED);
-        // exposing kafka port from the container
-        super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
-        super.addEnv("LOG_DIR", "/tmp");
     }
 
     @Override
@@ -103,6 +99,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             LOGGER.error("Error occurred during retrieving of image name provider", e);
             throw new RuntimeException(e);
         }
+        // exposing Kafka and port from the container
+        if (this.hasKraftOrExternalZooKeeperConfigured()) {
+            super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
+        } else {
+            // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
+            super.setExposedPorts(Arrays.asList(KAFKA_PORT, StrimziZookeeperContainer.ZOOKEEPER_PORT));
+        }
+        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
+        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
+        super.setNetwork(Network.SHARED);
+        super.addEnv("LOG_DIR", "/tmp");
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
         super.doStart();
@@ -117,7 +124,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer waitForRunning() {
-        if (useKraft) {
+        if (this.useKraft) {
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         } else {
             super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use broker.*", 1));
@@ -126,11 +133,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
-    @SuppressWarnings("JavaNCSS")
+    @SuppressWarnings({"JavaNCSS", "NPathComplexity"})
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
         this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
+
+        // retrieve internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
+        if (!this.hasKraftOrExternalZooKeeperConfigured()) {
+            this.internalZookeeperExposedPort = getMappedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
+        }
 
         LOGGER.info("Mapped port: {}", kafkaExposedPort);
 
@@ -194,7 +206,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // explicitly say, which listener will be controller (in this case CONTROLLER)
             kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
             kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
+        } else if (this.externalZookeeperConnect != null) {
+            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
+            kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
         } else {
+            // using internal ZooKeeper
+            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
             kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
@@ -226,6 +243,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         );
     }
 
+    private boolean hasKraftOrExternalZooKeeperConfigured() {
+        return this.useKraft || this.externalZookeeperConnect != null;
+    }
+
     private String extractListenerName(String bootstrapServers) {
         // extract listener name from given bootstrap servers
         String[] strings = bootstrapServers.split(":");
@@ -245,6 +266,18 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                         .append("=")
                         .append(configValue));
         return kafkaConfiguration.toString();
+    }
+
+    /**
+     * Get internal ZooKeeper connect string, which is running in the same container as Kafka
+     *
+     * @return ZooKeeper connect string
+     */
+    public String getInternalZooKeeperConnect() {
+        if (this.hasKraftOrExternalZooKeeperConfigured()) {
+            throw new IllegalStateException("Cannot retrieve internal ZooKeeper in case you are Using KRaft or external ZooKeeper");
+        }
+        return getContainerIpAddress() + ":" + this.internalZookeeperExposedPort;
     }
 
     /**
@@ -275,7 +308,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withExternalZookeeperConnect(final String externalZookeeperConnect) {
-        if (useKraft) {
+        if (this.useKraft) {
             throw new IllegalStateException("Cannot configure an external Zookeeper and use Kraft at the same time");
         }
         this.externalZookeeperConnect = externalZookeeperConnect;
@@ -339,7 +372,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withServerProperties(final MountableFile serverPropertiesFile) {
         withCopyFileToContainer(serverPropertiesFile,
-                useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties");
+                this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties");
         return self();
     }
 

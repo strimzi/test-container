@@ -10,8 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.Container;
 import org.testcontainers.utility.MountableFile;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,6 +26,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class StrimziKafkaContainerIT extends AbstractIT {
 
@@ -168,10 +175,94 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     void testUnsupportedKafkaVersion() {
         assumeDocker();
 
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .withKafkaVersion("2.4.0")
+                .waitForRunning();
+
+            assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
+        } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @ParameterizedTest(name = "testKafkaContainerConnectFromOutsideToInternalZooKeeper-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testKafkaContainerConnectFromOutsideToInternalZooKeeper() {
+        assumeDocker();
+
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .waitForRunning();
+            systemUnderTest.start();
+
+            // Creates a socket address from a hostname and a port number
+            final String[] hostNameWithPort = systemUnderTest.getInternalZooKeeperConnect().split(":");
+
+            SocketAddress socketAddress = new InetSocketAddress(hostNameWithPort[0], Integer.parseInt(hostNameWithPort[1]));
+
+            try (Socket socket = new Socket()) {
+                LOGGER.info("Hostname: {}, and port: {}", hostNameWithPort[0], hostNameWithPort[1]);
+                socket.connect(socketAddress, 5000);
+            } catch (SocketTimeoutException exception) {
+                LOGGER.error("SocketTimeoutException " + hostNameWithPort[0] + ":" + hostNameWithPort[1] + ". " + exception.getMessage());
+                fail();
+            } catch (IOException exception) {
+                LOGGER.error(
+                    "IOException - Unable to connect to " + hostNameWithPort[0] + ":" + hostNameWithPort[1] + ". " + exception.getMessage());
+                fail();
+            }
+        } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @ParameterizedTest(name = "testKafkaContainerInternalCommunicationWithInternalZooKeeper-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testKafkaContainerInternalCommunicationWithInternalZooKeeper() throws IOException, InterruptedException {
+        assumeDocker();
+
+        try {
+            systemUnderTest = new StrimziKafkaContainer()
+                .waitForRunning();
+            systemUnderTest.start();
+
+            final Container.ExecResult result = this.systemUnderTest.execInContainer(
+                "sh", "-c",
+                "bin/zookeeper-shell.sh localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+            );
+
+            final String brokers = result.getStdout();
+
+            assertThat(result.getExitCode(), is(0)); // 0 -> success
+            assertThat(brokers, CoreMatchers.containsString("[0]"));
+        } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @ParameterizedTest(name = "testIllegalStateUsingInternalZooKeeperWithKraft-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testIllegalStateUsingInternalZooKeeperWithKraft() {
+        assumeDocker();
+
         systemUnderTest = new StrimziKafkaContainer()
-            .withKafkaVersion("2.4.0")
+            .withKraft()
             .waitForRunning();
 
-        assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
+        assertThrows(IllegalStateException.class, () -> systemUnderTest.getInternalZooKeeperConnect());
+    }
+
+    @ParameterizedTest(name = "testIllegalStateUsingInternalZooKeeperWithExternalZooKeeper-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testIllegalStateUsingInternalZooKeeperWithExternalZooKeeper() {
+        assumeDocker();
+
+        systemUnderTest = new StrimziKafkaContainer()
+            // we do not need to spin-up instance of StrimziZooKeeperContainer
+            .withExternalZookeeperConnect("zookeeper:2181")
+            .waitForRunning();
+
+        assertThrows(IllegalStateException.class, () -> systemUnderTest.getInternalZooKeeperConnect());
     }
 }
