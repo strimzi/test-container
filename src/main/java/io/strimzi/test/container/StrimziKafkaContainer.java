@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -62,11 +61,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
         c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
-
-    // predicates
-    private final Predicate<StrimziKafkaContainer> hasKraftEnabled = skc -> skc.useKraft;
-    private final Predicate<StrimziKafkaContainer> hasExternalZooKeeperEnabled = skc -> skc.externalZookeeperConnect != null;
-    private final Predicate<StrimziKafkaContainer> hasKraftOrExternalZooKeeperConfigured = skc -> skc.hasKraftEnabled.or(skc.hasExternalZooKeeperEnabled).test(skc);
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -106,7 +100,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             throw new RuntimeException(e);
         }
         // exposing Kafka and port from the container
-        if (this.hasKraftOrExternalZooKeeperConfigured.test(this)) {
+        if (this.hasKraftOrExternalZooKeeperConfigured()) {
             super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
         } else {
             // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
@@ -130,7 +124,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer waitForRunning() {
-        if (this.hasKraftEnabled.test(this)) {
+        if (this.useKraft) {
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         } else {
             super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use broker.*", 1));
@@ -146,7 +140,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
 
         // retrieve internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
-        if (this.hasKraftOrExternalZooKeeperConfigured.negate().test(this)) {
+        if (!this.hasKraftOrExternalZooKeeperConfigured()) {
             this.internalZookeeperExposedPort = getMappedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
@@ -212,7 +206,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // explicitly say, which listener will be controller (in this case CONTROLLER)
             kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
             kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
-        } else if (this.hasExternalZooKeeperEnabled.test(this)) {
+        } else if (this.externalZookeeperConnect != null) {
             LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
             kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
         } else {
@@ -249,6 +243,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         );
     }
 
+    private boolean hasKraftOrExternalZooKeeperConfigured() {
+        return this.useKraft || this.externalZookeeperConnect != null;
+    }
+
     private String extractListenerName(String bootstrapServers) {
         // extract listener name from given bootstrap servers
         String[] strings = bootstrapServers.split(":");
@@ -276,7 +274,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return ZooKeeper connect string
      */
     public String getInternalZooKeeperConnect() {
-        if (this.hasKraftOrExternalZooKeeperConfigured.test(this)) {
+        if (this.hasKraftOrExternalZooKeeperConfigured()) {
             throw new IllegalStateException("Cannot retrieve internal ZooKeeper in case you are Using KRaft or external ZooKeeper");
         }
         return getContainerIpAddress() + ":" + this.internalZookeeperExposedPort;
@@ -310,7 +308,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withExternalZookeeperConnect(final String externalZookeeperConnect) {
-        if (this.hasKraftEnabled.test(this)) {
+        if (this.useKraft) {
             throw new IllegalStateException("Cannot configure an external Zookeeper and use Kraft at the same time");
         }
         this.externalZookeeperConnect = externalZookeeperConnect;
@@ -374,7 +372,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withServerProperties(final MountableFile serverPropertiesFile) {
         withCopyFileToContainer(serverPropertiesFile,
-                this.hasKraftEnabled.test(this) ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties");
+                this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties");
         return self();
     }
 
