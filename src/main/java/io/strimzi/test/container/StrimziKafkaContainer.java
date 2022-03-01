@@ -39,7 +39,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainer.class);
-    private static final String STARTER_SCRIPT = "/testcontainers_start.sh";
+
+    /**
+     * The file containing the startup script.
+     */
+    public static final String STARTER_SCRIPT = "/testcontainers_start.sh";
 
     /**
      * Default Kafka port
@@ -59,8 +63,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private int brokerId;
     private String kafkaVersion;
     private boolean useKraft;
-    private Function<StrimziKafkaContainer, String> bootstrapServersProvider =
-        c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
+    private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -111,13 +114,23 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super.setNetwork(Network.SHARED);
         super.addEnv("LOG_DIR", "/tmp");
         // we need it for the startZookeeper(); and startKafka(); to run container before...
-        super.setCommand("sh", "-c", "while [ ! -f " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT);
+        super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
     }
 
     /**
-     * Fluent method, which sets a waiting strategy to wait until the broker is ready.
+     * Allows overriding the startup script command.
+     * The default is: <pre>{@code "while [ ! -x " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT}</pre>
      *
+     * @return the command
+     */
+    protected String runStarterScript() {
+        return "while [ ! -x " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT;
+    }
+
+    /**
+     * Fluent method, which sets a waiting strategy to wait until the broker is ready.
+     * <p>
      * This method waits for a log message in the broker log.
      * You can customize the strategy using {@link #waitingFor(WaitStrategy)}.
      *
@@ -172,14 +185,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         advertisedListenersNames.forEach(name -> {
             // listeners
             kafkaListeners
-                .append(name)
-                .append("://0.0.0.0:9093")
-                .append(",");
+                    .append(name)
+                    .append("://0.0.0.0:9093")
+                    .append(",");
             // listener.security.protocol.map
             kafkaListenerSecurityProtocol
-                .append(name)
-                .append(":PLAINTEXT")
-                .append(",");
+                    .append(name)
+                    .append(":PLAINTEXT")
+                    .append(",");
         });
 
         kafkaListeners.append(bsListenerName).append("://0.0.0.0:").append(KAFKA_PORT);
@@ -238,8 +251,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
         copyFileToContainer(
-            Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
-            STARTER_SCRIPT
+                Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
+                STARTER_SCRIPT
         );
     }
 
@@ -282,6 +295,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /**
      * Get bootstrap servers of @code{StrimziKafkaContainer} instance
+     *
      * @return bootstrap servers
      */
     public String getBootstrapServers() {
@@ -301,7 +315,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /**
      * Fluent method, which sets @code{externalZookeeperConnect}.
-     *
+     * <p>
      * If the broker was created using Kraft, this method throws an {@link IllegalArgumentException}.
      *
      * @param externalZookeeperConnect connect string
@@ -339,7 +353,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /**
      * Fluent method, which sets @code{useKraft}.
-     *
+     * <p>
      * Flag to signal if we deploy Kafka with ZooKeeper or not.
      *
      * @return StrimziKafkaContainer instance
