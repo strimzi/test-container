@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.Network;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
@@ -168,6 +169,25 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getDockerImageName(), is(imageName));
+        systemUnderTest.stop();
+    }
+
+    @Test
+    void testStartContainerWithCustomNetwork() {
+        assumeDocker();
+
+        Network network = Network.newNetwork();
+
+        systemUnderTest = new StrimziKafkaContainer()
+                .withNetwork(network)
+                .waitForRunning();
+
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
+                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+
+        assertThat(systemUnderTest.getNetwork().getId(), is(network.getId()));
         systemUnderTest.stop();
     }
 
