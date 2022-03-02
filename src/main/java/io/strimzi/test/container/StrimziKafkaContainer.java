@@ -18,7 +18,6 @@ import org.testcontainers.utility.MountableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -87,6 +86,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private StrimziKafkaContainer(CompletableFuture<String> imageName) {
         super(imageName);
         this.imageNameProvider = imageName;
+        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
+        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
+        super.setNetwork(Network.SHARED);
+        // exposing kafka port from the container
+        super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
+        super.addEnv("LOG_DIR", "/tmp");
     }
 
     @Override
@@ -103,16 +108,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             throw new RuntimeException(e);
         }
         // exposing Kafka and port from the container
-        if (this.hasKraftOrExternalZooKeeperConfigured()) {
-            super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
-        } else {
+        if (!this.hasKraftOrExternalZooKeeperConfigured()) {
             // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
-            super.setExposedPorts(Arrays.asList(KAFKA_PORT, StrimziZookeeperContainer.ZOOKEEPER_PORT));
+            super.addExposedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
-        // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
-        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
-        super.setNetwork(Network.SHARED);
-        super.addEnv("LOG_DIR", "/tmp");
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
