@@ -3,7 +3,7 @@
 
 # Test container repository
 
-The test container repository primarily relates to developing and maintaining test container code using `Kafka` image from the [strimzi/test-container-images](https://github.com/strimzi/test-container-images) repository. 
+The test container repository primarily relates to developing and maintaining test container code using an [Apache Kafka®](https://kafka.apache.org) image from the [strimzi/test-container-images](https://github.com/strimzi/test-container-images) repository. 
 The main dependency is the test container framework, which lets you control the lifecycle of the Docker container.
 
 ## Why use a Test container?
