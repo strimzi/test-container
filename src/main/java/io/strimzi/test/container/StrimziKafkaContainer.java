@@ -6,7 +6,6 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
-import org.apache.kafka.common.Uuid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -16,13 +15,16 @@ import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.MountableFile;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
@@ -243,7 +245,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
-            command += "bin/kafka-storage.sh format -t \"" + Uuid.randomUuid() + "\" -c config/kraft/server.properties \n";
+            command += "bin/kafka-storage.sh format -t \"" + this.randomUuid() + "\" -c config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
@@ -278,6 +280,25 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                         .append("=")
                         .append(configValue));
         return kafkaConfiguration.toString();
+    }
+
+    /**
+     * In order to avoid any compile dependency on kafka-clients' <code>Uuid</code> specific class,
+     * we implement our own uuid generator by replicating the Kafka's base64 encoded uuid generation logic.
+     */
+    private String randomUuid() {
+        final UUID metadataTopicIdInternal = new UUID(0L, 1L);
+        final UUID zeroIdImpactInternal = new UUID(0L, 0L);
+        UUID uuid;
+        for (uuid = UUID.randomUUID(); uuid.equals(metadataTopicIdInternal) || uuid.equals(zeroIdImpactInternal); uuid = UUID.randomUUID()) {
+        }
+
+        final ByteBuffer uuidBytes = ByteBuffer.wrap(new byte[16]);
+        uuidBytes.putLong(uuid.getMostSignificantBits());
+        uuidBytes.putLong(uuid.getLeastSignificantBits());
+        final byte[] uuidBytesArray = uuidBytes.array();
+
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
     }
 
     /**
