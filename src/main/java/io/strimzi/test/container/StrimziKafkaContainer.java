@@ -64,7 +64,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private int brokerId;
     private String kafkaVersion;
     private boolean useKraft;
-    private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getContainerIpAddress(), this.kafkaExposedPort);
+    private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -310,7 +310,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.hasKraftOrExternalZooKeeperConfigured()) {
             throw new IllegalStateException("Cannot retrieve internal ZooKeeper in case you are Using KRaft or external ZooKeeper");
         }
-        return getContainerIpAddress() + ":" + this.internalZookeeperExposedPort;
+        return getHost() + ":" + this.internalZookeeperExposedPort;
     }
 
     /**
