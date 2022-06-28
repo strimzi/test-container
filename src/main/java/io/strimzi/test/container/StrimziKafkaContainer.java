@@ -271,14 +271,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return strings[0];
     }
 
-    private String writeOverrideString(Map<String, String> kafkaConfigurationMap) {
+    static String writeOverrideString(Map<String, String> kafkaConfigurationMap) {
         StringBuilder kafkaConfiguration = new StringBuilder();
         kafkaConfigurationMap.forEach((configName, configValue) ->
                 kafkaConfiguration
                         .append(" --override ")
-                        .append(configName)
+                        .append('\'').append(configName.replace("'", "'\"'\"'"))
                         .append("=")
-                        .append(configValue));
+                        .append(configValue.replace("'", "'\"'\"'")).append('\''));
         return kafkaConfiguration.toString();
     }
 
