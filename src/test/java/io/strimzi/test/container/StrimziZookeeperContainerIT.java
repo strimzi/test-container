@@ -34,7 +34,9 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
             assertThat(zookeeperLogs, notNullValue());
             assertThat(zookeeperLogs, containsString("Created server"));
         } finally {
-            systemUnderTest.stop();
+            if (systemUnderTest != null) {
+                systemUnderTest.stop();
+            }
         }
     }
 
@@ -58,8 +60,12 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
             // kafka established connection to external zookeeper
             assertThat(kafkaLogs, containsString("Session establishment complete on server zookeeper"));
         } finally {
-            kafkaContainer.stop();
-            systemUnderTest.stop();
+            if (kafkaContainer != null) {
+                kafkaContainer.stop();
+            }
+            if (systemUnderTest != null) {
+                systemUnderTest.stop();
+            }
         }
     }
 
@@ -79,7 +85,9 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
             assertThat(logsFromZooKeeper, CoreMatchers.containsString("clientPortAddress is 0.0.0.0:2181"));
 
         } finally {
-            systemUnderTest.stop();
+            if (systemUnderTest != null) {
+                systemUnderTest.stop();
+            }
         }
     }
 }
