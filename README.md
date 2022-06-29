@@ -41,11 +41,11 @@ Using Strimzi test container takes two simple steps:
 Add the Strimzi test container to your project as dependency, for example with Maven:
 
 ```
-// in case of 0.26.0 version
+// in case of 0.102.0 version
 <dependency>
     <groupId>io.strimzi</groupId>
     <artifactId>strimzi-test-container</artifactId>
-    <version>0.26.0</version>
+    <version>0.102.0</version>
 </dependency>
 ```
 
@@ -195,3 +195,10 @@ strimziKafkaContainer.start();
    It takes a couple of seconds, but if you want to speed up your tests, you can disable the checks once you have everything configured.
    Disable start-up checks by setting an environment variable:
    - `TESTCONTAINERS_CHECKS_DISABLE` - TRUE
+
+3. To use `podman` instead of `docker` you'll need to enable the podman socket and export a couple of environment variables:
+    ```bash
+    systemctl --user enable podman.socket --now
+    export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
+    export TESTCONTAINERS_RYUK_DISABLED=true
+    ```
