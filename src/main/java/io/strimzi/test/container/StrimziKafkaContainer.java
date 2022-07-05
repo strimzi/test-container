@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
@@ -36,7 +37,7 @@ import java.util.function.Function;
  * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
  * integration testing but for more hardcore testing we suggest using @StrimziKafkaCluster.
  */
-public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> {
+public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> implements KafkaContainer {
 
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainer.class);
@@ -65,6 +66,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String kafkaVersion;
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
+
+    // proxy attributes
+    private ToxiproxyContainer proxyContainer;
+    private ToxiproxyContainer.ContainerProxy proxy;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -98,6 +103,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
+        if (proxyContainer != null && !proxyContainer.isRunning()) {
+            proxyContainer.start();
+        }
         if (!this.imageNameProvider.isDone()) {
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
@@ -117,6 +125,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
+    }
+
+    @Override
+    public void stop() {
+        if (proxyContainer != null && proxyContainer.isRunning()) {
+            proxyContainer.stop();
+        }
+        super.stop();
     }
 
     /**
@@ -257,7 +273,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         );
     }
 
-    private boolean hasKraftOrExternalZooKeeperConfigured() {
+    @Override
+    public boolean hasKraftOrExternalZooKeeperConfigured() {
         return this.useKraft || this.externalZookeeperConnect != null;
     }
 
@@ -301,24 +318,21 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
     }
 
-    /**
-     * Get internal ZooKeeper connect string, which is running in the same container as Kafka
-     *
-     * @return ZooKeeper connect string
-     */
+    @Override
     public String getInternalZooKeeperConnect() {
         if (this.hasKraftOrExternalZooKeeperConfigured()) {
-            throw new IllegalStateException("Cannot retrieve internal ZooKeeper in case you are Using KRaft or external ZooKeeper");
+            throw new IllegalStateException("Connect string is not available when using KRaft or external ZooKeeper");
         }
         return getHost() + ":" + this.internalZookeeperExposedPort;
     }
 
-    /**
-     * Get bootstrap servers of @code{StrimziKafkaContainer} instance
-     *
-     * @return bootstrap servers
-     */
+    @Override
     public String getBootstrapServers() {
+        if (proxyContainer != null && proxyContainer.isRunning()) {
+            return String.format("PLAINTEXT://%s:%d",
+                    getProxy().getContainerIpAddress(),
+                    getProxy().getProxyPort());
+        }
         return bootstrapServersProvider.apply(this);
     }
 
@@ -383,7 +397,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
-
     /**
      * Fluent method, which sets fixed exposed port.
      *
@@ -419,5 +432,39 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withBootstrapServers(final Function<StrimziKafkaContainer, String> provider) {
         this.bootstrapServersProvider = provider;
         return self();
+    }
+
+    /**
+     * Fluent method, which sets a proxy container.
+     * This container allows to create a TCP proxy between test code and Kafka broker.
+     *
+     * Every Kafka broker request will pass through the proxy where you can simulate
+     * network conditions (i.e. connection cut, latency).
+     *
+     * @param proxyContainer Proxy container instance
+     * @return StrimziKafkaContainer instance
+     */
+    public StrimziKafkaContainer withProxyContainer(final ToxiproxyContainer proxyContainer) {
+        if (proxyContainer != null) {
+            this.proxyContainer = proxyContainer;
+            proxyContainer.setNetwork(Network.SHARED);
+            proxyContainer.setNetworkAliases(Collections.singletonList("toxiproxy"));
+        }
+        return self();
+    }
+
+    /**
+     * Returns the proxy for this Kafka broker if configured.
+     *
+     * @return container proxy or null
+     */
+    public synchronized ToxiproxyContainer.ContainerProxy getProxy() {
+        if (proxyContainer == null) {
+            throw new IllegalStateException("The proxy container has not been configured");
+        }
+        if (proxy == null) {
+            proxy = proxyContainer.getProxy(this, KAFKA_PORT);
+        }
+        return proxy;
     }
 }
