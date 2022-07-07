@@ -45,7 +45,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.testcontainers.utility.DockerImageName;
 
-@SuppressWarnings("ClassFanOutComplexity")
+@SuppressWarnings({"ClassFanOutComplexity", "ClassDataAbstractionCoupling"})
 public class StrimziKafkaClusterIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);

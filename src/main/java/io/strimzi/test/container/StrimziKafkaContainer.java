@@ -36,6 +36,11 @@ import java.util.function.Function;
  * inside Kafka container. The Another option is to use @StrimziZookeeperContainer as an external Zookeeper.
  * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
  * integration testing but for more hardcore testing we suggest using @StrimziKafkaCluster.
+ * <br><br>
+ * Optionally, you can configure a {@code proxyContainer} to simulate network conditions (i.e. connection cut, latency).
+ * This class uses {@code getBootstrapServers()} to build the {@code KAFKA_ADVERTISED_LISTENERS} configuration.
+ * When {@code proxyContainer} is configured, the bootstrap URL returned by {@code getBootstrapServers()} contains the proxy host and port.
+ * For this reason, Kafka clients will always pass through the proxy, even after refreshing cluster metadata.
  */
 public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> implements KafkaContainer {
 
@@ -67,9 +72,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
 
-    // proxy attributes
+    // proxy provider
     private ToxiproxyContainer proxyContainer;
-    private ToxiproxyContainer.ContainerProxy proxy;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -328,7 +332,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     public String getBootstrapServers() {
-        if (proxyContainer != null && proxyContainer.isRunning()) {
+        if (proxyContainer != null) {
+            // returning the proxy host and port for indirect connection
             return String.format("PLAINTEXT://%s:%d",
                     getProxy().getContainerIpAddress(),
                     getProxy().getProxyPort());
@@ -441,7 +446,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Every Kafka broker request will pass through the proxy where you can simulate
      * network conditions (i.e. connection cut, latency).
      *
-     * @param proxyContainer Proxy container instance
+     * @param proxyContainer Proxy container
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withProxyContainer(final ToxiproxyContainer proxyContainer) {
@@ -456,9 +461,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     /**
      * Returns the proxy for this Kafka broker if configured.
      *
-     * @return container proxy or null
+     * @return ToxiproxyContainer.ContainerProxy
      */
     public synchronized ToxiproxyContainer.ContainerProxy getProxy() {
+        ToxiproxyContainer.ContainerProxy proxy = null;
         if (proxyContainer == null) {
             throw new IllegalStateException("The proxy container has not been configured");
         }

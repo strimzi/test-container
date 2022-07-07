@@ -185,9 +185,9 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### ix) (Optional) Specify a proxy container to simulate network conditions (i.e. connection cut, latency).
+#### ix) (Optional) Specify a proxy container
 
-This container allows to create a TCP proxy between test code and Kafka broker.
+The proxy container allows to create a TCP proxy between test code and Kafka broker.
 
 Every Kafka broker request will pass through the proxy where you can simulate network conditions (i.e. connection cut, latency).
 

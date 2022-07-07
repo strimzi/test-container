@@ -87,10 +87,7 @@
         <!-- code quality -->
         <module name="MethodLength"/>
         <module name="ParameterNumber"/>
-        <module name="ClassDataAbstractionCoupling">
-            <!-- default is 7 -->
-            <property name="max" value="10"/>
-        </module>
+        <module name="ClassDataAbstractionCoupling"/>
         <module name="BooleanExpressionComplexity"/>
         <module name="ClassFanOutComplexity"/>
         <module name="CyclomaticComplexity">

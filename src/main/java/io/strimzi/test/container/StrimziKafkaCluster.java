@@ -41,13 +41,16 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     /**
      * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
-     * replication factor of internal topics @see{internalTopicReplicationFactor} and map of additional Kafka
-     * configuration @see{additionalKafkaConfiguration}.
+     * replication factor of internal topics @see{internalTopicReplicationFactor}, a map of additional Kafka
+     * configuration @see{additionalKafkaConfiguration} and a {@code proxyContainer}.
+     * <br><br>
+     * The {@code proxyContainer} allows to simulate network conditions (i.e. connection cut, latency).
+     * For example, you can simulate a network partition by cutting the connection of one or more brokers.
      *
      * @param brokersNum number of brokers
      * @param internalTopicReplicationFactor internal topics
      * @param additionalKafkaConfiguration additional Kafka configuration
-     * @param proxyContainer Proxy container instance
+     * @param proxyContainer Proxy container
      */
     public StrimziKafkaCluster(final int brokersNum,
                                final int internalTopicReplicationFactor,
@@ -115,7 +118,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * Constructor of StrimziKafkaCluster with proxy container
      *
      * @param brokersNum number of brokers to be deployed
-     * @param proxyContainer Proxy container instance
+     * @param proxyContainer Proxy container
      */
     public StrimziKafkaCluster(final int brokersNum, final ToxiproxyContainer proxyContainer) {
         this(brokersNum, brokersNum, null, proxyContainer);
