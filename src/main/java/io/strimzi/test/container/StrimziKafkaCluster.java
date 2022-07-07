@@ -106,9 +106,24 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     /**
-     * Constructor of StrimziKafkaCluster without specifying additional configuration
+     * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
+     * replication factor of internal topics @see{internalTopicReplicationFactor} and map of additional Kafka
+     * configuration @see{additionalKafkaConfiguration}.
      *
-     * @param brokersNum number of brokers to be deployed
+     * @param brokersNum number of brokers
+     * @param internalTopicReplicationFactor internal topics
+     * @param additionalKafkaConfiguration additional Kafka configuration
+     */
+    public StrimziKafkaCluster(final int brokersNum,
+                               final int internalTopicReplicationFactor,
+                               final Map<String, String> additionalKafkaConfiguration) {
+        this(brokersNum, internalTopicReplicationFactor, additionalKafkaConfiguration, null);
+    }
+
+    /**
+     * Constructor of StrimziKafkaCluster without specifying additional configuration.
+     *
+     * @param brokersNum number of brokers
      */
     public StrimziKafkaCluster(final int brokersNum) {
         this(brokersNum, brokersNum, null, null);

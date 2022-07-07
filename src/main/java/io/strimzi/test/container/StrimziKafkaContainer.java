@@ -72,8 +72,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
 
-    // proxy provider
+    // proxy attributes
     private ToxiproxyContainer proxyContainer;
+    private ToxiproxyContainer.ContainerProxy proxy;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -461,15 +462,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     /**
      * Returns the proxy for this Kafka broker if configured.
      *
-     * @return ToxiproxyContainer.ContainerProxy
+     * @return ToxiproxyContainer.ContainerProxy instance
      */
     public synchronized ToxiproxyContainer.ContainerProxy getProxy() {
-        ToxiproxyContainer.ContainerProxy proxy = null;
         if (proxyContainer == null) {
             throw new IllegalStateException("The proxy container has not been configured");
         }
         if (proxy == null) {
-            proxy = proxyContainer.getProxy(this, KAFKA_PORT);
+            this.proxy = proxyContainer.getProxy(this, KAFKA_PORT);
         }
         return proxy;
     }
