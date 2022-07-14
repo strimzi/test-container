@@ -4,6 +4,9 @@
  */
 package io.strimzi.test.container;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.io.IOException;
@@ -39,8 +43,9 @@ import java.util.concurrent.TimeoutException;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import org.testcontainers.utility.DockerImageName;
 
-@SuppressWarnings("ClassFanOutComplexity")
+@SuppressWarnings({"ClassFanOutComplexity", "ClassDataAbstractionCoupling"})
 public class StrimziKafkaClusterIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
@@ -120,6 +125,28 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                     return true;
                 });
         }
+    }
+
+    @Test
+    void testStartClusterWithProxyContainer() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.4.0")
+                        .asCompatibleSubstituteFor("shopify/toxiproxy"));
+
+        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster(3, proxyContainer);
+        kafkaCluster.start();
+
+        List<String> bootstrapUrls = new ArrayList<>();
+        for (KafkaContainer kafkaContainer : kafkaCluster.getBrokers()) {
+            ToxiproxyContainer.ContainerProxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
+            assertThat(proxy, notNullValue());
+            bootstrapUrls.add(kafkaContainer.getBootstrapServers());
+        }
+
+        assertThat(kafkaCluster.getBootstrapServers(),
+                is(bootstrapUrls.stream().collect(Collectors.joining(","))));
+
+        kafkaCluster.stop();
     }
 
     @BeforeEach

@@ -12,6 +12,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.ToxiproxyContainer;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
@@ -284,5 +286,35 @@ public class StrimziKafkaContainerIT extends AbstractIT {
             .waitForRunning();
 
         assertThrows(IllegalStateException.class, () -> systemUnderTest.getInternalZooKeeperConnect());
+    }
+
+    @ParameterizedTest(name = "testStartBrokerWithProxyContainer-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testStartBrokerWithProxyContainer(final String imageName) {
+        assumeDocker();
+
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.4.0")
+                        .asCompatibleSubstituteFor("shopify/toxiproxy"));
+
+        systemUnderTest = new StrimziKafkaContainer(imageName)
+                .withProxyContainer(proxyContainer)
+                .waitForRunning();
+        systemUnderTest.start();
+
+        ToxiproxyContainer.ContainerProxy proxy = systemUnderTest.getProxy();
+        assertThat(systemUnderTest.getBootstrapServers(),
+                is(String.format("PLAINTEXT://%s:%d", proxy.getContainerIpAddress(), proxy.getProxyPort())));
+
+        systemUnderTest.stop();
+    }
+
+    @ParameterizedTest(name = "testStartBrokerWithProxyContainer-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testGetProxyWithNoContainer(final String imageName) {
+        systemUnderTest = new StrimziKafkaContainer(imageName)
+                .waitForRunning();
+        systemUnderTest.start();
+        assertThrows(IllegalStateException.class, () -> systemUnderTest.getProxy());
     }
 }

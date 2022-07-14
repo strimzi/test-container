@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
-import org.testcontainers.lifecycle.Startable;
+import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.lifecycle.Startables;
 
 import java.io.IOException;
@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  * It perfectly fits for integration/system testing. We always deploy one zookeeper with a specified number of Kafka instances,
  * running as a separate container inside Docker. The additional configuration for Kafka brokers can be passed to the constructor.
  */
-public class StrimziKafkaCluster implements Startable {
+public class StrimziKafkaCluster implements KafkaContainer {
 
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaCluster.class);
@@ -37,17 +37,25 @@ public class StrimziKafkaCluster implements Startable {
     private final int brokersNum;
     private final Network network;
     private final StrimziZookeeperContainer zookeeper;
-    private final Collection<StrimziKafkaContainer> brokers;
+    private final Collection<KafkaContainer> brokers;
 
     /**
      * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
-     * replication factor of internal topics @see{internalTopicReplicationFactor} and map of additional Kafka
-     * configuration @see{additionalKafkaConfiguration}.
+     * replication factor of internal topics @see{internalTopicReplicationFactor}, a map of additional Kafka
+     * configuration @see{additionalKafkaConfiguration} and a {@code proxyContainer}.
+     * <br><br>
+     * The {@code proxyContainer} allows to simulate network conditions (i.e. connection cut, latency).
+     * For example, you can simulate a network partition by cutting the connection of one or more brokers.
+     *
      * @param brokersNum number of brokers
      * @param internalTopicReplicationFactor internal topics
      * @param additionalKafkaConfiguration additional Kafka configuration
+     * @param proxyContainer Proxy container
      */
-    public StrimziKafkaCluster(final int brokersNum, final int internalTopicReplicationFactor, final Map<String, String> additionalKafkaConfiguration) {
+    public StrimziKafkaCluster(final int brokersNum,
+                               final int internalTopicReplicationFactor,
+                               final Map<String, String> additionalKafkaConfiguration,
+                               final ToxiproxyContainer proxyContainer) {
         if (brokersNum < 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
         }
@@ -71,17 +79,22 @@ public class StrimziKafkaCluster implements Startable {
             defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
         }
 
+        if (proxyContainer != null) {
+            proxyContainer.setNetwork(this.network);
+        }
+
         // multi-node set up
         this.brokers = IntStream
             .range(0, this.brokersNum)
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
                 // adding broker id for each kafka container
-                StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+                KafkaContainer kafkaContainer = new StrimziKafkaContainer()
                     .withBrokerId(brokerId)
                     .withKafkaConfigurationMap(defaultKafkaConfigurationForMultiNode)
                     .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
                     .withNetwork(this.network)
+                    .withProxyContainer(proxyContainer)
                     .withNetworkAliases("broker-" + brokerId)
                     .dependsOn(this.zookeeper);
 
@@ -93,35 +106,71 @@ public class StrimziKafkaCluster implements Startable {
     }
 
     /**
-     * Constructor of StrimziKafkaCluster without specifying additional configuration
+     * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
+     * replication factor of internal topics @see{internalTopicReplicationFactor} and map of additional Kafka
+     * configuration @see{additionalKafkaConfiguration}.
      *
-     * @param brokersNum number of brokers to be deployed
+     * @param brokersNum number of brokers
+     * @param internalTopicReplicationFactor internal topics
+     * @param additionalKafkaConfiguration additional Kafka configuration
+     */
+    public StrimziKafkaCluster(final int brokersNum,
+                               final int internalTopicReplicationFactor,
+                               final Map<String, String> additionalKafkaConfiguration) {
+        this(brokersNum, internalTopicReplicationFactor, additionalKafkaConfiguration, null);
+    }
+
+    /**
+     * Constructor of StrimziKafkaCluster without specifying additional configuration.
+     *
+     * @param brokersNum number of brokers
      */
     public StrimziKafkaCluster(final int brokersNum) {
-        this(brokersNum, brokersNum, null);
+        this(brokersNum, brokersNum, null, null);
+    }
+
+    /**
+     * Constructor of StrimziKafkaCluster with proxy container
+     *
+     * @param brokersNum number of brokers to be deployed
+     * @param proxyContainer Proxy container
+     */
+    public StrimziKafkaCluster(final int brokersNum, final ToxiproxyContainer proxyContainer) {
+        this(brokersNum, brokersNum, null, proxyContainer);
     }
 
     /**
      * Get collection of Strimzi kafka containers
      * @return collection of Strimzi kafka containers
      */
-    public Collection<StrimziKafkaContainer> getBrokers() {
+    public Collection<KafkaContainer> getBrokers() {
         return this.brokers;
     }
 
-    /**
-     * Get bootstrap servers as a string, which can be inserted inside Kafka config
-     * @return bootstrap servers
-     */
+    @Override
+    public boolean hasKraftOrExternalZooKeeperConfigured() {
+        KafkaContainer broker0 = brokers.iterator().next();
+        return broker0.hasKraftOrExternalZooKeeperConfigured() ? true : false;
+    }
+
+    @Override
+    public String getInternalZooKeeperConnect() {
+        if (hasKraftOrExternalZooKeeperConfigured()) {
+            throw new IllegalStateException("Connect string is not available when using KRaft or external ZooKeeper");
+        }
+        return getZookeeper() != null ? getZookeeper().getConnectString() : null;
+    }
+
+    @Override
     public String getBootstrapServers() {
         return brokers.stream()
-            .map(StrimziKafkaContainer::getBootstrapServers)
+            .map(KafkaContainer::getBootstrapServers)
             .collect(Collectors.joining(","));
     }
 
     @Override
     public void start() {
-        Stream<? extends Startable> startables = this.brokers.stream();
+        Stream<KafkaContainer> startables = this.brokers.stream();
         try {
             Startables.deepStart(startables).get(60, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -158,7 +207,7 @@ public class StrimziKafkaCluster implements Startable {
         // stop all kafka containers in parallel
         this.brokers.stream()
             .parallel()
-            .forEach(StrimziKafkaContainer::stop);
+            .forEach(KafkaContainer::stop);
     }
 
     /**

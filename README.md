@@ -185,6 +185,26 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
+#### ix) (Optional) Specify a proxy container
+
+The proxy container allows to create a TCP proxy between test code and Kafka broker.
+
+Every Kafka broker request will pass through the proxy where you can simulate network conditions (i.e. connection cut, latency).
+
+```java
+ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
+        DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.4.0")
+            .asCompatibleSubstituteFor("shopify/toxiproxy"));
+
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+        .withProxyContainer(proxyContainer)
+        .waitForRunning();
+
+systemUnderTest.start();
+
+strimziKafkaContainer.getProxy().setConnectionCut(true);
+```
+
 ### Additional tips
 
 1. In case you are using `Azure pipelines` Ryuk needs to be turned off, since Azure does not allow starting privileged containers.
