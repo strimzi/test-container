@@ -89,19 +89,19 @@
         <maven.compiler.source>1.8</maven.compiler.source>
 
         <!-- DEPENDENCY CODE VERSIONS       -->
-        <test-containers.version>1.17.2</test-containers.version>
-        <spotbugs.version>4.0.3</spotbugs.version>
+        <test-containers.version>1.17.3</test-containers.version>
+        <spotbugs.version>4.7.2</spotbugs.version>
         <log4j.version>2.17.1</log4j.version>
         <docker-java.version>3.2.13</docker-java.version>
-        <kafka.version>3.0.0</kafka.version>
+        <kafka.version>3.2.1</kafka.version>
         <slf4j.version>1.7.32</slf4j.version>
-        <fasterxml.jackson-core.version>2.11.3</fasterxml.jackson-core.version>
-        <fasterxml.jackson-databind.version>2.12.6.1</fasterxml.jackson-databind.version>
+        <fasterxml.jackson-core.version>2.13.3</fasterxml.jackson-core.version>
+        <fasterxml.jackson-databind.version>2.13.3</fasterxml.jackson-databind.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
-        <jupiter.version>5.7.0</jupiter.version>
+        <jupiter.version>5.9.1</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
-        <maven-failsafe-plugin.version>3.0.0-M5</maven-failsafe-plugin.version>
+        <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>

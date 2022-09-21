@@ -24,7 +24,6 @@ class StrimziKafkaContainerTest {
         assertEquals(" --override 'foo=bar with \"double quotes\"'", StrimziKafkaContainer.writeOverrideString(map));
         map.put("foo", "bar with 'single quotes'");
         assertEquals(" --override 'foo=bar with '\"'\"'single quotes'\"'\"''", StrimziKafkaContainer.writeOverrideString(map));
-
     }
 
 }
