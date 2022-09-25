@@ -56,7 +56,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                                final int internalTopicReplicationFactor,
                                final Map<String, String> additionalKafkaConfiguration,
                                final ToxiproxyContainer proxyContainer) {
-        if (brokersNum < 0) {
+        if (brokersNum <= 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
         }
         if (internalTopicReplicationFactor < 0 || internalTopicReplicationFactor > brokersNum) {
