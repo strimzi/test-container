@@ -59,7 +59,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         if (brokersNum <= 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
         }
-        if (internalTopicReplicationFactor < 0 || internalTopicReplicationFactor > brokersNum) {
+        if (internalTopicReplicationFactor <= 0 || internalTopicReplicationFactor > brokersNum) {
             throw new IllegalArgumentException("internalTopicReplicationFactor '" + internalTopicReplicationFactor + "' must be less than brokersNum and greater than 0");
         }
 

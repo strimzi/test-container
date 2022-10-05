@@ -28,4 +28,12 @@ public class StrimziKafkaClusterTest {
         assertDoesNotThrow(() -> new StrimziKafkaCluster(
             10, 3, null, null));
     }
+
+    @Test
+    void testNegativeOrMoreReplicasThanAvailableOfKafkaBrokersInternalReplicationError() {
+        assertThrows(IllegalArgumentException.class, () -> new StrimziKafkaCluster(
+            0, 0, null, null));
+        assertThrows(IllegalArgumentException.class, () -> new StrimziKafkaCluster(
+            3, 5, null, null));
+    }
 }
