@@ -32,6 +32,7 @@ import java.util.concurrent.TimeoutException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -53,6 +54,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
                 .waitForRunning();
 
             systemUnderTest.start();
+            assertThat(systemUnderTest.getClusterId(), notNullValue());
 
             String logsFromKafka = systemUnderTest.getLogs();
             assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
