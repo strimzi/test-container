@@ -71,6 +71,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String kafkaVersion;
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
+    private String clusterId;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -266,7 +267,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
-            command += "bin/kafka-storage.sh format -t \"" + this.randomUuid() + "\" -c config/kraft/server.properties \n";
+            clusterId = this.randomUuid();
+            command += "bin/kafka-storage.sh format -t \"" + clusterId + "\" -c config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
@@ -340,6 +342,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     getProxy().getProxyPort());
         }
         return bootstrapServersProvider.apply(this);
+    }
+
+    /**
+     * Get the cluster id. This is only supported for KRaft containers.
+     * @return The cluster id. 
+     */
+    public String getClusterId() {
+        return clusterId;
     }
 
     /**

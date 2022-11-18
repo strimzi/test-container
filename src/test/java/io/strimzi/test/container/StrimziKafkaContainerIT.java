@@ -27,6 +27,7 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -70,6 +71,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
             .waitForRunning();
 
         systemUnderTest.start();
+        assertThat(systemUnderTest.getClusterId(), nullValue());
 
         String logsFromKafka = systemUnderTest.getLogs();
 
