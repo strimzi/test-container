@@ -116,7 +116,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
         try {
-            if (this.useKraft && ((this.kafkaVersion != null && this.kafkaVersion.equals("2.8.2")) || this.imageNameProvider.get().contains("2.8.2"))) {
+            if (this.useKraft && ((this.kafkaVersion != null && this.kafkaVersion.startsWith("2.")) || this.imageNameProvider.get().contains("2."))) {
                 throw new UnsupportedKraftKafkaVersionException("Specified Kafka version " + this.kafkaVersion + " is not supported in KRaft mode.");
             }
         } catch (InterruptedException | ExecutionException e) {
