@@ -116,7 +116,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
         try {
-            if (this.useKraft && ((this.kafkaVersion != null && this.kafkaVersion.equals("2.8.1")) || this.imageNameProvider.get().contains("2.8.1"))) {
+            if (this.useKraft && ((this.kafkaVersion != null && this.kafkaVersion.equals("2.8.2")) || this.imageNameProvider.get().contains("2.8.2"))) {
                 throw new UnsupportedKraftKafkaVersionException("Specified Kafka version " + this.kafkaVersion + " is not supported in KRaft mode.");
             }
         } catch (InterruptedException | ExecutionException e) {
@@ -163,7 +163,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.useKraft) {
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         } else {
-            super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use broker.*", 1));
+            super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use [node|broker].*", 1));
         }
         return this;
     }
