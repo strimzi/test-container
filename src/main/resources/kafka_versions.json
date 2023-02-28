@@ -1,10 +1,10 @@
 {
   "kafkaVersions": {
-    "2.8.2": "quay.io/strimzi-test-container/test-container:latest-kafka-2.8.2",
-    "3.0.2": "quay.io/strimzi-test-container/test-container:latest-kafka-3.0.2",
-    "3.1.2": "quay.io/strimzi-test-container/test-container:latest-kafka-3.1.2",
-    "3.2.3": "quay.io/strimzi-test-container/test-container:latest-kafka-3.2.3",
-    "3.3.2": "quay.io/strimzi-test-container/test-container:latest-kafka-3.3.2",
-    "3.4.0": "quay.io/strimzi-test-container/test-container:latest-kafka-3.4.0"
+    "2.8.2": "quay.io/strimzi-test-container/test-container:0.103.0-rc1-kafka-2.8.2",
+    "3.0.2": "quay.io/strimzi-test-container/test-container:0.103.0-rc1-kafka-3.0.2",
+    "3.1.2": "quay.io/strimzi-test-container/test-container:0.103.0-rc1-kafka-3.1.2",
+    "3.2.3": "quay.io/strimzi-test-container/test-container:0.103.0-rc1-kafka-3.2.3",
+    "3.3.2": "quay.io/strimzi-test-container/test-container:0.103.0-rc1-kafka-3.3.2",
+    "3.4.0": "quay.io/strimzi-test-container/test-container:0.103.0-rc1-kafka-3.4.0"
   }
 }
