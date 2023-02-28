@@ -110,7 +110,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
 
         try {
             systemUnderTest = new StrimziKafkaContainer()
-                .withKafkaVersion("2.8.1")
+                .withKafkaVersion("2.8.2")
                 .withBrokerId(1)
                 .withKraft()
                 .waitForRunning();
@@ -127,7 +127,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
         assumeDocker();
 
         try {
-            systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.1")
+            systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.2")
                 .withBrokerId(1)
                 .withKraft()
                 .waitForRunning();
