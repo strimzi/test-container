@@ -85,8 +85,8 @@
 
     <properties>
         <!--  JAVA CODE VERSION   -->
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
 
         <!-- DEPENDENCY CODE VERSIONS       -->
         <test-containers.version>1.17.4</test-containers.version>
@@ -307,7 +307,7 @@
                             <sourcepath>${project.build.sourceDirectory}:${project.build.directory}/generated-sources/annotations</sourcepath>
                             <show>public</show>
                             <failOnError>true</failOnError>
-                            <failOnWarnings>true</failOnWarnings>
+                            <failOnWarnings>false</failOnWarnings>
                         </configuration>
                     </execution>
                 </executions>
