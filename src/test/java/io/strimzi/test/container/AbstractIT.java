@@ -34,7 +34,7 @@ public class AbstractIT {
 
         for (Iterator<Map.Entry<String, JsonNode>> iter = rootNode.get("kafkaVersions").fields(); iter.hasNext(); ) {
             final Map.Entry<String, JsonNode> fields = iter.next();
-            parameters.add(Arguments.of(fields.getValue().asText()));
+            parameters.add(Arguments.of(fields.getValue().asText(), fields.getKey()));
         }
         return parameters.stream();
     }
@@ -45,5 +45,9 @@ public class AbstractIT {
 
     protected void supportsKraftMode(final String imageName) {
         Assumptions.assumeTrue(!imageName.contains("-kafka-2."));
+    }
+
+    protected boolean isLessThanKafka350(final String kafkaVersion) {
+        return KafkaVersionService.KafkaVersion.compareVersions(kafkaVersion, "3.5.0") == -1;
     }
 }
