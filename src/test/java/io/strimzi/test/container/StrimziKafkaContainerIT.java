@@ -382,25 +382,25 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
                 Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(2).toMillis(),
-                        () -> {
-                            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                    () -> {
+                        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
-                            if (records.isEmpty()) {
-                                return false;
-                            }
+                        if (records.isEmpty()) {
+                            return false;
+                        }
 
-                            // verify count
-                            assertThat(records.count(), is(1));
+                        // verify count
+                        assertThat(records.count(), is(1));
 
-                            ConsumerRecord<String, String> consumerRecord = records.records(topicName).iterator().next();
+                        ConsumerRecord<String, String> consumerRecord = records.records(topicName).iterator().next();
 
-                            // verify content of the record
-                            assertThat(consumerRecord.topic(), is(topicName));
-                            assertThat(consumerRecord.key(), is(recordKey));
-                            assertThat(consumerRecord.value(), is(recordValue));
+                        // verify content of the record
+                        assertThat(consumerRecord.topic(), is(topicName));
+                        assertThat(consumerRecord.key(), is(recordKey));
+                        assertThat(consumerRecord.value(), is(recordValue));
 
-                            return true;
-                        });
+                        return true;
+                    });
             } catch (ExecutionException | InterruptedException | TimeoutException e) {
                 throw new RuntimeException(e);
             }
