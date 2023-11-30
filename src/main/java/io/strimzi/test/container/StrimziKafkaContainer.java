@@ -499,7 +499,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             try {
                 final int listenPort = 8666 + this.brokerId;
-                this.proxy = this.toxiproxyClient.createProxy("kafka" + this.brokerId, "0.0.0.0:" + listenPort, "toxiproxy:9092");
+                this.proxy = this.toxiproxyClient.createProxy("kafka" + this.brokerId, "0.0.0.0:" + listenPort, "toxiproxy:" + Utils.getFreePort());
             } catch (IOException e) {
                 LOGGER.error("Error happened during creation of the Proxy: {}", e.getMessage());
                 throw new RuntimeException(e);
