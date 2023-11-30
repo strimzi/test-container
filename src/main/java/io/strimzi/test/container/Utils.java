@@ -4,8 +4,10 @@
  */
 package io.strimzi.test.container;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.ServerSocket;
 import java.util.function.BooleanSupplier;
 
 import org.slf4j.Logger;
@@ -79,5 +81,16 @@ class Utils {
         }
     }
 
-
+    /**
+     * Finds a free server port which can be used by the web server
+     *
+     * @return A free TCP port
+     */
+    public static int getFreePort()   {
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            return serverSocket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to find free port", e);
+        }
+    }
 }
