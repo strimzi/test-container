@@ -319,7 +319,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         assumeDocker();
 
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.4.0")
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
         systemUnderTest = new StrimziKafkaContainer(imageName)
@@ -327,9 +327,8 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 .waitForRunning();
         systemUnderTest.start();
 
-        ToxiproxyContainer.ContainerProxy proxy = systemUnderTest.getProxy();
         assertThat(systemUnderTest.getBootstrapServers(),
-                is(String.format("PLAINTEXT://%s:%d", proxy.getContainerIpAddress(), proxy.getProxyPort())));
+                is(String.format("PLAINTEXT://%s", systemUnderTest.getProxy().getListen())));
 
         systemUnderTest.stop();
     }

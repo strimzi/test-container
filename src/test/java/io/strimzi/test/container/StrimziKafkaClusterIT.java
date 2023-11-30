@@ -7,6 +7,9 @@ package io.strimzi.test.container;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.ToxiproxyClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -130,7 +133,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     @Test
     void testStartClusterWithProxyContainer() {
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.4.0")
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
         StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster(3, proxyContainer);
@@ -138,7 +141,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         List<String> bootstrapUrls = new ArrayList<>();
         for (KafkaContainer kafkaContainer : kafkaCluster.getBrokers()) {
-            ToxiproxyContainer.ContainerProxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
+            Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
             assertThat(proxy, notNullValue());
             bootstrapUrls.add(kafkaContainer.getBootstrapServers());
         }

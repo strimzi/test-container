@@ -6,6 +6,8 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
+import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.ToxiproxyClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -16,6 +18,7 @@ import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.MountableFile;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -75,7 +78,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
-    private ToxiproxyContainer.ContainerProxy proxy;
+    private ToxiproxyClient toxiproxyClient;
+    private Proxy proxy;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -109,9 +113,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     protected void doStart() {
-        if (proxyContainer != null && !proxyContainer.isRunning()) {
-            proxyContainer.start();
+        if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
+            this.proxyContainer.start();
+
+            // Instantiate a ToxiproxyClient if it has not been previously provided via configuration settings.
+            if (toxiproxyClient == null) {
+                toxiproxyClient = new ToxiproxyClient(this.proxyContainer.getHost(), this.proxyContainer.getControlPort());
+            }
         }
+
         if (!this.imageNameProvider.isDone()) {
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
@@ -337,9 +347,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public String getBootstrapServers() {
         if (proxyContainer != null) {
             // returning the proxy host and port for indirect connection
-            return String.format("PLAINTEXT://%s:%d",
-                    getProxy().getContainerIpAddress(),
-                    getProxy().getProxyPort());
+            return String.format("PLAINTEXT://%s", getProxy().getListen());
         }
         return bootstrapServersProvider.apply(this);
     }
@@ -470,17 +478,33 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Returns the proxy for this Kafka broker if configured.
+     * Retrieves a synchronized Proxy instance for this Kafka broker.
      *
-     * @return ToxiproxyContainer.ContainerProxy instance
+     * This method ensures that only one instance of Proxy is created per broker. If the proxy has not been
+     * initialized, it attempts to create one using the Toxiproxy client. If the Toxiproxy client is not initialized,
+     * it is created using the host and control port of the proxy container.
+     *
+     * @return                          Proxy instance for this Kafka broker.
+     * @throws IllegalStateException    if the proxy container has not been configured.
+     * @throws RuntimeException         if an IOException occurs during the creation of the Proxy.
      */
-    public synchronized ToxiproxyContainer.ContainerProxy getProxy() {
-        if (proxyContainer == null) {
+    public synchronized Proxy getProxy() {
+        if (this.proxyContainer == null) {
             throw new IllegalStateException("The proxy container has not been configured");
         }
-        if (proxy == null) {
-            this.proxy = proxyContainer.getProxy(this, KAFKA_PORT);
+
+        if (this.proxy == null) {
+            if (this.toxiproxyClient == null) {
+                this.toxiproxyClient = new ToxiproxyClient(proxyContainer.getHost(), proxyContainer.getControlPort());
+            }
+            try {
+                final int listenPort = 8666 + this.brokerId;
+                this.proxy = this.toxiproxyClient.createProxy("kafka" + this.brokerId, "0.0.0.0:" + listenPort, "toxiproxy:9092");
+            } catch (IOException e) {
+                LOGGER.error("Error happened during creation of the Proxy: {}", e.getMessage());
+                throw new RuntimeException(e);
+            }
         }
-        return proxy;
+        return this.proxy;
     }
 }
