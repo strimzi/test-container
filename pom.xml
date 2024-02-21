@@ -89,7 +89,7 @@
         <maven.compiler.source>11</maven.compiler.source>
 
         <!-- DEPENDENCY CODE VERSIONS       -->
-        <test-containers.version>1.19.3</test-containers.version>
+        <test-containers.version>1.19.5</test-containers.version>
         <spotbugs.version>4.7.2</spotbugs.version>
         <log4j.version>2.17.1</log4j.version>
         <docker-java.version>3.3.3</docker-java.version>
@@ -114,7 +114,8 @@
         <sonatype.nexus.staging>1.6.13</sonatype.nexus.staging>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
-        <commons-compress.version>1.21</commons-compress.version>
+        <commons-compress.version>1.26.0</commons-compress.version>
+        <commons-codec.version>1.16.1</commons-codec.version>
         <junit4.version>4.13.2</junit4.version>
     </properties>
 
@@ -205,12 +206,21 @@
             <scope>test</scope>
         </dependency>
 
-
         <!-- overriding version of commons-compress for Test container - Vulnerability -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
             <version>${commons-compress.version}</version>
+        </dependency>
+        <!-- address compatibility issues that arise
+        from upgrading `commons-compress`. Version 1.26.0 of `commons-compress` relies on functionalities provided
+        by `commons-codec` 1.16.1, leading to a requirement for this specific version of `commons-codec` to avoid
+        classpath conflicts and ensure runtime compatibility.
+        -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>${commons-codec.version}</version>
         </dependency>
         <!-- overriding version of commons-compress for Test container - Vulnerability -->
         <dependency>
