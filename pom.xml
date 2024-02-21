@@ -114,7 +114,7 @@
         <sonatype.nexus.staging>1.6.13</sonatype.nexus.staging>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
-        <commons-compress.version>1.21</commons-compress.version>
+        <commons-compress.version>1.26.0</commons-compress.version>
         <junit4.version>4.13.2</junit4.version>
     </properties>
 
