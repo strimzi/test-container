@@ -98,7 +98,6 @@
         <fasterxml.jackson-core.version>2.13.4</fasterxml.jackson-core.version>
         <fasterxml.jackson-databind.version>2.13.4.2</fasterxml.jackson-databind.version>
         <toxiproxy.java.version>2.1.7</toxiproxy.java.version>
-        <commons-codec.version>1.16.1</commons-codec.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.9.1</jupiter.version>
@@ -116,6 +115,7 @@
 
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.26.0</commons-compress.version>
+        <commons-codec.version>1.16.1</commons-codec.version>
         <junit4.version>4.13.2</junit4.version>
     </properties>
 
