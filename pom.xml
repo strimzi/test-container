@@ -89,23 +89,23 @@
         <maven.compiler.source>11</maven.compiler.source>
 
         <!-- DEPENDENCY CODE VERSIONS       -->
-        <test-containers.version>1.19.5</test-containers.version>
-        <spotbugs.version>4.7.2</spotbugs.version>
+        <test-containers.version>1.19.7</test-containers.version>
+        <spotbugs.version>4.8.4</spotbugs.version>
         <log4j.version>2.17.1</log4j.version>
-        <docker-java.version>3.3.3</docker-java.version>
-        <kafka.version>3.2.3</kafka.version>
+        <docker-java.version>3.3.6</docker-java.version>
+        <kafka.version>3.7.0</kafka.version>
         <slf4j.version>1.7.32</slf4j.version>
-        <fasterxml.jackson-core.version>2.13.4</fasterxml.jackson-core.version>
-        <fasterxml.jackson-databind.version>2.13.4.2</fasterxml.jackson-databind.version>
+        <fasterxml.jackson-core.version>2.17.0</fasterxml.jackson-core.version>
+        <fasterxml.jackson-databind.version>2.17.0</fasterxml.jackson-databind.version>
         <toxiproxy.java.version>2.1.7</toxiproxy.java.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
-        <jupiter.version>5.9.1</jupiter.version>
+        <jupiter.version>5.10.2</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
 
         <!-- PLUGIN VERSIONS       -->
-        <maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
+        <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
         <maven.compiler-plugin.version>3.8.1</maven.compiler-plugin.version>
         <maven.javadoc-plugin.version>3.1.0</maven.javadoc-plugin.version>
         <maven.source-plugin.version>3.0.1</maven.source-plugin.version>
@@ -114,7 +114,7 @@
         <sonatype.nexus.staging>1.6.13</sonatype.nexus.staging>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
-        <commons-compress.version>1.26.0</commons-compress.version>
+        <commons-compress.version>1.26.1</commons-compress.version>
         <commons-codec.version>1.16.1</commons-codec.version>
         <junit4.version>4.13.2</junit4.version>
     </properties>
@@ -254,7 +254,6 @@
                                     </includes>
                                 </resource>
                             </resources>
-
                         </configuration>
                     </execution>
                 </executions>
