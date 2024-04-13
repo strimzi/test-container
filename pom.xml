@@ -106,7 +106,7 @@
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
-        <maven.compiler-plugin.version>3.13.0</maven.compiler-plugin.version>
+        <maven.compiler-plugin.version>3.8.1</maven.compiler-plugin.version>
         <maven.javadoc-plugin.version>3.1.0</maven.javadoc-plugin.version>
         <maven.source-plugin.version>3.0.1</maven.source-plugin.version>
         <maven.checkstyle.version>3.1.1</maven.checkstyle.version>
@@ -254,7 +254,6 @@
                                     </includes>
                                 </resource>
                             </resources>
-
                         </configuration>
                     </execution>
                 </executions>
