@@ -76,6 +76,12 @@
             <organizationUrl>https://www.redhat.com</organizationUrl>
         </developer>
         <developer>
+            <name>Lukáš Král</name>
+            <email>l.kral@outlook.com</email>
+            <organization>Red Hat</organization>
+            <organizationUrl>https://www.redhat.com</organizationUrl>
+        </developer>
+        <developer>
             <name>Maros Orsak</name>
             <email>morsak@redhat.com</email>
             <organization>Red Hat</organization>
@@ -111,7 +117,7 @@
         <maven.source-plugin.version>3.0.1</maven.source-plugin.version>
         <maven.checkstyle.version>3.1.1</maven.checkstyle.version>
         <maven.gpg.version>1.6</maven.gpg.version>
-        <sonatype.nexus.staging>1.6.13</sonatype.nexus.staging>
+        <sonatype.nexus.staging>1.7.0</sonatype.nexus.staging>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.26.1</commons-compress.version>
