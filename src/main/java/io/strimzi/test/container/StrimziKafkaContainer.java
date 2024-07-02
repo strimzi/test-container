@@ -173,7 +173,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.useKraft) {
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         } else {
-            super.waitingFor(Wait.forLogMessage(".*Recorded new controller, from now on will use [node|broker].*", 1));
+            super.waitingFor(Wait.forLogMessage(".*Recorded new.*controller, from now on will use [node|broker].*", 1));
         }
         return this;
     }
