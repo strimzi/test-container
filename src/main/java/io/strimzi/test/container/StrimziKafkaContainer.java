@@ -278,7 +278,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
             clusterId = this.randomUuid();
-            command += "bin/kafka-storage.sh format -t \"" + clusterId + "\" -c config/kraft/server.properties \n";
+            command += "bin/kafka-storage.sh format -t=\"" + clusterId + "\" -c config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
