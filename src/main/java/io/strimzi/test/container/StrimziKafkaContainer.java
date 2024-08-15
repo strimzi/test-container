@@ -75,6 +75,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
+    private MountableFile serverPropertiesFile;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -282,6 +283,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
         }
 
+        Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
+                properties,
+                this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties"
+        ));
+
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
         copyFileToContainer(
@@ -354,7 +360,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /**
      * Get the cluster id. This is only supported for KRaft containers.
-     * @return The cluster id. 
+     * @return The cluster id.
      */
     public String getClusterId() {
         return clusterId;
@@ -442,8 +448,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withServerProperties(final MountableFile serverPropertiesFile) {
-        withCopyFileToContainer(serverPropertiesFile,
-                this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties");
+        /*
+         * Save a reference to the file and delay copying to the container until the container
+         * is starting. This allows for `useKraft` to be set either before or after this method
+         * is called.
+         */
+        this.serverPropertiesFile = serverPropertiesFile;
         return self();
     }
 
