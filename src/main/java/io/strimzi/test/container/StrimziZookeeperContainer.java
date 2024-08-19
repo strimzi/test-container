@@ -112,7 +112,8 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      * @return StrimziZookeeperContainer instance
      */
     public StrimziZookeeperContainer withZooKeeperPropertiesFile(final MountableFile zooKeeperPropertiesFile) {
-        withCopyFileToContainer(zooKeeperPropertiesFile, "/opt/kafka/config/zookeeper.properties");
+        Utils.asTransferableBytes(zooKeeperPropertiesFile)
+            .ifPresent(properties -> withCopyToContainer(properties, "/opt/kafka/config/zookeeper.properties"));
         return this;
     }
 

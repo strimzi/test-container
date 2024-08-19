@@ -7,11 +7,17 @@ package io.strimzi.test.container;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.ServerSocket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.utility.MountableFile;
 
 /**
  * Utils contains auxiliary static methods, which are used in whole project.
@@ -82,6 +88,32 @@ class Utils {
     }
 
     /**
+     * Converts the contents of {@code file} to a new Transferable. If the file is
+     * null, an empty Optional is returned. This method reads the contents of the
+     * file to avoid preservation of the file's owner and group attributes when
+     * copying into the container.
+     *
+     * @param file the source file
+     * @return an Optional containing the Transferable contents of file, or an empty
+     *         Optional when the file is null.
+     */
+    static Optional<Transferable> asTransferableBytes(MountableFile file) {
+        if (file != null) {
+            final byte[] data;
+
+            try {
+                data = Files.readAllBytes(Path.of(file.getFilesystemPath()));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+
+            return Optional.of(Transferable.of(data));
+        }
+
+        return Optional.empty();
+    }
+
+    /**
      * Finds a free server port which can be used by the web server
      *
      * @return A free TCP port
@@ -90,7 +122,7 @@ class Utils {
         try (ServerSocket serverSocket = new ServerSocket(0)) {
             return serverSocket.getLocalPort();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to find free port", e);
+            throw new UncheckedIOException("Failed to find free port", e);
         }
     }
 }
