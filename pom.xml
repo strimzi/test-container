@@ -118,7 +118,7 @@
         <maven.source-plugin.version>3.2.1</maven.source-plugin.version>
         <maven.checkstyle.version>3.3.0</maven.checkstyle.version>
         <maven.gpg.version>1.7.1</maven.gpg.version>
-        <sonatype.nexus.staging>1.7.1</sonatype.nexus.staging>
+        <sonatype.nexus.staging>1.7.0</sonatype.nexus.staging>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.26.1</commons-compress.version>
