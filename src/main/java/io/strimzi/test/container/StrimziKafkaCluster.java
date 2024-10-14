@@ -51,11 +51,13 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * @param internalTopicReplicationFactor internal topics
      * @param additionalKafkaConfiguration additional Kafka configuration
      * @param proxyContainer Proxy container
+     * @param enableSharedNetwork enable Kafka cluster to use a shared Docker network.
      */
     public StrimziKafkaCluster(final int brokersNum,
                                final int internalTopicReplicationFactor,
                                final Map<String, String> additionalKafkaConfiguration,
-                               final ToxiproxyContainer proxyContainer) {
+                               final ToxiproxyContainer proxyContainer,
+                               final boolean enableSharedNetwork) {
         if (brokersNum <= 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
         }
@@ -64,7 +66,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         this.brokersNum = brokersNum;
-        this.network = Network.newNetwork();
+        this.network = enableSharedNetwork ? Network.SHARED : Network.newNetwork();
 
         this.zookeeper = new StrimziZookeeperContainer()
             .withNetwork(this.network);
@@ -117,7 +119,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     public StrimziKafkaCluster(final int brokersNum,
                                final int internalTopicReplicationFactor,
                                final Map<String, String> additionalKafkaConfiguration) {
-        this(brokersNum, internalTopicReplicationFactor, additionalKafkaConfiguration, null);
+        this(brokersNum, internalTopicReplicationFactor, additionalKafkaConfiguration, null, false);
     }
 
     /**
@@ -126,7 +128,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * @param brokersNum number of brokers
      */
     public StrimziKafkaCluster(final int brokersNum) {
-        this(brokersNum, brokersNum, null, null);
+        this(brokersNum, brokersNum, null, null, false);
     }
 
     /**
@@ -136,7 +138,17 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * @param proxyContainer Proxy container
      */
     public StrimziKafkaCluster(final int brokersNum, final ToxiproxyContainer proxyContainer) {
-        this(brokersNum, brokersNum, null, proxyContainer);
+        this(brokersNum, brokersNum, null, proxyContainer, false);
+    }
+
+    /**
+     * Constructor of StrimziKafkaCluster with proxy container
+     *
+     * @param brokersNum number of brokers to be deployed
+     * @param enableSharedNetwork enable Kafka cluster to use a shared Docker network.
+     */
+    public StrimziKafkaCluster(final int brokersNum, final boolean enableSharedNetwork) {
+        this(brokersNum, brokersNum, null, null, enableSharedNetwork);
     }
 
     /**
