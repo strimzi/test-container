@@ -35,10 +35,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     // instance attributes
     private final int brokersNum;
+    private final Network network;
     private final StrimziZookeeperContainer zookeeper;
     private final Collection<KafkaContainer> brokers;
-
-    private Network network;
 
     /**
      * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
