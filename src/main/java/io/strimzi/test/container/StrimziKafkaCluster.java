@@ -101,23 +101,42 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
 
     public static class StrimziKafkaClusterBuilder {
-        // instance attributes
         private int brokersNum;
         private int internalTopicReplicationFactor;
         private Map<String, String> additionalKafkaConfiguration = new HashMap<>();
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
 
+        /**
+         * Sets the number of Kafka brokers in the cluster.
+         *
+         * @param brokersNum the number of Kafka brokers
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
         public StrimziKafkaClusterBuilder withNumberOfBrokers(int brokersNum) {
             this.brokersNum = brokersNum;
             return this;
         }
 
+        /**
+         * Sets the internal topic replication factor for Kafka brokers.
+         * If not provided, it defaults to the number of brokers.
+         *
+         * @param internalTopicReplicationFactor the replication factor for internal topics
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
         public StrimziKafkaClusterBuilder withInternalTopicReplicationFactor(int internalTopicReplicationFactor) {
             this.internalTopicReplicationFactor = internalTopicReplicationFactor;
             return this;
         }
 
+        /**
+         * Adds additional Kafka configuration parameters.
+         * These configurations are applied to all brokers in the cluster.
+         *
+         * @param additionalKafkaConfiguration a map of additional Kafka configuration options
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
         public StrimziKafkaClusterBuilder withAdditionalKafkaConfiguration(Map<String, String> additionalKafkaConfiguration) {
             if (additionalKafkaConfiguration != null) {
                 this.additionalKafkaConfiguration.putAll(additionalKafkaConfiguration);
@@ -125,18 +144,33 @@ public class StrimziKafkaCluster implements KafkaContainer {
             return this;
         }
 
-        // Set proxy container for simulating network conditions
+        /**
+         * Sets a {@code ToxiproxyContainer} to simulate network conditions such as latency or disconnection.
+         *
+         * @param proxyContainer the proxy container for simulating network conditions
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
         public StrimziKafkaClusterBuilder withProxyContainer(ToxiproxyContainer proxyContainer) {
             this.proxyContainer = proxyContainer;
             return this;
         }
 
-        // Enable shared network
+        /**
+         * Enables a shared Docker network for the Kafka cluster.
+         * This allows the Kafka cluster to interact with other containers on the same network.
+         *
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
         public StrimziKafkaClusterBuilder withSharedNetwork() {
             this.enableSharedNetwork = true;
             return this;
         }
 
+        /**
+         * Builds and returns a {@code StrimziKafkaCluster} instance based on the provided configurations.
+         *
+         * @return a new instance of {@code StrimziKafkaCluster}
+         */
         public StrimziKafkaCluster build() {
             return new StrimziKafkaCluster(this);
         }
@@ -220,6 +254,4 @@ public class StrimziKafkaCluster implements KafkaContainer {
     public StrimziZookeeperContainer getZookeeper() {
         return zookeeper;
     }
-
-
 }
