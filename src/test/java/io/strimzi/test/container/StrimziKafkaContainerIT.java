@@ -63,8 +63,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithEmptyConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithEmptyConfiguration(final String imageName) {
-        assumeDocker();
-
         try (StrimziKafkaContainer systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withBrokerId(1)
                 .waitForRunning()) {
@@ -79,8 +77,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithSomeConfiguration(final String imageName) {
-        assumeDocker();
-
         Map<String, String> kafkaConfiguration = new HashMap<>();
 
         kafkaConfiguration.put("log.cleaner.enable", "false");
@@ -109,8 +105,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithFixedExposedPort-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithFixedExposedPort(final String imageName) {
-        assumeDocker();
-
         systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withPort(9092)
                 .waitForRunning();
@@ -125,8 +119,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithSSLBootstrapServers-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithSSLBootstrapServers(final String imageName) {
-        assumeDocker();
-
         systemUnderTest = new StrimziKafkaContainer(imageName)
                 .waitForRunning()
                 .withBootstrapServers(c -> String.format("SSL://%s:%s", c.getHost(), c.getMappedPort(9092)));
@@ -141,8 +133,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithServerProperties-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithServerProperties(final String imageName) {
-        assumeDocker();
-
         systemUnderTest = new StrimziKafkaContainer(imageName)
                 .waitForRunning()
                 .withServerProperties(MountableFile.forClasspathResource("server.properties"));
@@ -161,8 +151,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
     @Test
     void testStartContainerWithStrimziKafkaImage() {
-        assumeDocker();
-
         // explicitly set strimzi.test-container.kafka.custom.image
         String imageName = "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0";
         System.setProperty("strimzi.test-container.kafka.custom.image", imageName);
@@ -184,8 +172,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
     @Test
     void testStartContainerWithCustomImage() {
-        assumeDocker();
-
         String imageName = "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0";
         systemUnderTest = new StrimziKafkaContainer(imageName)
                 .waitForRunning();
@@ -201,8 +187,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
     @Test
     void testStartContainerWithCustomNetwork() {
-        assumeDocker();
-
         Network network = Network.newNetwork();
 
         systemUnderTest = new StrimziKafkaContainer()
@@ -220,8 +204,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
     @Test
     void testUnsupportedKafkaVersion() {
-        assumeDocker();
-
         try {
             systemUnderTest = new StrimziKafkaContainer()
                 .withKafkaVersion("2.4.0")
@@ -236,8 +218,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testKafkaContainerConnectFromOutsideToInternalZooKeeper-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testKafkaContainerConnectFromOutsideToInternalZooKeeper() {
-        assumeDocker();
-
         try {
             systemUnderTest = new StrimziKafkaContainer()
                 .waitForRunning();
@@ -267,8 +247,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testKafkaContainerInternalCommunicationWithInternalZooKeeper-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testKafkaContainerInternalCommunicationWithInternalZooKeeper() throws IOException, InterruptedException {
-        assumeDocker();
-
         try {
             systemUnderTest = new StrimziKafkaContainer()
                 .waitForRunning();
@@ -291,8 +269,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testIllegalStateUsingInternalZooKeeperWithKraft-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testIllegalStateUsingInternalZooKeeperWithKraft() {
-        assumeDocker();
-
         systemUnderTest = new StrimziKafkaContainer()
             .withKraft()
             .waitForRunning();
@@ -303,8 +279,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testIllegalStateUsingInternalZooKeeperWithExternalZooKeeper-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testIllegalStateUsingInternalZooKeeperWithExternalZooKeeper() {
-        assumeDocker();
-
         systemUnderTest = new StrimziKafkaContainer()
             // we do not need to spin-up instance of StrimziZooKeeperContainer
             .withExternalZookeeperConnect("zookeeper:2181")
@@ -316,8 +290,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartBrokerWithProxyContainer-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartBrokerWithProxyContainer(final String imageName) {
-        assumeDocker();
-
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
                 DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));

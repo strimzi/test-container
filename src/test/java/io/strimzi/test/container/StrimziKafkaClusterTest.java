@@ -14,26 +14,26 @@ public class StrimziKafkaClusterTest {
     @Test
     void testKafkaClusterNegativeOrZeroNumberOfNodes() {
         assertThrows(IllegalArgumentException.class, () -> new StrimziKafkaCluster(
-            0, 1, null, null));
+            0, 1, null, null, false));
         assertThrows(IllegalArgumentException.class, () -> new StrimziKafkaCluster(
-            -1, 1, null, null));
+            -1, 1, null, null, false));
     }
 
     @Test
     void testKafkaClusterPossibleNumberOfNodes() {
         assertDoesNotThrow(() -> new StrimziKafkaCluster(
-            1, 1, null, null));
+            1, 1, null, null, false));
         assertDoesNotThrow(() -> new StrimziKafkaCluster(
-            3, 3, null, null));
+            3, 3, null, null, false));
         assertDoesNotThrow(() -> new StrimziKafkaCluster(
-            10, 3, null, null));
+            10, 3, null, null, false));
     }
 
     @Test
     void testNegativeOrMoreReplicasThanAvailableOfKafkaBrokersInternalReplicationError() {
         assertThrows(IllegalArgumentException.class, () -> new StrimziKafkaCluster(
-            0, 0, null, null));
+            0, 0, null, null, false));
         assertThrows(IllegalArgumentException.class, () -> new StrimziKafkaCluster(
-            3, 5, null, null));
+            3, 5, null, null, false));
     }
 }

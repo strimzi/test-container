@@ -51,12 +51,91 @@ import org.testcontainers.utility.DockerImageName;
 public class StrimziKafkaClusterIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
+    private static final int NUMBER_OF_REPLICAS = 3;
 
     private StrimziKafkaCluster systemUnderTest;
-    private int numberOfReplicas;
 
     @Test
     void testKafkaClusterStartup() throws IOException, InterruptedException {
+        try {
+            setUpKafkaCluster();
+
+            verifyReadinessOfKafkaCluster();
+        } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @Test
+    void testKafkaClusterStartupWithSharedNetwork() throws IOException, InterruptedException {
+        try {
+            systemUnderTest = new StrimziKafkaCluster(3, true);
+            systemUnderTest.start();
+
+            verifyReadinessOfKafkaCluster();
+       } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @Test
+    void testKafkaClusterFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
+        setUpKafkaCluster();
+
+        try {
+            verifyFunctionalityOfKafkaCluster();
+        } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @Test
+    void testKafkaClusterWithSharedNetworkFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
+        try {
+            systemUnderTest = new StrimziKafkaCluster(NUMBER_OF_REPLICAS, true);
+            systemUnderTest.start();
+
+            verifyFunctionalityOfKafkaCluster();
+        } finally {
+            systemUnderTest.stop();
+        }
+    }
+
+    @Test
+    void testStartClusterWithProxyContainer() {
+        setUpKafkaCluster();
+
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
+                        .asCompatibleSubstituteFor("shopify/toxiproxy"));
+
+        StrimziKafkaCluster kafkaCluster = null;
+
+        try {
+            kafkaCluster = new StrimziKafkaCluster(3, proxyContainer);
+
+            kafkaCluster.start();
+            List<String> bootstrapUrls = new ArrayList<>();
+            for (KafkaContainer kafkaContainer : kafkaCluster.getBrokers()) {
+                Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
+                assertThat(proxy, notNullValue());
+                bootstrapUrls.add(kafkaContainer.getBootstrapServers());
+            }
+
+            assertThat(kafkaCluster.getBootstrapServers(),
+                is(bootstrapUrls.stream().collect(Collectors.joining(","))));
+        } finally {
+            kafkaCluster.stop();
+            systemUnderTest.stop();
+        }
+    }
+
+    private void setUpKafkaCluster() {
+        systemUnderTest = new StrimziKafkaCluster(NUMBER_OF_REPLICAS);
+        systemUnderTest.start();
+    }
+
+    private void verifyReadinessOfKafkaCluster() throws IOException, InterruptedException {
         // exercise (fetch the data)
         final Container.ExecResult result = this.systemUnderTest.getZookeeper().execInContainer(
             "sh", "-c",
@@ -72,8 +151,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         LOGGER.info("Brokers are {}", systemUnderTest.getBootstrapServers());
     }
 
-    @Test
-    void testKafkaClusterFunctionality() throws InterruptedException, ExecutionException, TimeoutException {
+    private void verifyFunctionalityOfKafkaCluster() throws ExecutionException, InterruptedException, TimeoutException {
         // using try-with-resources for AdminClient, KafkaProducer and KafkaConsumer (implicit closing connection)
         try (final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
@@ -99,7 +177,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             final String recordKey = "strimzi";
             final String recordValue = "the-best-project-in-the-world";
 
-            final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, numberOfReplicas, (short) numberOfReplicas));
+            final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, NUMBER_OF_REPLICAS, (short) NUMBER_OF_REPLICAS));
             adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
 
             consumer.subscribe(Collections.singletonList(topicName));
@@ -127,37 +205,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                     return true;
                 });
         }
-    }
-
-    @Test
-    void testStartClusterWithProxyContainer() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
-                        .asCompatibleSubstituteFor("shopify/toxiproxy"));
-
-        StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster(3, proxyContainer);
-        kafkaCluster.start();
-
-        List<String> bootstrapUrls = new ArrayList<>();
-        for (KafkaContainer kafkaContainer : kafkaCluster.getBrokers()) {
-            Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
-            assertThat(proxy, notNullValue());
-            bootstrapUrls.add(kafkaContainer.getBootstrapServers());
-        }
-
-        assertThat(kafkaCluster.getBootstrapServers(),
-                is(bootstrapUrls.stream().collect(Collectors.joining(","))));
-
-        kafkaCluster.stop();
-    }
-
-    @BeforeEach
-    void setUp() {
-        final int numberOfBrokers = 3;
-        numberOfReplicas = numberOfBrokers;
-
-        systemUnderTest = new StrimziKafkaCluster(numberOfBrokers);
-        systemUnderTest.start();
     }
 
     @AfterEach

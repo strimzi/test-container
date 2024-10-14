@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.provider.Arguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,5 +50,10 @@ public class AbstractIT {
 
     protected boolean isLessThanKafka350(final String kafkaVersion) {
         return KafkaVersionService.KafkaVersion.compareVersions(kafkaVersion, "3.5.0") == -1;
+    }
+
+    @BeforeEach
+    void setUpEach() {
+        assumeDocker();
     }
 }

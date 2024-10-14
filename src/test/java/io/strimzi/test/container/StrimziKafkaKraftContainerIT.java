@@ -44,7 +44,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithEmptyConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithEmptyConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
-        assumeDocker();
         supportsKraftMode(imageName);
 
         try {
@@ -76,7 +75,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithSomeConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
-        assumeDocker();
         supportsKraftMode(imageName);
         try {
             Map<String, String> kafkaConfiguration = new HashMap<>();
@@ -115,8 +113,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
 
     @Test
     void testUnsupportedKRaftUsingKafkaVersion() {
-        assumeDocker();
-
         try {
             systemUnderTest = new StrimziKafkaContainer()
                 .withKafkaVersion("2.8.2")
@@ -133,8 +129,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
 
     @Test
     void testUnsupportedKRaftUsingImageName() {
-        assumeDocker();
-
         try {
             systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.2")
                 .withBrokerId(1)

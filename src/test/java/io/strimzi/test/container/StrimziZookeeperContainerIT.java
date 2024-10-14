@@ -72,8 +72,6 @@ public class StrimziZookeeperContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithZooKeeperProperties-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithZooKeeperProperties(final String imageName) {
-        assumeDocker();
-
         try {
             systemUnderTest = new StrimziZookeeperContainer(imageName)
                 .withZooKeeperPropertiesFile(MountableFile.forClasspathResource("zookeeper.properties"));
