@@ -203,7 +203,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private Map<String, String> additionalKafkaConfiguration = new HashMap<>();
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
-        private String kafkaVersion;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -261,11 +260,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
          */
         public StrimziKafkaClusterBuilder withSharedNetwork() {
             this.enableSharedNetwork = true;
-            return this;
-        }
-
-        public StrimziKafkaClusterBuilder withKafkaVersion(String kafkaVersion) {
-            this.kafkaVersion = kafkaVersion;
             return this;
         }
 
