@@ -80,7 +80,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             proxyContainer.setNetwork(this.network);
         }
 
-        startKafkaCluster(additionalKafkaConfiguration);
+        prepareKafkaCluster(additionalKafkaConfiguration);
     }
 
     /**
@@ -149,10 +149,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
             this.proxyContainer.setNetwork(this.network);
         }
 
-        startKafkaCluster(this.additionalKafkaConfiguration);
+        prepareKafkaCluster(this.additionalKafkaConfiguration);
     }
 
-    private void startKafkaCluster(final Map<String, String> additionalKafkaConfiguration) {
+    private void prepareKafkaCluster(final Map<String, String> additionalKafkaConfiguration) {
         final Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
         defaultKafkaConfigurationForMultiNode.put("offsets.topic.replication.factor", String.valueOf(internalTopicReplicationFactor));
         defaultKafkaConfigurationForMultiNode.put("num.partitions", String.valueOf(internalTopicReplicationFactor));
