@@ -517,4 +517,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
         return this.proxy;
     }
+
+    /* test */ String getKafkaVersion() {
+        return this.kafkaVersion;
+    }
 }

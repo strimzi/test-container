@@ -42,6 +42,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private Map<String, String> additionalKafkaConfiguration;
     private ToxiproxyContainer proxyContainer;
     private boolean enableSharedNetwork;
+    private String kafkaVersion;
 
     // not editable
     private final Network network;
@@ -80,7 +81,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             proxyContainer.setNetwork(this.network);
         }
 
-        prepareKafkaCluster(additionalKafkaConfiguration);
+        prepareKafkaCluster(additionalKafkaConfiguration, null);
     }
 
     /**
@@ -138,6 +139,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.internalTopicReplicationFactor = builder.internalTopicReplicationFactor == 0 ? this.brokersNum : builder.internalTopicReplicationFactor;
         this.additionalKafkaConfiguration = builder.additionalKafkaConfiguration;
         this.proxyContainer = builder.proxyContainer;
+        this.kafkaVersion = builder.kafkaVersion;
 
         validateBrokerNum(this.brokersNum);
         validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor);
@@ -149,10 +151,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
             this.proxyContainer.setNetwork(this.network);
         }
 
-        prepareKafkaCluster(this.additionalKafkaConfiguration);
+        prepareKafkaCluster(this.additionalKafkaConfiguration, this.kafkaVersion);
     }
 
-    private void prepareKafkaCluster(final Map<String, String> additionalKafkaConfiguration) {
+    private void prepareKafkaCluster(final Map<String, String> additionalKafkaConfiguration, final String kafkaVersion) {
         final Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
         defaultKafkaConfigurationForMultiNode.put("offsets.topic.replication.factor", String.valueOf(internalTopicReplicationFactor));
         defaultKafkaConfigurationForMultiNode.put("num.partitions", String.valueOf(internalTopicReplicationFactor));
@@ -176,6 +178,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withNetworkAliases("broker-" + brokerId)
+                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
                     .dependsOn(this.zookeeper);
 
                 LOGGER.info("Started broker with id: {}", kafkaContainer);
@@ -203,6 +206,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private Map<String, String> additionalKafkaConfiguration = new HashMap<>();
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
+        private String kafkaVersion;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -264,6 +268,18 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         /**
+         * Specifies the Kafka version to be used for the brokers in the cluster.
+         * If no version is provided, the latest Kafka version available from {@link KafkaVersionService} will be used.
+         *
+         * @param kafkaVersion the desired Kafka version for the cluster
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withKafkaVersion(String kafkaVersion) {
+            this.kafkaVersion = kafkaVersion;
+            return this;
+        }
+
+        /**
          * Builds and returns a {@code StrimziKafkaCluster} instance based on the provided configurations.
          *
          * @return a new instance of {@code StrimziKafkaCluster}
@@ -300,6 +316,18 @@ public class StrimziKafkaCluster implements KafkaContainer {
         return brokers.stream()
             .map(KafkaContainer::getBootstrapServers)
             .collect(Collectors.joining(","));
+    }
+
+    /* test */ int getInternalTopicReplicationFactor() {
+        return this.internalTopicReplicationFactor;
+    }
+
+    /* test */ boolean isSharedNetworkEnabled() {
+        return this.enableSharedNetwork;
+    }
+
+    /* test */ Map<String, String> getAdditionalKafkaConfiguration() {
+        return this.additionalKafkaConfiguration;
     }
 
     @Override
