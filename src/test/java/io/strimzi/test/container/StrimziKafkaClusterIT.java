@@ -68,7 +68,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     @Test
     void testKafkaClusterStartupWithSharedNetwork() throws IOException, InterruptedException {
         try {
-            systemUnderTest = new StrimziKafkaCluster(3, true);
+            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+                .withSharedNetwork()
+                .build();
             systemUnderTest.start();
 
             verifyReadinessOfKafkaCluster();
@@ -91,7 +94,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     @Test
     void testKafkaClusterWithSharedNetworkFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
         try {
-            systemUnderTest = new StrimziKafkaCluster(NUMBER_OF_REPLICAS, true);
+            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+                .withSharedNetwork()
+                .build();
             systemUnderTest.start();
 
             verifyFunctionalityOfKafkaCluster();
@@ -111,7 +117,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         StrimziKafkaCluster kafkaCluster = null;
 
         try {
-            kafkaCluster = new StrimziKafkaCluster(3, proxyContainer);
+            kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+                .withProxyContainer(proxyContainer)
+                .build();
 
             kafkaCluster.start();
             List<String> bootstrapUrls = new ArrayList<>();
@@ -130,7 +139,9 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     private void setUpKafkaCluster() {
-        systemUnderTest = new StrimziKafkaCluster(NUMBER_OF_REPLICAS);
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .build();
         systemUnderTest.start();
     }
 
