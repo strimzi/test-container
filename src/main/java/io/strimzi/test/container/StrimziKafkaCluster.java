@@ -71,10 +71,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
         validateBrokerNum(brokersNum);
         validateInternalTopicReplicationFactor(internalTopicReplicationFactor, brokersNum);
 
+        this.brokersNum = brokersNum;
         this.network = enableSharedNetwork ? Network.SHARED : Network.newNetwork();
         this.zookeeper = new StrimziZookeeperContainer()
             .withNetwork(this.network);
-        this.brokersNum = brokersNum;
         this.internalTopicReplicationFactor = internalTopicReplicationFactor;
 
         if (proxyContainer != null) {
