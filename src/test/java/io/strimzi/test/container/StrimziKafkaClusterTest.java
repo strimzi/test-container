@@ -4,12 +4,14 @@
  */
 package io.strimzi.test.container;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.ToxiproxyContainer;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -104,5 +106,56 @@ public class StrimziKafkaClusterTest {
                 .withAdditionalKafkaConfiguration(additionalConfig)
                 .build()
         );
+    }
+
+    @Test
+    void testKafkaClusterWithSpecificKafkaVersion() {
+        assertDoesNotThrow(() ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withInternalTopicReplicationFactor(3)
+                .withKafkaVersion("3.7.1")
+                .build()
+        );
+    }
+
+    @Test
+    void testKafkaClusterWithMultipleBrokersAndReplicationFactor() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(5)
+            .withInternalTopicReplicationFactor(3)
+            .build();
+
+        assertThat(cluster.getBrokers().size(), CoreMatchers.is(5));
+        assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(3));
+    }
+
+    @Test
+    void testKafkaClusterWithCustomNetworkConfiguration() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(4)
+            .withSharedNetwork()
+            .withInternalTopicReplicationFactor(2)
+            .build();
+
+        assertThat(cluster.getBrokers().size(), CoreMatchers.is(4));
+        assertThat(cluster.isSharedNetworkEnabled(), CoreMatchers.is(true));
+    }
+
+    @Test
+    void testKafkaClusterWithKafkaVersionAndAdditionalConfigs() {
+        Map<String, String> additionalConfigs = new HashMap<>();
+        additionalConfigs.put("log.retention.bytes", "10485760");
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withInternalTopicReplicationFactor(3)
+            .withKafkaVersion("3.7.1")
+            .withAdditionalKafkaConfiguration(additionalConfigs)
+            .build();
+
+        assertThat(cluster.getBrokers().size(), CoreMatchers.is(3));
+        assertThat(((StrimziKafkaContainer) cluster.getBrokers().iterator().next()).getKafkaVersion(), CoreMatchers.is("3.7.1"));
+        assertThat(cluster.getAdditionalKafkaConfiguration().get("log.retention.bytes"), CoreMatchers.is("10485760"));
     }
 }
