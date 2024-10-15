@@ -69,12 +69,13 @@ public class StrimziKafkaCluster implements KafkaContainer {
                                final ToxiproxyContainer proxyContainer,
                                final boolean enableSharedNetwork) {
         validateBrokerNum(brokersNum);
-        validateInternalTopicReplicationFactor(internalTopicReplicationFactor);
+        validateInternalTopicReplicationFactor(internalTopicReplicationFactor, brokersNum);
 
-        this.brokersNum = brokersNum;
         this.network = enableSharedNetwork ? Network.SHARED : Network.newNetwork();
         this.zookeeper = new StrimziZookeeperContainer()
             .withNetwork(this.network);
+        this.brokersNum = brokersNum;
+        this.internalTopicReplicationFactor = internalTopicReplicationFactor;
 
         if (proxyContainer != null) {
             proxyContainer.setNetwork(this.network);
@@ -140,7 +141,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.proxyContainer = builder.proxyContainer;
 
         validateBrokerNum(this.brokersNum);
-        validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor);
+        validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
 
         this.zookeeper = new StrimziZookeeperContainer()
             .withNetwork(this.network);
@@ -191,8 +192,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
-    private void validateInternalTopicReplicationFactor(int internalTopicReplicationFactor) {
-        if (internalTopicReplicationFactor <= 0 || internalTopicReplicationFactor > this.brokersNum) {
+    private void validateInternalTopicReplicationFactor(int internalTopicReplicationFactor, int brokersNum) {
+        if (internalTopicReplicationFactor <= 0 || internalTopicReplicationFactor > brokersNum) {
             throw new IllegalArgumentException("internalTopicReplicationFactor '" + internalTopicReplicationFactor + "' must be less than brokersNum and greater than 0");
         }
     }
