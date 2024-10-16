@@ -21,7 +21,6 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.hamcrest.CoreMatchers;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,10 +218,5 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
                     return true;
                 });
         }
-    }
-
-    @AfterEach
-    void tearDown() {
-        systemUnderTest.stop();
     }
 }

@@ -35,8 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -243,7 +241,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.useKraft) {
             // adding Controller listener for Kraft mode
-            kafkaListeners.append(",").append("CONTROLLER://localhost:9094");
+            kafkaListeners.append(",").append("CONTROLLER://0.0.0.0:9094");
             kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
         }
 
@@ -279,7 +277,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaConfiguration.putAll(this.kafkaConfigurationMap);
         }
 
-        String kafkaConfigurationOverride = writeOverrideString(kafkaConfiguration);
+        final Properties defaultServerProperties = this.buildDefaultServerProperties();
+        final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, kafkaConfiguration);
+
+        // copy override file to the container
+        if (this.useKraft) {
+            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
+        } else {
+            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/server.properties");
+        }
 
         String command = "#!/bin/bash \n";
 
@@ -289,7 +295,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             } else {
                 command += "bin/zookeeper-server-start.sh config/zookeeper.properties &\n";
             }
-            command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
+            command += "bin/kafka-server-start.sh config/server.properties";
         } else {
             if (this.clusterId == null) {
                 this.clusterId = this.randomUuid();
@@ -297,7 +303,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
 
             command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
-//            command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties " + kafkaConfigurationOverride + " \n";
+            command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
             command += "cat /opt/kafka/config/kraft/server.properties \n";
         }
 
@@ -312,19 +318,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
                 STARTER_SCRIPT
         );
-    }
-
-    private String createCustomServerProperties(Map<String, String> kafkaConfiguration) {
-        Properties properties = new Properties();
-        properties.putAll(kafkaConfiguration);
-
-        StringWriter writer = new StringWriter();
-        try {
-            properties.store(writer, null);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        return writer.toString();
     }
 
     @Override
@@ -370,6 +363,56 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final byte[] uuidBytesArray = uuidBytes.array();
 
         return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
+    }
+
+    private Properties buildDefaultServerProperties() {
+        // Default properties for server.properties
+        Properties properties = new Properties();
+
+        // Common settings for both KRaft and non-KRaft modes
+        properties.setProperty("listeners", "PLAINTEXT://:9092");
+        properties.setProperty("inter.broker.listener.name", "PLAINTEXT");
+        properties.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
+        properties.setProperty("listener.security.protocol.map", "PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL");
+        properties.setProperty("num.network.threads", "3");
+        properties.setProperty("num.io.threads", "8");
+        properties.setProperty("socket.send.buffer.bytes", "102400");
+        properties.setProperty("socket.receive.buffer.bytes", "102400");
+        properties.setProperty("socket.request.max.bytes", "104857600");
+        properties.setProperty("log.dirs", "/tmp/default-log-dir");
+        properties.setProperty("num.partitions", "1");
+        properties.setProperty("num.recovery.threads.per.data.dir", "1");
+        properties.setProperty("offsets.topic.replication.factor", "1");
+        properties.setProperty("transaction.state.log.replication.factor", "1");
+        properties.setProperty("transaction.state.log.min.isr", "1");
+        properties.setProperty("log.retention.hours", "168");
+        properties.setProperty("log.retention.check.interval.ms", "300000");
+
+        // Add KRaft-specific settings if useKraft is enabled
+        if (this.useKraft) {
+            properties.setProperty("process.roles", "broker,controller");
+            properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
+            properties.setProperty("controller.quorum.voters", String.format("%d@localhost:9093", this.nodeId));  // Dynamic node id in quorum
+            properties.setProperty("listeners", "PLAINTEXT://:9092,CONTROLLER://:9093");
+            properties.setProperty("controller.listener.names", "CONTROLLER");
+        }
+
+        return properties;
+    }
+
+    private String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
+        // Apply overrides
+        overrides.forEach(defaultProperties::setProperty);
+
+        // Write properties to string
+        StringWriter writer = new StringWriter();
+        try {
+            defaultProperties.store(writer, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
+        return writer.toString();
     }
 
     @Override

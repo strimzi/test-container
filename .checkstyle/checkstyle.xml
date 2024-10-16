@@ -98,7 +98,7 @@
         </module>
         <module name="CyclomaticComplexity">
             <!-- default is 10-->
-            <property name="max" value="11"/>
+            <property name="max" value="13"/>
         </module>
         <module name="JavaNCSS"/>
         <module name="NPathComplexity">

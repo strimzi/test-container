@@ -203,7 +203,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
                         // One must set `node.id` to the same value as `broker.id` if we use KRaft mode
                         .withNodeId(brokerId)
                         // pass shared `cluster.id` to each broker
-                        .withClusterId(this.clusterId);
+                        .withClusterId(this.clusterId)
+                        .waitForRunning();
                 }
 
                 LOGGER.info("Started broker with id: {}", kafkaContainer);
