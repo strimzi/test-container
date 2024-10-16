@@ -19,6 +19,8 @@ import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
+import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -60,6 +63,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
 
+    protected static final String NETWORK_ALIAS_PREFIX = "broker-";
+
     /**
      * Lazy image name provider
      */
@@ -71,6 +76,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
+    private Integer nodeId;
     private String kafkaVersion;
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
@@ -139,6 +145,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
             super.addExposedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
+        super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
@@ -180,7 +187,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
-    @SuppressWarnings({"JavaNCSS", "NPathComplexity"})
+    @SuppressWarnings({"JavaNCSS", "NPathComplexity", "CyclomaticComplexity"})
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -211,7 +218,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             advertisedListenerNumber++;
         }
 
-        LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners.toString());
+        LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
         StringBuilder kafkaListeners = new StringBuilder();
         StringBuilder kafkaListenerSecurityProtocol = new StringBuilder();
@@ -237,7 +244,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.useKraft) {
             // adding Controller listener for Kraft mode
-            kafkaListeners.append(",").append("CONTROLLER://localhost:9094");
+            // (wildcard address for multi-node setup; that way we other nodes can connect and communicate between each other)
+            kafkaListeners.append(",").append("CONTROLLER://0.0.0.0:9094");
             kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
         }
 
@@ -249,24 +257,25 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
         kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
 
-        if (this.useKraft) {
-            // explicitly say, which listener will be controller (in this case CONTROLLER)
-            kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
-            kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
-        } else if (this.externalZookeeperConnect != null) {
-            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
-            kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
-        } else {
-            // using internal ZooKeeper
-            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
-            kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
-        }
-
         // additional kafka config
         if (this.kafkaConfigurationMap != null) {
             kafkaConfiguration.putAll(this.kafkaConfigurationMap);
         }
-        String kafkaConfigurationOverride = writeOverrideString(kafkaConfiguration);
+
+        if (this.nodeId == null) {
+            LOGGER.warn("Node ID is not set. Using broker ID {} as the default node ID.", this.brokerId);
+            this.nodeId = this.brokerId;
+        }
+
+        final Properties defaultServerProperties = this.buildDefaultServerProperties();
+        final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, kafkaConfiguration);
+
+        // copy override file to the container
+        if (this.useKraft) {
+            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
+        } else {
+            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/server.properties");
+        }
 
         String command = "#!/bin/bash \n";
 
@@ -276,11 +285,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             } else {
                 command += "bin/zookeeper-server-start.sh config/zookeeper.properties &\n";
             }
-            command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
+            command += "bin/kafka-server-start.sh config/server.properties";
         } else {
-            clusterId = this.randomUuid();
-            command += "bin/kafka-storage.sh format -t=\"" + clusterId + "\" -c config/kraft/server.properties \n";
-            command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
+            if (this.clusterId == null) {
+                this.clusterId = this.randomUuid();
+                LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
+            }
+
+            command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
+            command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
         }
 
         Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
@@ -339,6 +352,63 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final byte[] uuidBytesArray = uuidBytes.array();
 
         return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
+    }
+
+    private Properties buildDefaultServerProperties() {
+        // Default properties for server.properties
+        Properties properties = new Properties();
+
+        // Common settings for both KRaft and non-KRaft modes
+        properties.setProperty("listeners", "PLAINTEXT://:9092");
+        properties.setProperty("inter.broker.listener.name", "PLAINTEXT");
+        properties.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
+        properties.setProperty("listener.security.protocol.map", "PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL");
+        properties.setProperty("num.network.threads", "3");
+        properties.setProperty("num.io.threads", "8");
+        properties.setProperty("socket.send.buffer.bytes", "102400");
+        properties.setProperty("socket.receive.buffer.bytes", "102400");
+        properties.setProperty("socket.request.max.bytes", "104857600");
+        properties.setProperty("log.dirs", "/tmp/default-log-dir");
+        properties.setProperty("num.partitions", "1");
+        properties.setProperty("num.recovery.threads.per.data.dir", "1");
+        properties.setProperty("offsets.topic.replication.factor", "1");
+        properties.setProperty("transaction.state.log.replication.factor", "1");
+        properties.setProperty("transaction.state.log.min.isr", "1");
+        properties.setProperty("log.retention.hours", "168");
+        properties.setProperty("log.retention.check.interval.ms", "300000");
+
+        // Add KRaft-specific settings if useKraft is enabled
+        if (this.useKraft) {
+            properties.setProperty("process.roles", "broker,controller");
+            properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
+            properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
+            properties.setProperty("listeners", "PLAINTEXT://:9092,CONTROLLER://:9093");
+            properties.setProperty("controller.listener.names", "CONTROLLER");
+        } else if (this.externalZookeeperConnect != null) {
+            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
+            properties.put("zookeeper.connect", this.externalZookeeperConnect);
+        } else {
+            // using internal ZooKeeper
+            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
+            properties.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
+        }
+
+        return properties;
+    }
+
+    private String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
+        // Apply overrides
+        overrides.forEach(defaultProperties::setProperty);
+
+        // Write properties to string
+        StringWriter writer = new StringWriter();
+        try {
+            defaultProperties.store(writer, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
+        return writer.toString();
     }
 
     @Override
@@ -400,7 +470,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withBrokerId(final int brokerId) {
+        if (this.useKraft && this.brokerId != this.nodeId) {
+            throw new IllegalStateException("`broker.id` and `node.id` must have same value!");
+        }
+
         this.brokerId = brokerId;
+        return self();
+    }
+
+    public StrimziKafkaContainer withNodeId(final int nodeId) {
+        this.nodeId = nodeId;
         return self();
     }
 
@@ -485,6 +564,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             proxyContainer.setNetworkAliases(Collections.singletonList("toxiproxy"));
         }
         return self();
+    }
+
+    protected StrimziKafkaContainer withClusterId(String clusterId) {
+        this.clusterId = clusterId;
+        return this;
     }
 
     /**
