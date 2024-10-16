@@ -396,7 +396,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         if (this.isZooKeeperBasedKafkaCluster()) {
-            Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(5).toMillis(), Duration.ofMinutes(1).toMillis(),
+            Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(1).toMillis(), Duration.ofMinutes(1).toMillis(),
                 () -> {
                     Container.ExecResult result;
                     try {
@@ -417,7 +417,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 });
         } else if (this.isKraftKafkaCluster()) {
             // Readiness check for KRaft mode
-            Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(5).toMillis(), Duration.ofMinutes(1).toMillis(),
+            Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1).toMillis(), Duration.ofMinutes(1).toMillis(),
                 () -> {
                     try {
                         for (KafkaContainer kafkaContainer : this.brokers) {
