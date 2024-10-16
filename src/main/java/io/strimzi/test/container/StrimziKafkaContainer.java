@@ -63,6 +63,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
 
+    protected static final String NETWORK_ALIAS_PREFIX = "broker-";
+
     /**
      * Lazy image name provider
      */
@@ -74,7 +76,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
-    private int nodeId;
+    private Integer nodeId;
     private String kafkaVersion;
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
@@ -143,6 +145,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
             super.addExposedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
+        super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
         // we need it for the startZookeeper(); and startKafka(); to run container before...
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
@@ -184,7 +187,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
-    @SuppressWarnings({"JavaNCSS", "NPathComplexity"})
+    @SuppressWarnings({"JavaNCSS", "NPathComplexity", "CyclomaticComplexity"})
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -259,6 +262,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaConfiguration.putAll(this.kafkaConfigurationMap);
         }
 
+        if (this.nodeId == null) {
+            LOGGER.warn("Node ID is not set. Using broker ID {} as the default node ID.", this.brokerId);
+            this.nodeId = this.brokerId;
+        }
+
         final Properties defaultServerProperties = this.buildDefaultServerProperties();
         final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, kafkaConfiguration);
 
@@ -286,7 +294,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
             command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
-            command += "cat /opt/kafka/config/kraft/server.properties \n";
         }
 
         Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
@@ -374,7 +381,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.useKraft) {
             properties.setProperty("process.roles", "broker,controller");
             properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
-            properties.setProperty("controller.quorum.voters", String.format("%d@localhost:9093", this.nodeId));  // Dynamic node id in quorum
+            properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
             properties.setProperty("listeners", "PLAINTEXT://:9092,CONTROLLER://:9093");
             properties.setProperty("controller.listener.names", "CONTROLLER");
         } else if (this.externalZookeeperConnect != null) {
