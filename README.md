@@ -3,8 +3,8 @@
 
 # Test container repository
 
-The test container repository primarily relates to developing and maintaining test container code using an [Apache Kafka®](https://kafka.apache.org) image from the [strimzi/test-container-images](https://github.com/strimzi/test-container-images) repository. 
-The main dependency is the test container framework, which lets you control the lifecycle of the Docker container.
+The test container repository primarily relates to developing and maintaining test container code using an [Apache Kafka®](https://kafka.apache.org) image from the [strimzi/test-container-images](https://github.com/strimzi/test-container-images) repository.
+The main dependency is the Testcontainers framework, which lets you control the lifecycle of Docker containers in your tests.
 
 ## Why use a Test container?
 
@@ -15,17 +15,17 @@ The most important classes are described here::
   You can use it in two ways:
   1. As an embedded ZooKeeper to run inside a Kafka container.
   2. As an external ZooKeeper.
-  An additional configuration for Kafka brokers can be injected through the constructor.
-  The first one is using an embedded ZooKeeper which will run inside Kafka container.
-  Another option is to use @StrimziZookeeperContainer as an external ZooKeeper.
-  An additional configuration for Kafka brokers can be injected through the constructor.
-  This container is a good fit for integration testing, but for more comprehensive testing, we suggest using @StrimziKafkaCluster.
+  3. In KRaft mode [KIP-500](https://github.com/apache/kafka/blob/trunk/config/kraft/README.md), which allows running Apache Kafka without Apache ZooKeeper.
+
+  Additional configuration for Kafka brokers can be injected through methods such as withKafkaConfigurationMap.
+  This container is a good fit for integration testing, but for more comprehensive testing, we suggest using StrimziKafkaCluster.
+
 - `StrimziZookeeperContainer` is an instance of ZooKeeper encapsulated inside a Docker container using an image from quay.io/strimzi-test-container/test-container with the given version.
   It can be combined with @StrimziKafkaContainer, but we suggest using directly @StrimziKafkaCluster for more complicated testing.
 - `StrimziKafkaCluster` is a multi-node instance of Kafka and ZooKeeper using the latest image from quay.io/strimzi-test-container/test-container with the given version.
   It's a perfect fit for integration or system testing. 
   We always deploy one ZooKeeper with a specified number of Kafka instances, running as a separate container inside Docker.
-  The additional configuration for Kafka brokers can be passed to the constructor.
+  Additional configuration for Kafka brokers can be passed using the builder pattern.
 
 In summary, you can use `StrimziKafkaContainer` to use a Kafka cluster with a single Kafka broker.
 Or you can use `StrimziKafkaCluster` for a Kafka cluster with multiple Kafka brokers.
@@ -41,11 +41,11 @@ Using Strimzi test container takes two simple steps:
 Add the Strimzi test container to your project as dependency, for example with Maven:
 
 ```
-// in case of 0.102.0 version
+// in case of 0.108.0 version
 <dependency>
     <groupId>io.strimzi</groupId>
     <artifactId>strimzi-test-container</artifactId>
-    <version>0.102.0</version>
+    <version>0.108.0</version>
 </dependency>
 ```
 
@@ -88,7 +88,7 @@ strimziKafkaContainer.start();
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withBrokerId(1)
-    .withKraft(true);
+    .withKraft();
 
 strimziKafkaContainer.start();
 ```
@@ -98,7 +98,8 @@ strimziKafkaContainer.start();
 By default, the Kafka container will be exposed on a random host port. To expose Kafka on a fixed port:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer.withFixedPort(9092);
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+    .withFixedPort(9092);
 
 strimziKafkaContainer.start();
 ```
@@ -108,7 +109,7 @@ strimziKafkaContainer.start();
 You can configure Kafka by providing a `server.properties` file:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
         .withServerProperties(MountableFile.forClasspathResource("server.properties"));
 strimziKafkaContainer.start();
 ```
@@ -122,7 +123,7 @@ Properties configured through `withKafkaConfigurationMap` will also precede thos
 You can customize the bootstrap servers, thus the advertised listeners property by:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = strimziKafkaContainer
+StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
         .withBootstrapServers(container -> String.format("SSL://%s:%s", container.getHost(), container.getMappedPort(9092)));
 strimziKafkaContainer.start();
 ```
@@ -137,7 +138,7 @@ Before starting the container, use the following code configuring Test Container
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withBrokerId(1)
-    .withKraft(true)
+    .withKraft()
     .waitForRunning();
 
 strimziKafkaContainer.start();
@@ -149,9 +150,9 @@ Strimzi test container supported versions can be find in `src/main/java/resource
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withKafkaVersion("2.8.0")
+    .withKafkaVersion("3.8.0")
     .withBrokerId(1)
-    .withKraft(true)
+    .withKraft()
     .waitForRunning();
 
 strimziKafkaContainer.start();
@@ -203,6 +204,35 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 systemUnderTest.start();
 
 strimziKafkaContainer.getProxy().setConnectionCut(true);
+```
+
+#### xi) Run a multi-node Kafka cluster
+
+To run a multi-node Kafka cluster, you can use the StrimziKafkaCluster class with the builder pattern.
+
+1. Default configuration (ZK-based)
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .build();
+
+kafkaCluster.start();
+```
+
+2. Specified Kafka version, KRaft-enabled and additional Kafka configuration
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withKafkaVersion("3.8.0") // if not specified then latest Kafka version is selected
+    .withKraftEnabled()        // if not specified ZK-based is used
+    .withAdditionalKafkaConfiguration(Map.of(
+        "log.cleaner.enable", "false"
+    ))
+    .build();
+
+kafkaCluster.start();
 ```
 
 ### Additional tips
