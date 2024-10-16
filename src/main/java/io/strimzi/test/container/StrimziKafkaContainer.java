@@ -365,9 +365,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("listener.security.protocol.map", "PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL");
         properties.setProperty("num.network.threads", "3");
         properties.setProperty("num.io.threads", "8");
-        properties.setProperty("socket.send.buffer.bytes", "102400");
-        properties.setProperty("socket.receive.buffer.bytes", "102400");
-        properties.setProperty("socket.request.max.bytes", "104857600");
+        properties.setProperty("socket.send.buffer.bytes", "10240");
+        properties.setProperty("socket.receive.buffer.bytes", "10240");
+        properties.setProperty("socket.request.max.bytes", "10485760");
         properties.setProperty("log.dirs", "/tmp/default-log-dir");
         properties.setProperty("num.partitions", "1");
         properties.setProperty("num.recovery.threads.per.data.dir", "1");
