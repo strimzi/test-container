@@ -605,4 +605,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     /* test */ String getKafkaVersion() {
         return this.kafkaVersion;
     }
+
+    /* test */ int getBrokerId() {
+        return brokerId;
+    }
 }
