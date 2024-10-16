@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -43,11 +44,13 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private ToxiproxyContainer proxyContainer;
     private boolean enableSharedNetwork;
     private String kafkaVersion;
+    private boolean enableKraft;
 
     // not editable
     private final Network network;
-    private final StrimziZookeeperContainer zookeeper;
+    private StrimziZookeeperContainer zookeeper;
     private Collection<KafkaContainer> brokers;
+    private String clusterId;
 
     /**
      * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
@@ -141,12 +144,16 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.additionalKafkaConfiguration = builder.additionalKafkaConfiguration;
         this.proxyContainer = builder.proxyContainer;
         this.kafkaVersion = builder.kafkaVersion;
+        this.enableKraft = builder.enableKRaft;
+        this.clusterId = builder.clusterId;
 
         validateBrokerNum(this.brokersNum);
         validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
 
-        this.zookeeper = new StrimziZookeeperContainer()
-            .withNetwork(this.network);
+        if (this.isZooKeeperBasedKafkaCluster()) {
+            this.zookeeper = new StrimziZookeeperContainer()
+                .withNetwork(this.network);
+        }
 
         if (this.proxyContainer != null) {
             this.proxyContainer.setNetwork(this.network);
@@ -162,6 +169,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.replication.factor", String.valueOf(internalTopicReplicationFactor));
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.min.isr", String.valueOf(internalTopicReplicationFactor));
 
+        if (this.isKraftKafkaCluster()) {
+            // we have to configure quorum voters but also we simplify process because we use network aliases (i.e., broker-<id>)
+            this.configureQuorumVoters(additionalKafkaConfiguration);
+        }
+
         if (additionalKafkaConfiguration != null) {
             defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
         }
@@ -172,15 +184,27 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
                 // adding broker id for each kafka container
-                KafkaContainer kafkaContainer = new StrimziKafkaContainer()
+                StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
                     .withBrokerId(brokerId)
                     .withKafkaConfigurationMap(defaultKafkaConfigurationForMultiNode)
-                    .withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withNetworkAliases("broker-" + brokerId)
-                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    .dependsOn(this.zookeeper);
+                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion);
+
+                // if it's ZK-based Kafka cluster we depend on ZK container and we need to specify external ZK connect
+                if (this.isZooKeeperBasedKafkaCluster()) {
+                    kafkaContainer.withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
+                        .dependsOn(this.zookeeper);
+                } else {
+                    kafkaContainer
+                        // if KRaft we need to enable it
+                        .withKraft()
+                        // One must set `node.id` to the same value as `broker.id` if we use KRaft mode
+                        .withNodeId(brokerId)
+                        // pass shared `cluster.id` to each broker
+                        .withClusterId(this.clusterId);
+                }
 
                 LOGGER.info("Started broker with id: {}", kafkaContainer);
 
@@ -208,6 +232,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
         private String kafkaVersion;
+        private boolean enableKRaft;
+        private String clusterId;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -280,12 +306,20 @@ public class StrimziKafkaCluster implements KafkaContainer {
             return this;
         }
 
+        public StrimziKafkaClusterBuilder withKraftEnabled() {
+            this.enableKRaft = true;
+            return this;
+        }
+
         /**
          * Builds and returns a {@code StrimziKafkaCluster} instance based on the provided configurations.
          *
          * @return a new instance of {@code StrimziKafkaCluster}
          */
         public StrimziKafkaCluster build() {
+            // Generate a single cluster ID, which will be shared by all brokers
+            this.clusterId = UUID.randomUUID().toString();
+
             return new StrimziKafkaCluster(this);
         }
     }
@@ -319,6 +353,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .collect(Collectors.joining(","));
     }
 
+    public boolean isZooKeeperBasedKafkaCluster() {
+        return !this.enableKraft;
+    }
+
+    public boolean isKraftKafkaCluster() {
+        return this.enableKraft;
+    }
+
     /* test */ int getInternalTopicReplicationFactor() {
         return this.internalTopicReplicationFactor;
     }
@@ -331,6 +373,15 @@ public class StrimziKafkaCluster implements KafkaContainer {
         return this.additionalKafkaConfiguration;
     }
 
+    private void configureQuorumVoters(final Map<String, String> additionalKafkaConfiguration) {
+        // Construct controller.quorum.voters based on network aliases (broker-1, broker-2, etc.)
+        final String quorumVoters = IntStream.range(0, this.brokersNum)
+            .mapToObj(brokerId -> String.format("%d@broker-%d:9094", brokerId, brokerId))
+            .collect(Collectors.joining(","));
+
+        additionalKafkaConfiguration.put("controller.quorum.voters", quorumVoters);
+    }
+
     @Override
     public void start() {
         Stream<KafkaContainer> startables = this.brokers.stream();
@@ -341,31 +392,35 @@ public class StrimziKafkaCluster implements KafkaContainer {
             e.printStackTrace();
         }
 
-        Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(5).toMillis(), Duration.ofMinutes(1).toMillis(),
-            () -> {
-                Container.ExecResult result;
-                try {
-                    result = this.zookeeper.execInContainer(
-                        "sh", "-c",
-                        "bin/zookeeper-shell.sh zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
-                    );
-                    String brokers = result.getStdout();
+        if (this.isZooKeeperBasedKafkaCluster()) {
+            Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(5).toMillis(), Duration.ofMinutes(1).toMillis(),
+                () -> {
+                    Container.ExecResult result;
+                    try {
+                        result = this.zookeeper.execInContainer(
+                            "sh", "-c",
+                            "bin/zookeeper-shell.sh zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+                        );
+                        String brokers = result.getStdout();
 
-                    LOGGER.info("Running Kafka brokers: {}", result.getStdout());
+                        LOGGER.info("Running Kafka brokers: {}", result.getStdout());
 
-                    return brokers != null && brokers.split(",").length == this.brokersNum;
-                } catch (IOException | InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    e.printStackTrace();
-                    return false;
-                }
-            });
+                        return brokers != null && brokers.split(",").length == this.brokersNum;
+                    } catch (IOException | InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        e.printStackTrace();
+                        return false;
+                    }
+                });
+        }
     }
 
     @Override
     public void stop() {
-        // firstly we shut-down zookeeper -> reason: 'On the command line if I kill ZK first it sometimes prevents a broker from shutting down quickly.'
-        this.zookeeper.stop();
+        if (this.isZooKeeperBasedKafkaCluster()) {
+            // firstly we shut-down zookeeper -> reason: 'On the command line if I kill ZK first it sometimes prevents a broker from shutting down quickly.'
+            this.zookeeper.stop();
+        }
 
         // stop all kafka containers in parallel
         this.brokers.stream()

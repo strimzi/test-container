@@ -19,6 +19,8 @@ import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
+import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -28,10 +30,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -71,6 +76,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Map<String, String> kafkaConfigurationMap;
     private String externalZookeeperConnect;
     private int brokerId;
+    private int nodeId;
     private String kafkaVersion;
     private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
@@ -253,6 +259,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // explicitly say, which listener will be controller (in this case CONTROLLER)
             kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
             kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
+            // if we use KRaft we also need to configure node.id same as broker.id
+            kafkaConfiguration.put("node.id", String.valueOf(this.nodeId));
+            // The role of the server: mixed roles
+            kafkaConfiguration.put("process.roles", "broker,controller");
+            // the server stores its log data, and the directory where it stores its metadata.properties file — upon formatting, it will update this file with the cluster ID, which will allow controllers to identify brokers as needed.
+//            kafkaConfiguration.put("log.dirs", "/tmp/kraft-combined-logs" + this.nodeId);
         } else if (this.externalZookeeperConnect != null) {
             LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
             kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
@@ -266,6 +278,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.kafkaConfigurationMap != null) {
             kafkaConfiguration.putAll(this.kafkaConfigurationMap);
         }
+
         String kafkaConfigurationOverride = writeOverrideString(kafkaConfiguration);
 
         String command = "#!/bin/bash \n";
@@ -278,9 +291,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
             command += "bin/kafka-server-start.sh config/server.properties" + kafkaConfigurationOverride;
         } else {
-            clusterId = this.randomUuid();
-            command += "bin/kafka-storage.sh format -t=\"" + clusterId + "\" -c config/kraft/server.properties \n";
-            command += "bin/kafka-server-start.sh config/kraft/server.properties" + kafkaConfigurationOverride;
+            if (this.clusterId == null) {
+                this.clusterId = this.randomUuid();
+                LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
+            }
+
+            command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
+//            command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties " + kafkaConfigurationOverride + " \n";
+            command += "cat /opt/kafka/config/kraft/server.properties \n";
         }
 
         Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
@@ -294,6 +312,19 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
                 STARTER_SCRIPT
         );
+    }
+
+    private String createCustomServerProperties(Map<String, String> kafkaConfiguration) {
+        Properties properties = new Properties();
+        properties.putAll(kafkaConfiguration);
+
+        StringWriter writer = new StringWriter();
+        try {
+            properties.store(writer, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return writer.toString();
     }
 
     @Override
@@ -400,7 +431,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withBrokerId(final int brokerId) {
+        if (this.useKraft && this.brokerId != this.nodeId) {
+            throw new IllegalStateException("`broker.id` and `node.id` must have same value!");
+        }
+
         this.brokerId = brokerId;
+        return self();
+    }
+
+    public StrimziKafkaContainer withNodeId(final int nodeId) {
+        this.nodeId = nodeId;
         return self();
     }
 
@@ -485,6 +525,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             proxyContainer.setNetworkAliases(Collections.singletonList("toxiproxy"));
         }
         return self();
+    }
+
+    protected StrimziKafkaContainer withClusterId(String clusterId) {
+        this.clusterId = clusterId;
+        return this;
     }
 
     /**
