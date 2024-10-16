@@ -308,7 +308,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             return this;
         }
 
-        public StrimziKafkaClusterBuilder withKraftEnabled() {
+        public StrimziKafkaClusterBuilder withKraft() {
             this.enableKRaft = true;
             return this;
         }

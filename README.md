@@ -226,7 +226,7 @@ kafkaCluster.start();
 StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
     .withNumberOfBrokers(3)
     .withKafkaVersion("3.8.0") // if not specified then latest Kafka version is selected
-    .withKraftEnabled()        // if not specified ZK-based is used
+    .withKraft()        // if not specified ZK-based is used
     .withAdditionalKafkaConfiguration(Map.of(
         "log.cleaner.enable", "false"
     ))
