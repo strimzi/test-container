@@ -215,7 +215,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             advertisedListenerNumber++;
         }
 
-        LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners.toString());
+        LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
         StringBuilder kafkaListeners = new StringBuilder();
         StringBuilder kafkaListenerSecurityProtocol = new StringBuilder();
@@ -241,6 +241,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.useKraft) {
             // adding Controller listener for Kraft mode
+            // (wildcard address for multi-node setup; that way we other nodes can connect and communicate between each other)
             kafkaListeners.append(",").append("CONTROLLER://0.0.0.0:9094");
             kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
         }
@@ -252,25 +253,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         kafkaConfiguration.put("listener.security.protocol.map", kafkaListenerSecurityProtocol.toString());
         kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
         kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
-
-        if (this.useKraft) {
-            // explicitly say, which listener will be controller (in this case CONTROLLER)
-            kafkaConfiguration.put("controller.quorum.voters", this.brokerId + "@localhost:9094");
-            kafkaConfiguration.put("controller.listener.names", "CONTROLLER");
-            // if we use KRaft we also need to configure node.id same as broker.id
-            kafkaConfiguration.put("node.id", String.valueOf(this.nodeId));
-            // The role of the server: mixed roles
-            kafkaConfiguration.put("process.roles", "broker,controller");
-            // the server stores its log data, and the directory where it stores its metadata.properties file — upon formatting, it will update this file with the cluster ID, which will allow controllers to identify brokers as needed.
-//            kafkaConfiguration.put("log.dirs", "/tmp/kraft-combined-logs" + this.nodeId);
-        } else if (this.externalZookeeperConnect != null) {
-            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
-            kafkaConfiguration.put("zookeeper.connect", this.externalZookeeperConnect);
-        } else {
-            // using internal ZooKeeper
-            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
-            kafkaConfiguration.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
-        }
 
         // additional kafka config
         if (this.kafkaConfigurationMap != null) {
@@ -395,6 +377,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             properties.setProperty("controller.quorum.voters", String.format("%d@localhost:9093", this.nodeId));  // Dynamic node id in quorum
             properties.setProperty("listeners", "PLAINTEXT://:9092,CONTROLLER://:9093");
             properties.setProperty("controller.listener.names", "CONTROLLER");
+        } else if (this.externalZookeeperConnect != null) {
+            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
+            properties.put("zookeeper.connect", this.externalZookeeperConnect);
+        } else {
+            // using internal ZooKeeper
+            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
+            properties.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
         return properties;

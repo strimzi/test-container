@@ -36,10 +36,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaCluster.class);
+    private static final String NETWORK_ALIAS_PREFIX = "broker-";
 
     // instance attributes
-    private int brokersNum;
-    private int internalTopicReplicationFactor;
+    private final int brokersNum;
+    private final int internalTopicReplicationFactor;
     private Map<String, String> additionalKafkaConfiguration;
     private ToxiproxyContainer proxyContainer;
     private boolean enableSharedNetwork;
@@ -189,7 +190,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withKafkaConfigurationMap(defaultKafkaConfigurationForMultiNode)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
-                    .withNetworkAliases("broker-" + brokerId)
+                    .withNetworkAliases(NETWORK_ALIAS_PREFIX + brokerId)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion);
 
                 // if it's ZK-based Kafka cluster we depend on ZK container and we need to specify external ZK connect
@@ -377,7 +378,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private void configureQuorumVoters(final Map<String, String> additionalKafkaConfiguration) {
         // Construct controller.quorum.voters based on network aliases (broker-1, broker-2, etc.)
         final String quorumVoters = IntStream.range(0, this.brokersNum)
-            .mapToObj(brokerId -> String.format("%d@broker-%d:9094", brokerId, brokerId))
+            .mapToObj(brokerId -> String.format("%d@" + NETWORK_ALIAS_PREFIX + "%d:9094", brokerId, brokerId))
             .collect(Collectors.joining(","));
 
         additionalKafkaConfiguration.put("controller.quorum.voters", quorumVoters);
