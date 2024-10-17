@@ -392,7 +392,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             Startables.deepStart(startables).get(60, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             Thread.currentThread().interrupt();
-            e.printStackTrace();
+            throw new RuntimeException("Failed to start Kafka containers", e);
         }
 
         if (this.isZooKeeperBasedKafkaCluster()) {
@@ -411,8 +411,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                         return brokers != null && brokers.split(",").length == this.brokersNum;
                     } catch (IOException | InterruptedException e) {
                         Thread.currentThread().interrupt();
-                        e.printStackTrace();
-                        return false;
+                        throw new RuntimeException("Failed to execute command in ZooKeeper container", e);
                     }
                 });
         } else if (this.isKraftKafkaCluster()) {
