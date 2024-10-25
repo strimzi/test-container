@@ -5,7 +5,6 @@
 package io.strimzi.test.container;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
-import io.strimzi.kafka.oauth.client.ClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -14,7 +13,6 @@ import org.apache.logging.log4j.Level;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -26,21 +24,21 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
 
     private StrimziKafkaContainer systemUnderTest;
     private static final String KEYCLOAK_NETWORK_ALIAS = "keycloak";
-
-    @Container
-    KeycloakContainer keycloakContainer = new KeycloakContainer()
-        .withRealmImportFile("/demo-realm.json")
-        .withEnv("KEYCLOAK_ADMIN", "admin")
-        .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
-        .withExposedPorts(8080)
-        .withNetwork(Network.SHARED)
-        .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
-        .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(8080));
+    private KeycloakContainer keycloakContainer;
 
     @Test
     void testOAuthOverPlain() {
         try {
-            keycloakContainer.start();
+            this.keycloakContainer = new KeycloakContainer()
+                .withRealmImportFile("/demo-realm.json")
+                .withEnv("KEYCLOAK_ADMIN", "admin")
+                .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
+                .withExposedPorts(8080)
+                .withNetwork(Network.SHARED)
+                .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
+                .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(8080));
+
+            this.keycloakContainer.start();
 
             final Integer keycloakPort = 8080;
             final String realmName = "demo";
@@ -117,10 +115,10 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
 //            );
 
             // OAuth related
-            producerProps.put(ClientConfig.OAUTH_TOKEN_ENDPOINT_URI, "http://keycloak:8080/realms/demo/protocol/openid-connect/token");
-            producerProps.put(ClientConfig.OAUTH_CLIENT_ID, "kafka-producer-client");
-            producerProps.put(ClientConfig.OAUTH_CLIENT_SECRET, "kafka-producer-client-secret");
-            producerProps.put(ClientConfig.OAUTH_USERNAME_CLAIM, "preferred_username");
+            producerProps.put("oauth.token.endpoint.uri", "http://keycloak:8080/realms/demo/protocol/openid-connect/token");
+            producerProps.put("oauth.client.id", "kafka-producer-client");
+            producerProps.put("oauth.client.secret", "kafka-producer-client-secret");
+            producerProps.put("oauth.username.claim", "preferred_username");
 
             KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps);
 

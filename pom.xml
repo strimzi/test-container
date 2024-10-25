@@ -110,6 +110,7 @@
         <jupiter.version>5.11.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
+        <testcontainers-keycloak.version>3.5.1</testcontainers-keycloak.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
@@ -211,32 +212,13 @@
             <version>${kafka.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- this is needed for Keycloak container -->
         <dependency>
             <groupId>com.github.dasniko</groupId>
             <artifactId>testcontainers-keycloak</artifactId>
-            <version>3.5.1</version>
+            <version>${testcontainers-keycloak.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>1.20.2</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.strimzi</groupId>
-            <artifactId>kafka-oauth-client</artifactId>
-            <version>0.15.0</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>2.18.0</version>
-        </dependency>
-
-
 
         <!-- overriding version of commons-compress for Test container - Vulnerability -->
         <dependency>
