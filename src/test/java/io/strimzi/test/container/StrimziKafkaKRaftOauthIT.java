@@ -109,10 +109,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                     "username=\"kafka-producer-client\" " +
                     "password=\"kafka-producer-client-secret\";"
             );
-            // we do not need to use any handler class because DEFAULT will be used for PLAIN
-//            producerProps.put("sasl.client.callback.handler.class",
-//                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler"
-//            );
 
             // OAuth related
             producerProps.put("oauth.token.endpoint.uri", "http://keycloak:8080/realms/demo/protocol/openid-connect/token");
@@ -135,9 +131,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                     "username=\"kafka-consumer-client\" " +
                     "password=\"kafka-consumer-client-secret\";"
             );
-//            consumerProps.put("sasl.client.callback.handler.class",
-//                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler"
-//            );
 
             // OAuth related
             consumerProps.put("oauth.token.endpoint.uri", "http://keycloak:8080/realms/demo/protocol/openid-connect/token");
@@ -159,10 +152,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                 System.out.printf("Received message: key=%s, value=%s%n", record.key(), record.value());
             });
             consumer.close();
-
-
-            System.out.println("==================");
-            System.out.println(systemUnderTest.getLogs());
         } finally {
             if (this.keycloakContainer != null) {
                 this.keycloakContainer.stop();
