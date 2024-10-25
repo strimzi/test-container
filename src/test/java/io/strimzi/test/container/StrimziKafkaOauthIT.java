@@ -1,22 +1,17 @@
+/*
+ * Copyright Strimzi authors.
+ * License: Apache License 2.0 (see the file LICENSE or http://apache.org/licenses/LICENSE-2.0.html).
+ */
 package io.strimzi.test.container;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import io.strimzi.kafka.oauth.client.ClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.config.SaslConfigs;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.logging.log4j.core.Core;
-import org.hamcrest.CoreMatchers;
+import org.apache.logging.log4j.Level;
 import org.junit.jupiter.api.Test;
-import org.keycloak.admin.client.Keycloak;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -26,145 +21,147 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
-
-import static org.hamcrest.MatcherAssert.assertThat;
 
 public class StrimziKafkaOauthIT extends AbstractIT {
 
     private StrimziKafkaContainer systemUnderTest;
+    private static final String KEYCLOAK_NETWORK_ALIAS = "keycloak";
 
     @Container
     KeycloakContainer keycloakContainer = new KeycloakContainer()
-        .withRealmImportFile("/kafka-authz-realm.json")
+        .withRealmImportFile("/demo-realm.json")
         .withEnv("KEYCLOAK_ADMIN", "admin")
         .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
         .withExposedPorts(8080)
         .withNetwork(Network.SHARED)
-        .withNetworkAliases("keycloak")
-        .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200));
+        .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
+        .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(8080));
 
     @Test
     void testOAuth() {
         try {
             keycloakContainer.start();
 
-            Keycloak keycloakInstance = this.keycloakContainer.getKeycloakAdminClient();
-
-            String keycloakHost = keycloakContainer.getHost();
-            Integer keycloakPort = keycloakContainer.getMappedPort(8080);
-            String keycloakAuthUrl = "http://" + keycloakHost + ":" + keycloakPort + "/realms/kafka-authz";
-
-            System.out.println("Keycloak URL:" + keycloakAuthUrl);
+            final Integer keycloakPort = 8080;
+            final String realmName = "demo";
+            final String keycloakAuthUri = "http://"  + KEYCLOAK_NETWORK_ALIAS + ":" + keycloakPort;
 
             Map<String, String> additionalConfiguration = new HashMap<>();
 
+            additionalConfiguration.put("sasl.enabled.mechanisms", "PLAIN");
 
-            // Set Kafka configuration properties suitable for KRaft mode
-            additionalConfiguration.put("process.roles", "broker,controller");
-            additionalConfiguration.put("node.id", "1");
-            additionalConfiguration.put("broker.id", "1");
-            additionalConfiguration.put("controller.listener.names", "CONTROLLER");
-            additionalConfiguration.put("controller.quorum.voters", "1@localhost:9094");
-            additionalConfiguration.put("sasl.enabled.mechanisms", "OAUTHBEARER");
-            additionalConfiguration.put("ssl.secure.random.implementation", "SHA1PRNG");
-            additionalConfiguration.put("ssl.endpoint.identification.algorithm", "");
+            // requirement failed: sasl.mechanism.inter.broker.protocol must be included in sasl.enabled.mechanisms when SASL is used for inter-broker communication
+            additionalConfiguration.put("sasl.mechanism.inter.broker.protocol", "PLAIN");
+            additionalConfiguration.put("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
 
-            // SASL/OAuth configurations for PLAINTEXT listener
-            additionalConfiguration.put("sasl.enabled.mechanisms", "OAUTHBEARER");
-            additionalConfiguration.put("listener.name.broker1.oauthbearer.sasl.jaas.config",
-                "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;");
-            additionalConfiguration.put("listener.name.broker1.oauthbearer.sasl.login.callback.handler.class",
-                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler");
-            additionalConfiguration.put("listener.name.broker1.oauthbearer.sasl.server.callback.handler.class",
-                "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler");
+            // �[2024-10-25 08:35:57,325] ERROR Encountered fatal fault: caught exception (org.apache.kafka.server.fault.ProcessTerminatingFaultHandler)
+            // �java.lang.IllegalArgumentException: Could not find a 'KafkaServer' or 'controller.KafkaServer' entry in the JAAS configuration. System property 'java.security.auth.login.config' is not set
+            additionalConfiguration.put("sasl.mechanism.controller.protocol", "PLAIN");
 
-            // OAuth-related configuration
-            additionalConfiguration.put("oauth.client.id", "kafka");
-            additionalConfiguration.put("oauth.client.secret", "kafka-secret");
-            additionalConfiguration.put("oauth.token.endpoint.uri", keycloakAuthUrl + "/protocol/openid-connect/token");
-            additionalConfiguration.put("oauth.valid.issuer.uri", keycloakAuthUrl);
-            additionalConfiguration.put("oauth.jwks.endpoint.uri", keycloakAuthUrl + "/protocol/openid-connect/certs");
-            additionalConfiguration.put("oauth.username.claim", "preferred_username");
-            additionalConfiguration.put("oauth.jwks.refresh.min.pause.seconds", "5");
+            additionalConfiguration.put("listener.name.plaintext.plain.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka-broker\" password=\"kafka-broker-secret\";");
+            additionalConfiguration.put("listener.name.controller.plain.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka-broker\" password=\"kafka-broker-secret\";");
+            additionalConfiguration.put("listener.name.broker1.plain.sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka-broker\" password=\"kafka-broker-secret\";");
 
-            // Authorizer configuration
-            additionalConfiguration.put("authorizer.class.name", "io.strimzi.kafka.oauth.server.authorizer.KeycloakAuthorizer");
-            additionalConfiguration.put("strimzi.authorization.token.endpoint.uri", keycloakAuthUrl + "/protocol/openid-connect/token");
-            additionalConfiguration.put("strimzi.authorization.client.id", "kafka");
-            additionalConfiguration.put("strimzi.authorization.client.secret", "kafka-secret");
-            additionalConfiguration.put("strimzi.authorization.kafka.cluster.name", "my-cluster");
-            additionalConfiguration.put("strimzi.authorization.delegate.to.kafka.acl", "false");
-            additionalConfiguration.put("strimzi.authorization.grants.refresh.period.seconds", "60");
+            // Caused by: javax.security.sasl.SaslException: Cannot get userid/password [Caused by javax.security.auth.callback.UnsupportedCallbackException: Could not login: the client is being asked for a password, but the Kafka client code does not currently support obtaining a password from the user.]
+            additionalConfiguration.put("listener.name.plaintext.plain.sasl.server.callback.handler.class", "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler");
+            additionalConfiguration.put("listener.name.broker1.plain.sasl.server.callback.handler.class", "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler");
+            additionalConfiguration.put("listener.name.controller.plain.sasl.server.callback.handler.class", "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler");
 
             // Principal builder
             additionalConfiguration.put("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
 
             // Super users
             additionalConfiguration.put("super.users",
-                "User:ANONYMOUS;User:service-account-kafka");
+                "User:ANONYMOUS;User:service-account-kafka-broker");
 
-            systemUnderTest = new StrimziKafkaContainer("localhost/strimzi/test-container:latest-kafka-3.8.0-amd64")
+            this.systemUnderTest = new StrimziKafkaContainer("localhost/strimzi/test-container:latest-kafka-3.8.0-amd64")
                 .withKraft()
                 .withKafkaConfigurationMap(additionalConfiguration)
                 .withNetwork(Network.SHARED)
-                .withEnv("KEYCLOAK_HOST", keycloakHost)
-                .withEnv("REALM", "kafka-authz")
+                .withEnv("KAFKA_DEBUG", "y")
+                .withKafkaLog(Level.INFO)
+                // org.apache.kafka.common.KafkaException: io.strimzi.kafka.oauth.common.ConfigException:
+                // OAuth validator configuration error: either 'oauth.jwks.endpoint.uri' (for fast local signature validation) or
+                // 'oauth.introspection.endpoint.uri' (for using authorization server during validation) should be specified!
+                // for now we would use FAST LOCAL SIGNATURE VALIDATION (quicker) -> no need to call remotely for Keycloak (only once or when tokens expires)
+                // we have to configure OAuth relatead stuff as ENVs because we are unable to set SystemProperties easily
+                .withEnv("OAUTH_JWKS_ENDPOINT_URI", keycloakAuthUri + "/realms/" +  realmName + "/protocol/openid-connect/certs")
+                // org.apache.kafka.common.KafkaException: io.strimzi.kafka.oauth.common.ConfigException:
+                //  OAuth validator configuration error: 'oauth.valid.issuer.uri' must be set or 'oauth.check.issuer' has to be set to 'false'
+                .withEnv("OAUTH_VALID_ISSUER_URI", keycloakAuthUri + "/realms/" + realmName)
+                // �Caused by: io.strimzi.kafka.oauth.services.ServiceException: Failed to fetch public keys needed to validate JWT signatures: http://localhost:41951/auth/realms/kafka-authz/protocol/openid-connect/certs
+                //  Failed to fetch public keys needed to validate JWT signatures: http://localhost:36247/auth/realms/kafka-authz/protocol/openid-connect/certs
+                .withEnv("OAUTH_USERNAME_CLAIM", "preferred_username")
+                .withEnv("OAUTH_CLIENT_ID", "kafka")
+                .withEnv("OAUTH_CLIENT_SECRET", "kafka-secret")
+                .withEnv("OAUTH_TOKEN_ENDPOINT_URI", keycloakAuthUri + "/realms/" + realmName + "/protocol/openid-connect/token")
                 .waitForRunning();
+            this.systemUnderTest.start();
 
-            systemUnderTest.start();
+            Properties producerProps = new Properties();
+            // Additional producer properties
+            producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+            producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
-            // Now, create a Kafka producer and consumer using OAuth authentication
-            // Producer properties
-//            Properties producerProps = new Properties();
-//            producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers());
-//            producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-//            producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-//            producerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
-//            producerProps.put(SaslConfigs.SASL_MECHANISM, "OAUTHBEARER");
-//            producerProps.put(SaslConfigs.SASL_JAAS_CONFIG,
-//                "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
-//                    "oauth.client.id=\"team-a-client\" " +
-//                    "oauth.client.secret=\"team-a-client-secret\" " +
-//                    "oauth.token.endpoint.uri=\"" + keycloakAuthUrl + "/protocol/openid-connect/token\";");
-//            producerProps.put(SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS,
-//                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler");
-//
-//            Producer<String, String> producer = new KafkaProducer<>(producerProps);
-//
-//            // Send a test message
-//            ProducerRecord<String, String> record = new ProducerRecord<>("test-topic", "key", "value");
-//            producer.send(record).get();
-//
-//            producer.close();
-//
-//            // Consumer properties
-//            Properties consumerProps = new Properties();
-//            consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers());
-//            consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-//            consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-//            consumerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
-//            consumerProps.put(SaslConfigs.SASL_MECHANISM, "OAUTHBEARER");
-//            consumerProps.put(SaslConfigs.SASL_JAAS_CONFIG,
-//                "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
-//                    "oauth.client.id=\"team-a-client\" " +
-//                    "oauth.client.secret=\"team-a-client-secret\" " +
-//                    "oauth.token.endpoint.uri=\"" + keycloakAuthUrl + "/protocol/openid-connect/token\";");
-//            consumerProps.put(SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS,
-//                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler");
-//            consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
-//            consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-//
-//            Consumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
-//            consumer.subscribe(Collections.singletonList("test-topic"));
-//
-//            // Poll for messages
-//            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(10));
-//
-//            // Verify that the message was received
-//            assertThat("No records were received", records.isEmpty(), CoreMatchers.notNullValue());
+            producerProps.put("bootstrap.servers", this.systemUnderTest.getBootstrapServers());
+            producerProps.put("security.protocol", "SASL_PLAINTEXT");
+            producerProps.put("sasl.mechanism", "PLAIN");
+            producerProps.put("sasl.jaas.config",
+                "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                    "username=\"kafka-producer-client\" " +
+                    "password=\"kafka-producer-client-secret\";"
+            );
+            // we do not need to use any handler class because DEFAULT will be used for PLAIN
+//            producerProps.put("sasl.client.callback.handler.class",
+//                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler"
+//            );
 
-//            consumer.close();
+            // OAuth related
+            producerProps.put(ClientConfig.OAUTH_TOKEN_ENDPOINT_URI, "http://keycloak:8080/realms/demo/protocol/openid-connect/token");
+            producerProps.put(ClientConfig.OAUTH_CLIENT_ID, "kafka-producer-client");
+            producerProps.put(ClientConfig.OAUTH_CLIENT_SECRET, "kafka-producer-client-secret");
+            producerProps.put(ClientConfig.OAUTH_USERNAME_CLAIM, "preferred_username");
+
+            KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps);
+
+            ProducerRecord<String, String> producerRecord = new ProducerRecord<>("superapp_topic", "key", "value");
+            producer.send(producerRecord);
+            producer.close();
+
+            Properties consumerProps = new Properties();
+            consumerProps.put("bootstrap.servers", this.systemUnderTest.getBootstrapServers());
+            consumerProps.put("security.protocol", "SASL_PLAINTEXT");
+            consumerProps.put("sasl.mechanism", "PLAIN");
+            consumerProps.put("sasl.jaas.config",
+                "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                    "username=\"kafka-consumer-client\" " +
+                    "password=\"kafka-consumer-client-secret\";"
+            );
+//            consumerProps.put("sasl.client.callback.handler.class",
+//                "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler"
+//            );
+
+            // OAuth related
+            consumerProps.put("oauth.token.endpoint.uri", "http://keycloak:8080/realms/demo/protocol/openid-connect/token");
+            consumerProps.put("oauth.client.id", "kafka-consumer-client");
+            consumerProps.put("oauth.client.secret", "kafka-consumer-client-secret");
+            consumerProps.put("oauth.username.claim", "preferred_username");
+
+            consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+            consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+            consumerProps.put("group.id", "my-group");
+            consumerProps.put("auto.offset.reset", "earliest");
+
+            KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
+            consumer.subscribe(Collections.singletonList("superapp_topic"));
+
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(10));
+
+            records.forEach(record -> {
+                System.out.printf("Received message: key=%s, value=%s%n", record.key(), record.value());
+            });
+            consumer.close();
+
 
             System.out.println("==================");
             System.out.println(systemUnderTest.getLogs());

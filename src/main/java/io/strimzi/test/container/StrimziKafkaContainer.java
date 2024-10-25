@@ -8,6 +8,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
+import org.apache.logging.log4j.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -293,6 +294,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             }
 
             command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
+            command += "cat /opt/kafka/config/kraft/server.properties\n";
             command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
         }
 
@@ -569,6 +571,39 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected StrimziKafkaContainer withClusterId(String clusterId) {
         this.clusterId = clusterId;
         return this;
+    }
+
+    /**
+     * Configures the Kafka container to use the specified logging level for Kafka logs.
+     * <p>
+     * This method generates a custom <code>log4j.properties</code> file with the desired logging level
+     * and copies it into the Kafka container. By setting the logging level, you can control the verbosity
+     * of Kafka's log output, which is useful for debugging or monitoring purposes.
+     * </p>
+     *
+     * <h3>Example Usage:</h3>
+     * <pre>{@code
+     * StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+     *     .withKafkaLog(Level.DEBUG)
+     *     .start();
+     * }</pre>
+     *
+     * @param level the desired {@link Level} of logging (e.g., DEBUG, INFO, WARN, ERROR)
+     * @return the current instance of {@code StrimziKafkaContainer} for method chaining
+     */
+    public StrimziKafkaContainer withKafkaLog(Level level) {
+        String log4jConfig = "log4j.rootLogger=" + level.name() + ", stdout\n" +
+            "log4j.appender.stdout=org.apache.log4j.ConsoleAppender\n" +
+            "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout\n" +
+            "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n\n";
+
+        // Copy the custom log4j.properties into the container
+        this.withCopyToContainer(
+            Transferable.of(log4jConfig.getBytes(StandardCharsets.UTF_8)),
+            "/opt/kafka/config/log4j.properties"
+        );
+
+        return self();
     }
 
     /**
