@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-public class StrimziKafkaOauthIT extends AbstractIT {
+public class StrimziKafkaKRaftOauthIT extends AbstractIT {
 
     private StrimziKafkaContainer systemUnderTest;
     private static final String KEYCLOAK_NETWORK_ALIAS = "keycloak";
@@ -38,7 +38,7 @@ public class StrimziKafkaOauthIT extends AbstractIT {
         .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(8080));
 
     @Test
-    void testOAuth() {
+    void testOAuthOverPlain() {
         try {
             keycloakContainer.start();
 
