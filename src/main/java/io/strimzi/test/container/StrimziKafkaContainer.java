@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -36,6 +35,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -65,6 +65,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public static final int KAFKA_PORT = 9092;
 
     protected static final String NETWORK_ALIAS_PREFIX = "broker-";
+    protected static final String NETWORK_ALIAS_KEYCLOAK = "keycloak";
 
     /**
      * Lazy image name provider
@@ -88,6 +89,19 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private ToxiproxyContainer proxyContainer;
     private ToxiproxyClient toxiproxyClient;
     private Proxy proxy;
+
+    // OAuth fields
+    private boolean oauthEnabled;
+    private String keycloakRealm;
+    private String clientId;
+    private String clientSecret;
+    private String keycloakOauthUri;
+    private List<String> superUsers;
+    private String saslUsername;
+    private String saslPassword;
+
+    // authentication methods
+    private boolean oauthOverPlainEnabled;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -148,6 +162,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
         super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
         // we need it for the startZookeeper(); and startKafka(); to run container before...
+
+        if (this.isOAuthEnabled()) {
+            // Set OAuth environment variables (using properties does not propagate to System properties)
+            this.addEnv("OAUTH_JWKS_ENDPOINT_URI", this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/certs");
+            this.addEnv("OAUTH_VALID_ISSUER_URI", this.keycloakOauthUri + "/realms/" + this.keycloakRealm);
+            this.addEnv("OAUTH_CLIENT_ID", this.clientId);
+            this.addEnv("OAUTH_CLIENT_SECRET", this.clientSecret);
+            this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/token");
+            this.addEnv("OAUTH_USERNAME_CLAIM", "preferred_username");
+        }
+
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
     }
@@ -250,26 +275,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
         }
 
-        Map<String, String> kafkaConfiguration = new HashMap<>();
-
-        kafkaConfiguration.put("listeners", kafkaListeners.toString());
-        kafkaConfiguration.put("advertised.listeners", advertisedListeners.toString());
-        kafkaConfiguration.put("listener.security.protocol.map", kafkaListenerSecurityProtocol.toString());
-        kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
-        kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
-
-        // additional kafka config
-        if (this.kafkaConfigurationMap != null) {
-            kafkaConfiguration.putAll(this.kafkaConfigurationMap);
-        }
-
         if (this.nodeId == null) {
             LOGGER.warn("Node ID is not set. Using broker ID {} as the default node ID.", this.brokerId);
             this.nodeId = this.brokerId;
         }
 
-        final Properties defaultServerProperties = this.buildDefaultServerProperties();
-        final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, kafkaConfiguration);
+        final Properties defaultServerProperties = this.buildDefaultServerProperties(
+            kafkaListeners.toString(),
+            advertisedListeners.toString(),
+            kafkaListenerSecurityProtocol.toString());
+        final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, this.kafkaConfigurationMap);
 
         // copy override file to the container
         if (this.useKraft) {
@@ -356,15 +371,18 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
     }
 
-    private Properties buildDefaultServerProperties() {
+    private Properties buildDefaultServerProperties(final String listeners,
+                                                    final String advertisedListeners,
+                                                    final String listenerSecurityProtocolMap) {
         // Default properties for server.properties
         Properties properties = new Properties();
 
         // Common settings for both KRaft and non-KRaft modes
-        properties.setProperty("listeners", "PLAINTEXT://:9092");
-        properties.setProperty("inter.broker.listener.name", "PLAINTEXT");
-        properties.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
-        properties.setProperty("listener.security.protocol.map", "PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL");
+        properties.setProperty("listeners", listeners);
+        properties.setProperty("inter.broker.listener.name", "BROKER1");
+        properties.setProperty("broker.id", String.valueOf(this.brokerId));
+        properties.setProperty("advertised.listeners", advertisedListeners);
+        properties.setProperty("listener.security.protocol.map", listenerSecurityProtocolMap);
         properties.setProperty("num.network.threads", "3");
         properties.setProperty("num.io.threads", "8");
         properties.setProperty("socket.send.buffer.bytes", "102400");
@@ -384,8 +402,45 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             properties.setProperty("process.roles", "broker,controller");
             properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
             properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
-            properties.setProperty("listeners", "PLAINTEXT://:9092,CONTROLLER://:9093");
             properties.setProperty("controller.listener.names", "CONTROLLER");
+
+            // configure OAuth if enabled
+            if (this.isOAuthEnabled()) {
+                // if PLAIN is enabled
+                if (this.isOauthOverPlainEnabled()) {
+                    properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
+                    properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
+                    properties.setProperty("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
+                    properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
+                    properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
+
+                    // Dynamically build the 'super.users' property
+                    if (this.superUsers != null && !this.superUsers.isEmpty()) {
+                        String superUsersProperty = this.superUsers.stream()
+                            .map(user -> "User:" + user)
+                            .collect(Collectors.joining(";"));
+                        properties.setProperty("super.users", superUsersProperty);
+                    }
+
+                    // Construct the JAAS configuration with configurable username and password
+                    final String jaasConfig = String.format(
+                        "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
+                        this.saslUsername,
+                        this.saslPassword
+                    );
+
+                    properties.setProperty("listener.name.plaintext.plain.sasl.jaas.config", jaasConfig);
+                    properties.setProperty("listener.name.controller.plain.sasl.jaas.config", jaasConfig);
+                    properties.setProperty("listener.name.broker1.plain.sasl.jaas.config", jaasConfig);
+
+                    // Callback handler classes
+                    final String callbackHandler = "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler";
+
+                    properties.setProperty("listener.name.plaintext.plain.sasl.server.callback.handler.class", callbackHandler);
+                    properties.setProperty("listener.name.broker1.plain.sasl.server.callback.handler.class", callbackHandler);
+                    properties.setProperty("listener.name.controller.plain.sasl.server.callback.handler.class", callbackHandler);
+                }
+            }
         } else if (this.externalZookeeperConnect != null) {
             LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
             properties.put("zookeeper.connect", this.externalZookeeperConnect);
@@ -398,16 +453,26 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return properties;
     }
 
+    /**
+     * Overrides the default Kafka server properties with the provided overrides.
+     * If the overrides map is null or empty, it simply returns the default properties as a string.
+     *
+     * @param defaultProperties The default Kafka server properties.
+     * @param overrides         The properties to override. Can be null.
+     * @return A string representation of the combined server properties.
+     */
     private String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
-        // Apply overrides
-        overrides.forEach(defaultProperties::setProperty);
+        // Check if overrides are not null and not empty before applying them
+        if (overrides != null && !overrides.isEmpty()) {
+            overrides.forEach(defaultProperties::setProperty);
+        }
 
         // Write properties to string
         StringWriter writer = new StringWriter();
         try {
             defaultProperties.store(writer, null);
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException("Failed to store Kafka server properties", e);
         }
 
         return writer.toString();
@@ -568,9 +633,58 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    public StrimziKafkaContainer withOAuthConfig(final String keycloakRealm,
+                                                 final String clientId,
+                                                 final String clientSecret,
+                                                 final String keycloakOAuthUri,
+                                                 final List<String> superUsers) {
+        this.oauthEnabled = true;
+        this.keycloakRealm = keycloakRealm;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.keycloakOauthUri = keycloakOAuthUri;
+        this.superUsers = superUsers;
+        return self();
+    }
+
+    public StrimziKafkaContainer withOAuthOverPlain() {
+        this.oauthOverPlainEnabled = true;
+        return self();
+    }
+
+    /**
+     * Fluent method to set the SASL PLAIN mechanism's username.
+     *
+     * @param saslUsername The desired SASL username.
+     * @return StrimziKafkaContainer instance for method chaining.
+     */
+    public StrimziKafkaContainer withSaslUsername(String saslUsername) {
+        if (saslUsername != null && !saslUsername.trim().isEmpty()) {
+            this.saslUsername = saslUsername;
+        } else {
+            throw new IllegalArgumentException("SASL username cannot be null or empty.");
+        }
+        return self();
+    }
+
+    /**
+     * Fluent method to set the SASL PLAIN mechanism's password.
+     *
+     * @param saslPassword The desired SASL password.
+     * @return StrimziKafkaContainer instance for method chaining.
+     */
+    public StrimziKafkaContainer withSaslPassword(String saslPassword) {
+        if (saslPassword != null && !saslPassword.trim().isEmpty()) {
+            this.saslPassword = saslPassword;
+        } else {
+            throw new IllegalArgumentException("SASL password cannot be null or empty.");
+        }
+        return self();
+    }
+
     protected StrimziKafkaContainer withClusterId(String clusterId) {
         this.clusterId = clusterId;
-        return this;
+        return self();
     }
 
     /**
@@ -643,5 +757,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /* test */ int getBrokerId() {
         return brokerId;
+    }
+
+    public boolean isOAuthEnabled() {
+        return this.oauthEnabled;
+    }
+
+    public boolean isOauthOverPlainEnabled() {
+        return this.oauthOverPlainEnabled;
     }
 }

@@ -212,7 +212,6 @@
             <version>${kafka.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- this is needed for Keycloak container -->
         <dependency>
             <groupId>com.github.dasniko</groupId>
             <artifactId>testcontainers-keycloak</artifactId>
