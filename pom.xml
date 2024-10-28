@@ -112,6 +112,7 @@
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
         <testcontainers-keycloak.version>3.5.1</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
+        <kafka-oauth-client.version>0.15.0</kafka-oauth-client.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
@@ -223,12 +224,14 @@
         <dependency>
             <groupId>io.strimzi</groupId>
             <artifactId>kafka-oauth-client</artifactId>
-            <version>0.15.0</version>
+            <version>${kafka-oauth-client.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>${fasterxml.jackson-annotations.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- overriding version of commons-compress for Test container - Vulnerability -->

@@ -28,9 +28,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -96,18 +98,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String clientId;
     private String clientSecret;
     private String keycloakOauthUri;
+    private String oauthPreferredUsername;
     private List<String> superUsers;
 
     // OAuth over PLAIN
     private String saslUsername;
     private String saslPassword;
 
-    // OAuth with bearer
-    private String oauthPreferredUsername;
-
-    // authentication methods
-    private boolean oauthOverPlainEnabled;
-    private boolean oauthBearerEnabled;
+    private AuthenticationType authenticationType;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -176,8 +174,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.addEnv("OAUTH_CLIENT_ID", this.clientId);
             this.addEnv("OAUTH_CLIENT_SECRET", this.clientSecret);
             this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/token");
-            this.addEnv("OAUTH_USERNAME_CLAIM", "preferred_username");
-            this.addEnv("OAUTH_CHECK_ISSUER", "false");
+            this.addEnv("OAUTH_USERNAME_CLAIM", this.oauthPreferredUsername);
         }
 
         super.setCommand("sh", "-c", runStarterScript());
@@ -413,73 +410,19 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
             // configure OAuth if enabled
             if (this.isOAuthEnabled()) {
-                // if PLAIN is enabled
-                if (this.isOauthOverPlainEnabled()) {
-                    properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
-                    properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
-                    properties.setProperty("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
-                    properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
-                    properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
-
-                    // Dynamically build the 'super.users' property
-                    this.setSuperUsersIntoProperties(properties);
-
-                    // Construct the JAAS configuration with configurable username and password
-                    final String jaasConfig = String.format(
-                        "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
-                        this.saslUsername,
-                        this.saslPassword
-                    );
-
-                    properties.setProperty("listener.name.plaintext.plain.sasl.jaas.config", jaasConfig);
-                    properties.setProperty("listener.name.controller.plain.sasl.jaas.config", jaasConfig);
-                    properties.setProperty("listener.name.broker1.plain.sasl.jaas.config", jaasConfig);
-
-                    // Callback handler classes
-                    final String callbackHandler = "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler";
-
-                    properties.setProperty("listener.name.plaintext.plain.sasl.server.callback.handler.class", callbackHandler);
-                    properties.setProperty("listener.name.broker1.plain.sasl.server.callback.handler.class", callbackHandler);
-                    properties.setProperty("listener.name.controller.plain.sasl.server.callback.handler.class", callbackHandler);
-                } else if (this.isOauthBearerEnabled()) {
-                    properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
-                    properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
-                    properties.setProperty("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
-                    properties.setProperty("sasl.mechanism.controller.protocol", "OAUTHBEARER");
-                    properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
-
-                    this.setSuperUsersIntoProperties(properties);
-
-                    // Construct JAAS configuration for OAUTHBEARER
-                    final String jaasConfig = String.format(
-                        "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
-                            "oauth.client.id=\"%s\" " +
-                            "oauth.client.secret=\"%s\" " +
-                            "oauth.token.endpoint.uri=\"%s\" " +
-                            "oauth.username.claim=\"%s\";",
-                        this.clientId,
-                        this.clientSecret,
-                        this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/token",
-                        this.oauthPreferredUsername // e.g., "preferred_username"
-                    );
-                    // Set JAAS config for each listener
-                    properties.setProperty("listener.name.plaintext.oauthbearer.sasl.jaas.config", jaasConfig);
-                    properties.setProperty("listener.name.broker1.oauthbearer.sasl.jaas.config", jaasConfig);
-                    properties.setProperty("listener.name.controller.oauthbearer.sasl.jaas.config", jaasConfig);
-
-                    // Define Callback Handlers for OAUTHBEARER
-                    final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
-
-                    properties.setProperty("listener.name.plaintext.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
-                    properties.setProperty("listener.name.broker1.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
-                    properties.setProperty("listener.name.controller.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
-
-                    final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
-
-                    // Optionally, define client-side callback handlers if using inter-broker communication
-                    properties.setProperty("listener.name.plaintext.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
-                    properties.setProperty("listener.name.broker1.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
-                    properties.setProperty("listener.name.controller.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+                switch (this.authenticationType) {
+                    case OAUTH_OVER_PLAIN:
+                        configureOAuthOverPlain(properties);
+                        break;
+                    case OAUTH_BEARER:
+                        configureOAuthBearer(properties);
+                        break;
+                    case SCRAM_SHA_256:
+                    case SCRAM_SHA_512:
+                    case MUTUAL_TLS:
+                    case GSSAPI:
+                    default:
+                        throw new IllegalStateException("Unsupported authentication type: " + this.authenticationType);
                 }
             }
         } else if (this.externalZookeeperConnect != null) {
@@ -492,6 +435,86 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         return properties;
+    }
+
+    /**
+     * Configures OAuth over PLAIN authentication in the provided properties.
+     *
+     * @param properties The Kafka server properties to configure.
+     */
+    private void configureOAuthOverPlain(Properties properties) {
+        properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
+        properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
+        properties.setProperty("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
+        properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
+        properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
+
+        // Dynamically build the 'super.users' property
+        this.setSuperUsersIntoProperties(properties);
+
+        // Construct the JAAS configuration with configurable username and password
+        final String jaasConfig = String.format(
+            "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
+            this.saslUsername,
+            this.saslPassword
+        );
+
+        properties.setProperty("listener.name.plaintext.plain.sasl.jaas.config", jaasConfig);
+        properties.setProperty("listener.name.controller.plain.sasl.jaas.config", jaasConfig);
+        properties.setProperty("listener.name.broker1.plain.sasl.jaas.config", jaasConfig);
+
+        // Callback handler classes
+        final String callbackHandler = "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler";
+
+        properties.setProperty("listener.name.plaintext.plain.sasl.server.callback.handler.class", callbackHandler);
+        properties.setProperty("listener.name.broker1.plain.sasl.server.callback.handler.class", callbackHandler);
+        properties.setProperty("listener.name.controller.plain.sasl.server.callback.handler.class", callbackHandler);
+    }
+
+    /**
+     * Configures OAuth Bearer authentication in the provided properties.
+     *
+     * @param properties The Kafka server properties to configure.
+     */
+    private void configureOAuthBearer(Properties properties) {
+        properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
+        properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
+        properties.setProperty("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
+        properties.setProperty("sasl.mechanism.controller.protocol", "OAUTHBEARER");
+        properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
+
+        this.setSuperUsersIntoProperties(properties);
+
+        // Construct JAAS configuration for OAUTHBEARER
+        final String jaasConfig = String.format(
+            "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
+                "oauth.client.id=\"%s\" " +
+                "oauth.client.secret=\"%s\" " +
+                "oauth.token.endpoint.uri=\"%s\" " +
+                "oauth.username.claim=\"%s\";",
+            this.clientId,
+            this.clientSecret,
+            this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/token",
+            this.oauthPreferredUsername // e.g., "preferred_username"
+        );
+        // Set JAAS config for each listener
+        properties.setProperty("listener.name.plaintext.oauthbearer.sasl.jaas.config", jaasConfig);
+        properties.setProperty("listener.name.broker1.oauthbearer.sasl.jaas.config", jaasConfig);
+        properties.setProperty("listener.name.controller.oauthbearer.sasl.jaas.config", jaasConfig);
+
+        // Define Callback Handlers for OAUTHBEARER
+        final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
+
+        properties.setProperty("listener.name.plaintext.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+        properties.setProperty("listener.name.broker1.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+        properties.setProperty("listener.name.controller.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+
+        final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
+
+        // Optionally, define client-side callback handlers if using inter-broker communication
+        properties.setProperty("listener.name.plaintext.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+        properties.setProperty("listener.name.broker1.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+        properties.setProperty("listener.name.controller.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
     }
 
     /**
@@ -687,28 +710,28 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                                                  final String clientId,
                                                  final String clientSecret,
                                                  final String keycloakOAuthUri,
+                                                 final String oauthPreferredUsername,
                                                  final List<String> superUsers) {
         this.oauthEnabled = true;
         this.keycloakRealm = keycloakRealm;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.keycloakOauthUri = keycloakOAuthUri;
+        this.oauthPreferredUsername = oauthPreferredUsername;
         this.superUsers = superUsers;
         return self();
     }
 
-    public StrimziKafkaContainer withOAuthOverPlain() {
-        this.oauthOverPlainEnabled = true;
-        return self();
-    }
-
-    public StrimziKafkaContainer withOAuthBearer() {
-        this.oauthBearerEnabled = true;
-        return self();
-    }
-
-    public StrimziKafkaContainer withPreferredUserName(final String preferredUserName) {
-        this.oauthPreferredUsername = preferredUserName;
+    /**
+     * Sets the authentication type for the Kafka container.
+     *
+     * @param authType The authentication type to enable.
+     * @return StrimziKafkaContainer instance for method chaining.
+     */
+    public StrimziKafkaContainer withAuthenticationType(AuthenticationType authType) {
+        if (authType != null) {
+            this.authenticationType = authType;
+        }
         return self();
     }
 
@@ -821,13 +844,5 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     public boolean isOAuthEnabled() {
         return this.oauthEnabled;
-    }
-
-    public boolean isOauthOverPlainEnabled() {
-        return this.oauthOverPlainEnabled;
-    }
-
-    public boolean isOauthBearerEnabled() {
-        return this.oauthBearerEnabled;
     }
 }
