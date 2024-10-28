@@ -111,6 +111,7 @@
         <hamcrest.version>2.2</hamcrest.version>
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
         <testcontainers-keycloak.version>3.5.1</testcontainers-keycloak.version>
+        <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
@@ -217,6 +218,17 @@
             <artifactId>testcontainers-keycloak</artifactId>
             <version>${testcontainers-keycloak.version}</version>
             <scope>test</scope>
+        </dependency>
+        <!--  for JaasClientOauthLoginCallbackHandler callback      -->
+        <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>kafka-oauth-client</artifactId>
+            <version>0.15.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${fasterxml.jackson-annotations.version}</version>
         </dependency>
 
         <!-- overriding version of commons-compress for Test container - Vulnerability -->

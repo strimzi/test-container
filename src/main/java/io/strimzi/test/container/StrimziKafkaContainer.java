@@ -97,11 +97,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String clientSecret;
     private String keycloakOauthUri;
     private List<String> superUsers;
+
+    // OAuth over PLAIN
     private String saslUsername;
     private String saslPassword;
 
+    // OAuth with bearer
+    private String oauthPreferredUsername;
+
     // authentication methods
     private boolean oauthOverPlainEnabled;
+    private boolean oauthBearerEnabled;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -171,6 +177,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.addEnv("OAUTH_CLIENT_SECRET", this.clientSecret);
             this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/token");
             this.addEnv("OAUTH_USERNAME_CLAIM", "preferred_username");
+            this.addEnv("OAUTH_CHECK_ISSUER", "false");
         }
 
         super.setCommand("sh", "-c", runStarterScript());
@@ -415,12 +422,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
 
                     // Dynamically build the 'super.users' property
-                    if (this.superUsers != null && !this.superUsers.isEmpty()) {
-                        String superUsersProperty = this.superUsers.stream()
-                            .map(user -> "User:" + user)
-                            .collect(Collectors.joining(";"));
-                        properties.setProperty("super.users", superUsersProperty);
-                    }
+                    this.setSuperUsersIntoProperties(properties);
 
                     // Construct the JAAS configuration with configurable username and password
                     final String jaasConfig = String.format(
@@ -439,6 +441,45 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     properties.setProperty("listener.name.plaintext.plain.sasl.server.callback.handler.class", callbackHandler);
                     properties.setProperty("listener.name.broker1.plain.sasl.server.callback.handler.class", callbackHandler);
                     properties.setProperty("listener.name.controller.plain.sasl.server.callback.handler.class", callbackHandler);
+                } else if (this.isOauthBearerEnabled()) {
+                    properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
+                    properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
+                    properties.setProperty("listener.security.protocol.map", "PLAINTEXT:SASL_PLAINTEXT,BROKER1:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT");
+                    properties.setProperty("sasl.mechanism.controller.protocol", "OAUTHBEARER");
+                    properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
+
+                    this.setSuperUsersIntoProperties(properties);
+
+                    // Construct JAAS configuration for OAUTHBEARER
+                    final String jaasConfig = String.format(
+                        "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
+                            "oauth.client.id=\"%s\" " +
+                            "oauth.client.secret=\"%s\" " +
+                            "oauth.token.endpoint.uri=\"%s\" " +
+                            "oauth.username.claim=\"%s\";",
+                        this.clientId,
+                        this.clientSecret,
+                        this.keycloakOauthUri + "/realms/" + this.keycloakRealm + "/protocol/openid-connect/token",
+                        this.oauthPreferredUsername // e.g., "preferred_username"
+                    );
+                    // Set JAAS config for each listener
+                    properties.setProperty("listener.name.plaintext.oauthbearer.sasl.jaas.config", jaasConfig);
+                    properties.setProperty("listener.name.broker1.oauthbearer.sasl.jaas.config", jaasConfig);
+                    properties.setProperty("listener.name.controller.oauthbearer.sasl.jaas.config", jaasConfig);
+
+                    // Define Callback Handlers for OAUTHBEARER
+                    final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
+
+                    properties.setProperty("listener.name.plaintext.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+                    properties.setProperty("listener.name.broker1.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+                    properties.setProperty("listener.name.controller.oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+
+                    final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
+
+                    // Optionally, define client-side callback handlers if using inter-broker communication
+                    properties.setProperty("listener.name.plaintext.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+                    properties.setProperty("listener.name.broker1.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+                    properties.setProperty("listener.name.controller.oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
                 }
             }
         } else if (this.externalZookeeperConnect != null) {
@@ -476,6 +517,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         return writer.toString();
+    }
+
+    private void setSuperUsersIntoProperties(Properties properties) {
+        if (this.superUsers != null && !this.superUsers.isEmpty()) {
+            String superUsersProperty = this.superUsers.stream()
+                .map(user -> "User:" + user)
+                .collect(Collectors.joining(";"));
+            properties.setProperty("super.users", superUsersProperty);
+        }
     }
 
     @Override
@@ -652,6 +702,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    public StrimziKafkaContainer withOAuthBearer() {
+        this.oauthBearerEnabled = true;
+        return self();
+    }
+
+    public StrimziKafkaContainer withPreferredUserName(final String preferredUserName) {
+        this.oauthPreferredUsername = preferredUserName;
+        return self();
+    }
+
     /**
      * Fluent method to set the SASL PLAIN mechanism's username.
      *
@@ -765,5 +825,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     public boolean isOauthOverPlainEnabled() {
         return this.oauthOverPlainEnabled;
+    }
+
+    public boolean isOauthBearerEnabled() {
+        return this.oauthBearerEnabled;
     }
 }
