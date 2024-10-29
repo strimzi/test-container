@@ -28,11 +28,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -66,8 +64,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
 
+    /**
+     * Prefix for network aliases.
+     */
     protected static final String NETWORK_ALIAS_PREFIX = "broker-";
-    protected static final String NETWORK_ALIAS_KEYCLOAK = "keycloak";
 
     /**
      * Lazy image name provider
@@ -138,6 +138,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
+    @SuppressWarnings({"NPathComplexity", "CyclomaticComplexity"})
     protected void doStart() {
         if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
             this.proxyContainer.start();
@@ -375,6 +376,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
     }
 
+    /**
+     * Builds the default Kafka server properties.
+     *
+     * @param listeners                   the listeners configuration
+     * @param advertisedListeners         the advertised listeners configuration
+     * @param listenerSecurityProtocolMap the listener security protocol map
+     * @return the default server properties
+     */
     private Properties buildDefaultServerProperties(final String listeners,
                                                     final String advertisedListeners,
                                                     final String listenerSecurityProtocolMap) {
@@ -542,6 +551,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return writer.toString();
     }
 
+    /**
+     * Sets the 'super.users' property in the Kafka server properties.
+     *
+     * @param properties The Kafka server properties.
+     */
     private void setSuperUsersIntoProperties(Properties properties) {
         if (this.superUsers != null && !this.superUsers.isEmpty()) {
             String superUsersProperty = this.superUsers.stream()
@@ -551,6 +565,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
     }
 
+    /**
+     * Retrieves the internal ZooKeeper connection string.
+     *
+     * @return the internal ZooKeeper connection string
+     * @throws IllegalStateException if KRaft mode or external ZooKeeper is configured
+     */
     @Override
     public String getInternalZooKeeperConnect() {
         if (this.hasKraftOrExternalZooKeeperConfigured()) {
@@ -559,6 +579,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return getHost() + ":" + this.internalZookeeperExposedPort;
     }
 
+    /**
+     * Retrieves the bootstrap servers URL for Kafka clients.
+     *
+     * @return the bootstrap servers URL
+     */
     @Override
     public String getBootstrapServers() {
         if (proxyContainer != null) {
@@ -618,6 +643,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    /**
+     * Fluent method that sets the node ID.
+     *
+     * @param nodeId the node ID
+     * @return {@code StrimziKafkaContainer} instance
+     */
     public StrimziKafkaContainer withNodeId(final int nodeId) {
         this.nodeId = nodeId;
         return self();
@@ -706,6 +737,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    /**
+     * Fluent method to configure OAuth settings.
+     *
+     * @param keycloakRealm         the Keycloak realm
+     * @param clientId              the OAuth client ID
+     * @param clientSecret          the OAuth client secret
+     * @param keycloakOAuthUri      the Keycloak OAuth URI
+     * @param oauthPreferredUsername the preferred username claim for OAuth
+     * @param superUsers            the list of super users
+     * @return {@code StrimziKafkaContainer} instance
+     */
     public StrimziKafkaContainer withOAuthConfig(final String keycloakRealm,
                                                  final String clientId,
                                                  final String clientSecret,
@@ -778,7 +820,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * of Kafka's log output, which is useful for debugging or monitoring purposes.
      * </p>
      *
-     * <h3>Example Usage:</h3>
+     * <b>Example Usage:</b>
      * <pre>{@code
      * StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
      *     .withKafkaLog(Level.DEBUG)
@@ -842,6 +884,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return brokerId;
     }
 
+    /**
+     * Checks if OAuth is enabled.
+     *
+     * @return {@code true} if OAuth is enabled; {@code false} otherwise
+     */
     public boolean isOAuthEnabled() {
         return this.oauthEnabled;
     }
