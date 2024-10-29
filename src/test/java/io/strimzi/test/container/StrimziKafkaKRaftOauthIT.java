@@ -50,7 +50,7 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
             final String oauthClientId = "kafka";
             final String oauthClientSecret = "kafka-secret";
 
-            this.systemUnderTest = new StrimziKafkaContainer("localhost/strimzi/test-container:latest-kafka-3.8.0-arm64")
+            this.systemUnderTest = new StrimziKafkaContainer()
                 .withOAuthConfig(
                     realmName,
                     oauthClientId,
@@ -146,7 +146,7 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
             final String oauthClientId = "kafka-broker";
             final String oauthClientSecret = "kafka-broker-secret";
 
-            this.systemUnderTest = new StrimziKafkaContainer("localhost/strimzi/test-container:latest-kafka-3.8.0-arm64")
+            this.systemUnderTest = new StrimziKafkaContainer()
                 .withOAuthConfig(
                     realmName,
                     oauthClientId,
