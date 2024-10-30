@@ -110,7 +110,8 @@
         <jupiter.version>5.11.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
-        <testcontainers-keycloak.version>3.5.1</testcontainers-keycloak.version>
+        <!-- for Java 11 compatibility (newer versions does not support Java 11)  -->
+        <testcontainers-keycloak.version>2.6.0</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
         <kafka-oauth-client.version>0.15.0</kafka-oauth-client.version>
 
