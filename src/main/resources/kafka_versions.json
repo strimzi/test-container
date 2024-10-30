@@ -9,6 +9,6 @@
     "3.5.2": "quay.io/strimzi-test-container/test-container:latest-kafka-3.5.2",
     "3.6.2": "quay.io/strimzi-test-container/test-container:latest-kafka-3.6.2",
     "3.7.1": "quay.io/strimzi-test-container/test-container:latest-kafka-3.7.1",
-    "3.8.1ch": "quay.io/strimzi-test-container/test-container:latest-kafka-3.8.1"
+    "3.8.1": "quay.io/strimzi-test-container/test-container:latest-kafka-3.8.1"
   }
 }
