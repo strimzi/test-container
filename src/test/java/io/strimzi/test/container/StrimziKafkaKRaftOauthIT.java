@@ -17,7 +17,6 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -56,8 +55,7 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                     oauthClientId,
                     oauthClientSecret,
                     keycloakAuthUri,
-                    "preferred_username",
-                    Arrays.asList("ANONYMOUS", "service-account-kafka-broker"))
+                    "preferred_username")
                 .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
                 .withSaslUsername("kafka-broker")
                 .withSaslPassword("kafka-broker-secret")
@@ -152,8 +150,7 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                     oauthClientId,
                     oauthClientSecret,
                     keycloakAuthUri,
-                    "preferred_username",
-                    Arrays.asList("ANONYMOUS", "service-account-kafka-broker"))
+                    "preferred_username")
                 .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
                 .withKraft()
                 .withNetwork(Network.SHARED)

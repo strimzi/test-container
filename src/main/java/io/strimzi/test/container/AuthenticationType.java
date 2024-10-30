@@ -20,11 +20,6 @@ public enum AuthenticationType {
     OAUTH_BEARER,
 
     /**
-     * Mutual TLS authentication.
-     */
-    MUTUAL_TLS,
-
-    /**
      * SCRAM-SHA-256 authentication.
      */
     SCRAM_SHA_256,
