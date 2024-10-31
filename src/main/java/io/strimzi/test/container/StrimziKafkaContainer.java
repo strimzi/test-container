@@ -223,7 +223,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
-    @SuppressWarnings({"JavaNCSS", "NPathComplexity", "CyclomaticComplexity"})
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -405,6 +404,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @param advertisedListeners         the advertised listeners configuration
      * @return the default server properties
      */
+    @SuppressWarnings({"JavaNCSS"})
     private Properties buildDefaultServerProperties(final String listeners,
                                                     final String advertisedListeners) {
         // Default properties for server.properties
