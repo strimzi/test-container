@@ -10,6 +10,11 @@ package io.strimzi.test.container;
 public enum AuthenticationType {
 
     /**
+     * No authentication.
+     */
+    NONE,
+
+    /**
      * OAuth authentication over plain text.
      */
     OAUTH_OVER_PLAIN,

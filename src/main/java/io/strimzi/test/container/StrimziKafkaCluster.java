@@ -360,7 +360,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                         for (KafkaContainer kafkaContainer : this.brokers) {
                             Container.ExecResult result = ((StrimziKafkaContainer) kafkaContainer).execInContainer(
                                 "bash", "-c",
-                                "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:9093 describe --status"
+                                "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
                             );
                             String output = result.getStdout();
 
