@@ -31,8 +31,6 @@ import java.util.stream.Stream;
  * It perfectly fits for integration/system testing. We always deploy one zookeeper with a specified number of Kafka instances,
  * running as a separate container inside Docker. The additional configuration for Kafka brokers can be passed to the constructor.
  * <br><br>
- * Note: Direct constructor calls are deprecated and will be removed in the next released version.
- * Please use {@link StrimziKafkaClusterBuilder} for creating instances of this class.
  */
 public class StrimziKafkaCluster implements KafkaContainer {
 
@@ -53,90 +51,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private StrimziZookeeperContainer zookeeper;
     private Collection<KafkaContainer> brokers;
     private String clusterId;
-
-    /**
-     * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
-     * replication factor of internal topics @see{internalTopicReplicationFactor}, a map of additional Kafka
-     * configuration @see{additionalKafkaConfiguration} and a {@code proxyContainer}.
-     * <br><br>
-     * The {@code proxyContainer} allows to simulate network conditions (i.e. connection cut, latency).
-     * For example, you can simulate a network partition by cutting the connection of one or more brokers.
-     *
-     * @param brokersNum number of brokers
-     * @param internalTopicReplicationFactor internal topics
-     * @param additionalKafkaConfiguration additional Kafka configuration
-     * @param proxyContainer Proxy container
-     * @param enableSharedNetwork enable Kafka cluster to use a shared Docker network.
-     */
-    @Deprecated
-    public StrimziKafkaCluster(final int brokersNum,
-                               final int internalTopicReplicationFactor,
-                               final Map<String, String> additionalKafkaConfiguration,
-                               final ToxiproxyContainer proxyContainer,
-                               final boolean enableSharedNetwork) {
-        validateBrokerNum(brokersNum);
-        validateInternalTopicReplicationFactor(internalTopicReplicationFactor, brokersNum);
-
-        this.brokersNum = brokersNum;
-        this.network = enableSharedNetwork ? Network.SHARED : Network.newNetwork();
-        this.zookeeper = new StrimziZookeeperContainer()
-            .withNetwork(this.network);
-        this.internalTopicReplicationFactor = internalTopicReplicationFactor;
-
-        if (proxyContainer != null) {
-            proxyContainer.setNetwork(this.network);
-        }
-
-        prepareKafkaCluster(additionalKafkaConfiguration, null);
-    }
-
-    /**
-     * Constructor for @StrimziKafkaCluster class, which allows you to specify number of brokers @see{brokersNum},
-     * replication factor of internal topics @see{internalTopicReplicationFactor} and map of additional Kafka
-     * configuration @see{additionalKafkaConfiguration}.
-     *
-     * @param brokersNum number of brokers
-     * @param internalTopicReplicationFactor internal topics
-     * @param additionalKafkaConfiguration additional Kafka configuration
-     */
-    @Deprecated
-    public StrimziKafkaCluster(final int brokersNum,
-                               final int internalTopicReplicationFactor,
-                               final Map<String, String> additionalKafkaConfiguration) {
-        this(brokersNum, internalTopicReplicationFactor, additionalKafkaConfiguration, null, false);
-    }
-
-    /**
-     * Constructor of StrimziKafkaCluster without specifying additional configuration.
-     *
-     * @param brokersNum number of brokers
-     */
-    @Deprecated
-    public StrimziKafkaCluster(final int brokersNum) {
-        this(brokersNum, brokersNum, null, null, false);
-    }
-
-    /**
-     * Constructor of StrimziKafkaCluster with proxy container
-     *
-     * @param brokersNum number of brokers to be deployed
-     * @param proxyContainer Proxy container
-     */
-    @Deprecated
-    public StrimziKafkaCluster(final int brokersNum, final ToxiproxyContainer proxyContainer) {
-        this(brokersNum, brokersNum, null, proxyContainer, false);
-    }
-
-    /**
-     * Constructor of StrimziKafkaCluster with proxy container
-     *
-     * @param brokersNum number of brokers to be deployed
-     * @param enableSharedNetwork enable Kafka cluster to use a shared Docker network.
-     */
-    @Deprecated
-    public StrimziKafkaCluster(final int brokersNum, final boolean enableSharedNetwork) {
-        this(brokersNum, brokersNum, null, null, enableSharedNetwork);
-    }
 
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
         this.brokersNum = builder.brokersNum;
