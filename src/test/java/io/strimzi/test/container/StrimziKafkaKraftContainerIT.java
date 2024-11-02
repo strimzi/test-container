@@ -14,6 +14,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.logging.log4j.Level;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -141,6 +143,26 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
             systemUnderTest.stop();
 
         }
+    }
+
+    @Test
+    void testWithKafkaLog() {
+        systemUnderTest = new StrimziKafkaContainer()
+            .waitForRunning()
+            .withKraft()
+            .withKafkaLog(Level.DEBUG);
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("INFO"));
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("DEBUG"));
+
+        systemUnderTest.stop();
+        systemUnderTest.withKafkaLog(Level.TRACE);
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("INFO"));
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("DEBUG"));
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("TRACE"));
     }
 
     private void verify() throws InterruptedException, ExecutionException, TimeoutException {
