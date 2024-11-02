@@ -96,7 +96,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private ToxiproxyClient toxiproxyClient;
     private Proxy proxy;
 
-    private Set<String> listenerNames = new HashSet<>();
+    protected Set<String> listenerNames = new HashSet<>();
 
     // OAuth fields
     private boolean oauthEnabled;
@@ -290,7 +290,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return this.useKraft || this.externalZookeeperConnect != null;
     }
 
-    private String extractListenerName(String bootstrapServers) {
+    protected String extractListenerName(String bootstrapServers) {
         // extract listener name from given bootstrap servers
         String[] strings = bootstrapServers.split(":");
         if (strings.length < 3) {
@@ -308,7 +308,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      *          The 'listeners' configuration string.
      *          The 'advertised.listeners' configuration string.
      */
-    private String[] buildListenersConfig(final InspectContainerResponse containerInfo) {
+    protected String[] buildListenersConfig(final InspectContainerResponse containerInfo) {
         final String bootstrapServers = getBootstrapServers();
         final String bsListenerName = extractListenerName(bootstrapServers);
         final Collection<ContainerNetwork> networks = containerInfo.getNetworkSettings().getNetworks().values();
@@ -367,17 +367,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         };
     }
 
-    static String writeOverrideString(Map<String, String> kafkaConfigurationMap) {
-        StringBuilder kafkaConfiguration = new StringBuilder();
-        kafkaConfigurationMap.forEach((configName, configValue) ->
-                kafkaConfiguration
-                        .append(" --override ")
-                        .append('\'').append(configName.replace("'", "'\"'\"'"))
-                        .append("=")
-                        .append(configValue.replace("'", "'\"'\"'")).append('\''));
-        return kafkaConfiguration.toString();
-    }
-
     /**
      * In order to avoid any compile dependency on kafka-clients' <code>Uuid</code> specific class,
      * we implement our own uuid generator by replicating the Kafka's base64 encoded uuid generation logic.
@@ -405,7 +394,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return the default server properties
      */
     @SuppressWarnings({"JavaNCSS"})
-    private Properties buildDefaultServerProperties(final String listeners,
+    protected Properties buildDefaultServerProperties(final String listeners,
                                                     final String advertisedListeners) {
         // Default properties for server.properties
         Properties properties = new Properties();
@@ -477,7 +466,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      *
      * @param properties The Kafka server properties to configure.
      */
-    private void configureOAuthOverPlain(Properties properties) {
+    protected void configureOAuthOverPlain(Properties properties) {
         properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
         properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT"));
@@ -504,7 +493,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      *
      * @param properties The Kafka server properties to configure.
      */
-    private void configureOAuthBearer(Properties properties) {
+    protected void configureOAuthBearer(Properties properties) {
         properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
         properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT"));
@@ -540,7 +529,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @param securityProtocol The security protocol to map each listener to (e.g., PLAINTEXT, SASL_PLAINTEXT).
      * @return The listener.security.protocol.map configuration string.
      */
-    private String configureListenerSecurityProtocolMap(String securityProtocol) {
+    protected String configureListenerSecurityProtocolMap(String securityProtocol) {
         return this.listenerNames.stream()
             .map(listenerName -> listenerName + ":" + securityProtocol)
             .collect(Collectors.joining(","));
@@ -554,7 +543,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @param overrides         The properties to override. Can be null.
      * @return A string representation of the combined server properties.
      */
-    private String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
+    protected String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
         // Check if overrides are not null and not empty before applying them
         if (overrides != null && !overrides.isEmpty()) {
             overrides.forEach(defaultProperties::setProperty);
@@ -836,7 +825,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withKafkaLog(Level level) {
         String log4jConfig = "log4j.rootLogger=" + level.name() + ", stdout\n" +
             "log4j.appender.stdout=org.apache.log4j.ConsoleAppender\n" +
-            "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout\n" +
+            "log4j.appender.stdout.lay  out=org.apache.log4j.PatternLayout\n" +
             "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n\n";
 
         // Copy the custom log4j.properties into the container
@@ -894,5 +883,37 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public boolean isOAuthEnabled() {
         return this.oauthEnabled;
+    }
+
+    public String getSaslUsername() {
+        return saslUsername;
+    }
+
+    public String getSaslPassword() {
+        return saslPassword;
+    }
+
+    public String getRealm() {
+        return realm;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public String getClientSecret() {
+        return clientSecret;
+    }
+
+    public String getOauthUri() {
+        return oauthUri;
+    }
+
+    public String getUsernameClaim() {
+        return usernameClaim;
+    }
+
+    public AuthenticationType getAuthenticationType() {
+        return authenticationType;
     }
 }

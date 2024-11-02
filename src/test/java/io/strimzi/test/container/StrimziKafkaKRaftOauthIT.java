@@ -18,34 +18,71 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class StrimziKafkaKRaftOauthIT extends AbstractIT {
 
-    private StrimziKafkaContainer systemUnderTest;
     private static final String KEYCLOAK_NETWORK_ALIAS = "keycloak";
+    private static final Integer KEYCLOAK_PORT = 8080;
+
     private KeycloakContainer keycloakContainer;
+    private StrimziKafkaContainer systemUnderTest;
+
+    @Test
+    void testIsOAuthEnabledReturnsTrueWhenOAuthConfiguredAndOAuthEnvsAreSet() {
+        try {
+            setUpKeycloak();
+
+            final String realmName = "demo";
+            final String oauthUri = "http://"  + KEYCLOAK_NETWORK_ALIAS + ":" + KEYCLOAK_PORT;
+            final String oauthClientId = "kafka";
+            final String oauthClientSecret = "kafka-secret";
+
+            this.systemUnderTest = new StrimziKafkaContainer()
+                .withOAuthConfig(
+                    realmName,
+                    oauthClientId,
+                    oauthClientSecret,
+                    oauthUri,
+                    "preferred_username")
+                .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
+                .withSaslUsername("kafka-broker")
+                .withSaslPassword("kafka-broker-secret")
+                .withKraft()
+                .waitForRunning();
+            this.systemUnderTest.start();
+
+            assertThat("Expected isOAuthEnabled() to return true when OAuth is configured.",
+                this.systemUnderTest.isOAuthEnabled(),
+                CoreMatchers.is(true));
+
+            Map<String, String> envMap = this.systemUnderTest.getEnvMap();
+
+            assertThat(envMap.get("OAUTH_JWKS_ENDPOINT_URI"), CoreMatchers.is(oauthUri + "/realms/" + realmName + "/protocol/openid-connect/certs"));
+            assertThat(envMap.get("OAUTH_VALID_ISSUER_URI"), CoreMatchers.is(oauthUri + "/realms/" + realmName));
+            assertThat(envMap.get("OAUTH_CLIENT_ID"), CoreMatchers.is(oauthClientId));
+            assertThat(envMap.get("OAUTH_CLIENT_SECRET"), CoreMatchers.is(oauthClientSecret));
+            assertThat(envMap.get("OAUTH_TOKEN_ENDPOINT_URI"), CoreMatchers.is(oauthUri + "/realms/" + realmName + "/protocol/openid-connect/token"));
+            assertThat(envMap.get("OAUTH_USERNAME_CLAIM"), CoreMatchers.is("preferred_username"));
+        } finally {
+            if (this.systemUnderTest != null) {
+                this.systemUnderTest.stop();
+            }
+        }
+    }
 
     @Test
     void testOAuthOverPlain() {
         try {
-            final Integer keycloakPort = 8080;
-
-            this.keycloakContainer = new KeycloakContainer()
-                .withRealmImportFile("/demo-realm.json")
-                .withEnv("KEYCLOAK_ADMIN", "admin")
-                .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
-                .withExposedPorts(keycloakPort)
-                .withNetwork(Network.SHARED)
-                .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
-                .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(keycloakPort));
+            setUpKeycloak();
 
             this.keycloakContainer.start();
 
             final String realmName = "demo";
-            final String keycloakAuthUri = "http://"  + KEYCLOAK_NETWORK_ALIAS + ":" + keycloakPort;
+            final String keycloakAuthUri = "http://"  + KEYCLOAK_NETWORK_ALIAS + ":" + KEYCLOAK_PORT;
             final String oauthClientId = "kafka";
             final String oauthClientSecret = "kafka-secret";
 
@@ -60,7 +97,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                 .withSaslUsername("kafka-broker")
                 .withSaslPassword("kafka-broker-secret")
                 .withKraft()
-                .withNetwork(Network.SHARED)
                 .waitForRunning();
             this.systemUnderTest.start();
 
@@ -125,22 +161,11 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
 
     @Test
     void testOAuthBearerAuthentication() {
-        final Integer keycloakPort = 8080;
-
         try {
-            this.keycloakContainer = new KeycloakContainer()
-                .withRealmImportFile("/demo-realm.json")
-                .withEnv("KEYCLOAK_ADMIN", "admin")
-                .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
-                .withExposedPorts(keycloakPort)
-                .withNetwork(Network.SHARED)
-                .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
-                .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(keycloakPort));
-
-            this.keycloakContainer.start();
+            setUpKeycloak();
 
             final String realmName = "demo";
-            final String keycloakAuthUri = "http://"  + KEYCLOAK_NETWORK_ALIAS + ":" + keycloakPort;
+            final String keycloakAuthUri = "http://"  + KEYCLOAK_NETWORK_ALIAS + ":" + KEYCLOAK_PORT;
             final String oauthClientId = "kafka-broker";
             final String oauthClientSecret = "kafka-broker-secret";
 
@@ -167,5 +192,18 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                 this.systemUnderTest.stop();
             }
         }
+    }
+
+    private void setUpKeycloak() {
+        this.keycloakContainer = new KeycloakContainer()
+            .withRealmImportFile("/demo-realm.json")
+            .withEnv("KEYCLOAK_ADMIN", "admin")
+            .withEnv("KEYCLOAK_ADMIN_PASSWORD", "admin")
+            .withExposedPorts(KEYCLOAK_PORT)
+            .withNetwork(Network.SHARED)
+            .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
+            .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(KEYCLOAK_PORT));
+
+        this.keycloakContainer.start();
     }
 }

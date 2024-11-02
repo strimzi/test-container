@@ -114,6 +114,7 @@
         <testcontainers-keycloak.version>2.6.0</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
         <kafka-oauth-client.version>0.15.0</kafka-oauth-client.version>
+        <mockito.version>5.14.2</mockito.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
@@ -234,6 +235,12 @@
             <version>${fasterxml.jackson-annotations.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- overriding version of commons-compress for Test container - Vulnerability -->
         <dependency>
@@ -250,12 +257,6 @@
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>${commons-codec.version}</version>
-        </dependency>
-        <!-- overriding version of commons-compress for Test container - Vulnerability -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit4.version}</version>
         </dependency>
     </dependencies>
 
