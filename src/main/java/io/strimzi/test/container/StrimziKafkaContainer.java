@@ -825,7 +825,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withKafkaLog(Level level) {
         String log4jConfig = "log4j.rootLogger=" + level.name() + ", stdout\n" +
             "log4j.appender.stdout=org.apache.log4j.ConsoleAppender\n" +
-            "log4j.appender.stdout.lay  out=org.apache.log4j.PatternLayout\n" +
+            "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout\n" +
             "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n\n";
 
         // Copy the custom log4j.properties into the container
