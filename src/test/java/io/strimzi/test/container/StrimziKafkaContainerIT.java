@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
@@ -376,6 +377,13 @@ public class StrimziKafkaContainerIT extends AbstractIT {
             } catch (ExecutionException | InterruptedException | TimeoutException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    @AfterEach
+    void afterEach() {
+        if (this.systemUnderTest != null) {
+            this.systemUnderTest.stop();
         }
     }
 }
