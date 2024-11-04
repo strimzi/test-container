@@ -14,6 +14,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -170,6 +171,13 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
             assertThat(records.records(topic).get(0).value(), equalTo("1"));
             assertThat(records.records(topic).get(1).value(), equalTo("2"));
             assertThat(records.records(topic).get(2).value(), equalTo("3"));
+        }
+    }
+
+    @AfterEach
+    void afterEach() {
+        if (this.systemUnderTest != null) {
+            this.systemUnderTest.stop();
         }
     }
 }
