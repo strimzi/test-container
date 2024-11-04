@@ -312,6 +312,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 .waitForRunning();
         systemUnderTest.start();
         assertThrows(IllegalStateException.class, () -> systemUnderTest.getProxy());
+        systemUnderTest.stop();
     }
 
     @Test
