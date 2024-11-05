@@ -6,6 +6,7 @@ package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
+import com.groupcdg.pitest.annotations.DoNotMutate;
 import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
 import org.apache.logging.log4j.Level;
@@ -144,6 +145,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     @Override
     @SuppressWarnings({"NPathComplexity", "CyclomaticComplexity"})
+    @DoNotMutate
     protected void doStart() {
         if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
             this.proxyContainer.start();
@@ -188,6 +190,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
+    @DoNotMutate
     public void stop() {
         if (proxyContainer != null && proxyContainer.isRunning()) {
             proxyContainer.stop();
@@ -213,6 +216,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      *
      * @return StrimziKafkaContainer instance
      */
+    @DoNotMutate
     public StrimziKafkaContainer waitForRunning() {
         if (this.useKraft) {
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
@@ -223,6 +227,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
+    @DoNotMutate
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -286,6 +291,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
+    @DoNotMutate
     public boolean hasKraftOrExternalZooKeeperConfigured() {
         return this.useKraft || this.externalZookeeperConnect != null;
     }
@@ -371,6 +377,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * In order to avoid any compile dependency on kafka-clients' <code>Uuid</code> specific class,
      * we implement our own uuid generator by replicating the Kafka's base64 encoded uuid generation logic.
      */
+    @DoNotMutate
     private String randomUuid() {
         final UUID metadataTopicIdInternal = new UUID(0L, 1L);
         final UUID zeroIdImpactInternal = new UUID(0L, 0L);
@@ -570,6 +577,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return the bootstrap servers URL
      */
     @Override
+    @DoNotMutate
     public String getBootstrapServers() {
         if (proxyContainer != null) {
             // returning the proxy host and port for indirect connection

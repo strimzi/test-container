@@ -100,8 +100,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         assertThat(logsFromKafka, CoreMatchers.containsString("log.cleaner.backoff.ms = 1000"));
         assertThat(logsFromKafka, CoreMatchers.containsString("ssl.enabled.protocols = [TLSv1]"));
         assertThat(logsFromKafka, CoreMatchers.containsString("log.index.interval.bytes = 2048"));
-
-        systemUnderTest.stop();
     }
 
     @ParameterizedTest(name = "testStartContainerWithFixedExposedPort-{0}")
@@ -114,8 +112,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest.start();
 
         assertThat(systemUnderTest.getMappedPort(9092), equalTo(9092));
-
-        systemUnderTest.stop();
     }
 
     @ParameterizedTest(name = "testStartContainerWithSSLBootstrapServers-{0}")
@@ -128,8 +124,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
         assertThat(systemUnderTest.getBootstrapServers(), is("SSL://"
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
-
-        systemUnderTest.stop();
     }
 
     @ParameterizedTest(name = "testStartContainerWithServerProperties-{0}")
@@ -147,8 +141,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
-
-        systemUnderTest.stop();
     }
 
     @Test
@@ -166,7 +158,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getDockerImageName(), is(imageName));
-        systemUnderTest.stop();
 
         // empty
         System.setProperty("strimzi.test-container.kafka.custom.image", "");
@@ -184,7 +175,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getDockerImageName(), is(imageName));
-        systemUnderTest.stop();
     }
 
     @Test
@@ -201,71 +191,58 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getNetwork().getId(), is(network.getId()));
-        systemUnderTest.stop();
     }
 
     @Test
     void testUnsupportedKafkaVersion() {
-        try {
-            systemUnderTest = new StrimziKafkaContainer()
-                .withKafkaVersion("2.4.0")
-                .waitForRunning();
+        systemUnderTest = new StrimziKafkaContainer()
+            .withKafkaVersion("2.4.0")
+            .waitForRunning();
 
-            assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
-        } finally {
-            systemUnderTest.stop();
-        }
+        assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
     }
 
     @ParameterizedTest(name = "testKafkaContainerConnectFromOutsideToInternalZooKeeper-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testKafkaContainerConnectFromOutsideToInternalZooKeeper() {
-        try {
-            systemUnderTest = new StrimziKafkaContainer()
-                .waitForRunning();
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaContainer()
+            .waitForRunning();
+        systemUnderTest.start();
 
-            // Creates a socket address from a hostname and a port number
-            final String[] hostNameWithPort = systemUnderTest.getInternalZooKeeperConnect().split(":");
+        // Creates a socket address from a hostname and a port number
+        final String[] hostNameWithPort = systemUnderTest.getInternalZooKeeperConnect().split(":");
 
-            SocketAddress socketAddress = new InetSocketAddress(hostNameWithPort[0], Integer.parseInt(hostNameWithPort[1]));
+        SocketAddress socketAddress = new InetSocketAddress(hostNameWithPort[0], Integer.parseInt(hostNameWithPort[1]));
 
-            try (Socket socket = new Socket()) {
-                LOGGER.info("Hostname: {}, and port: {}", hostNameWithPort[0], hostNameWithPort[1]);
-                socket.connect(socketAddress, 5000);
-            } catch (SocketTimeoutException exception) {
-                LOGGER.error("SocketTimeoutException " + hostNameWithPort[0] + ":" + hostNameWithPort[1] + ". " + exception.getMessage());
-                fail();
-            } catch (IOException exception) {
-                LOGGER.error(
-                    "IOException - Unable to connect to " + hostNameWithPort[0] + ":" + hostNameWithPort[1] + ". " + exception.getMessage());
-                fail();
-            }
-        } finally {
-            systemUnderTest.stop();
+        try (Socket socket = new Socket()) {
+            LOGGER.info("Hostname: {}, and port: {}", hostNameWithPort[0], hostNameWithPort[1]);
+            socket.connect(socketAddress, 5000);
+        } catch (SocketTimeoutException exception) {
+            LOGGER.error("SocketTimeoutException " + hostNameWithPort[0] + ":" + hostNameWithPort[1] + ". " + exception.getMessage());
+            fail();
+        } catch (IOException exception) {
+            LOGGER.error(
+                "IOException - Unable to connect to " + hostNameWithPort[0] + ":" + hostNameWithPort[1] + ". " + exception.getMessage());
+            fail();
         }
     }
 
     @ParameterizedTest(name = "testKafkaContainerInternalCommunicationWithInternalZooKeeper-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testKafkaContainerInternalCommunicationWithInternalZooKeeper() throws IOException, InterruptedException {
-        try {
-            systemUnderTest = new StrimziKafkaContainer()
-                .waitForRunning();
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaContainer()
+            .waitForRunning();
+        systemUnderTest.start();
 
-            final Container.ExecResult result = this.systemUnderTest.execInContainer(
-                "sh", "-c",
-                "bin/zookeeper-shell.sh localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
-            );
+        final Container.ExecResult result = this.systemUnderTest.execInContainer(
+            "sh", "-c",
+            "bin/zookeeper-shell.sh localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+        );
 
-            final String brokers = result.getStdout();
+        final String brokers = result.getStdout();
 
-            assertThat(result.getExitCode(), is(0)); // 0 -> success
-            assertThat(brokers, CoreMatchers.containsString("[0]"));
-        } finally {
-            systemUnderTest.stop();
-        }
+        assertThat(result.getExitCode(), is(0)); // 0 -> success
+        assertThat(brokers, CoreMatchers.containsString("[0]"));
     }
 
     @ParameterizedTest(name = "testIllegalStateUsingInternalZooKeeperWithKraft-{0}")
@@ -303,8 +280,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
         assertThat(systemUnderTest.getBootstrapServers(),
                 is(String.format("PLAINTEXT://%s", systemUnderTest.getProxy().getListen())));
-
-        systemUnderTest.stop();
     }
 
     @ParameterizedTest(name = "testGetProxyWithNoContainer-{0}")

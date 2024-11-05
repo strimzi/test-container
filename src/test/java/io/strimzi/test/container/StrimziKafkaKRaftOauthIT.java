@@ -68,6 +68,9 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
             assertThat(envMap.get("OAUTH_TOKEN_ENDPOINT_URI"), CoreMatchers.is(oauthUri + "/realms/" + realmName + "/protocol/openid-connect/token"));
             assertThat(envMap.get("OAUTH_USERNAME_CLAIM"), CoreMatchers.is("preferred_username"));
         } finally {
+            if (this.keycloakContainer != null) {
+                this.keycloakContainer.stop();
+            }
             if (this.systemUnderTest != null) {
                 this.systemUnderTest.stop();
             }
@@ -142,6 +145,11 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
 
             // Assertions to verify that the message was received
             assertThat(records.count(), Matchers.greaterThanOrEqualTo(1));
+
+            for (ConsumerRecord<String, String> record : records) {
+                assertThat(record.key(), CoreMatchers.is("key"));
+                assertThat(record.value(), CoreMatchers.is("value"));
+            }
 
             for (ConsumerRecord<String, String> record : records) {
                 assertThat(record.key(), CoreMatchers.is("key"));

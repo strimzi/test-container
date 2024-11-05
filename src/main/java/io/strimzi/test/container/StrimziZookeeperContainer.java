@@ -5,6 +5,7 @@
 package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.groupcdg.pitest.annotations.DoNotMutate;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     /**
      * Image name is lazily set in {@link #doStart()} method
      */
+    @DoNotMutate
     private StrimziZookeeperContainer(CompletableFuture<String> imageName) {
         super(imageName);
         this.imageNameProvider = imageName;
@@ -76,6 +78,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     }
 
     @Override
+    @DoNotMutate
     protected void doStart() {
         if (!imageNameProvider.isDone()) {
             imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(kafkaVersion));
@@ -86,6 +89,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     }
 
     @Override
+    @DoNotMutate
     protected void containerIsStarting(InspectContainerResponse containerInfo, boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -111,6 +115,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      * @param zooKeeperPropertiesFile the mountable config file
      * @return StrimziZookeeperContainer instance
      */
+    @DoNotMutate
     public StrimziZookeeperContainer withZooKeeperPropertiesFile(final MountableFile zooKeeperPropertiesFile) {
         Utils.asTransferableBytes(zooKeeperPropertiesFile)
             .ifPresent(properties -> withCopyToContainer(properties, "/opt/kafka/config/zookeeper.properties"));
@@ -123,6 +128,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      * @param kafkaVersion kafka version
      * @return StrimziKafkaContainer instance
      */
+    @DoNotMutate
     public StrimziZookeeperContainer withKafkaVersion(final String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
         return this;
@@ -133,6 +139,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      *
      * @return zookeeper connect string `host:port`
      */
+    @DoNotMutate
     public String getConnectString() {
         return this.getHost() + ":" + this.getMappedPort(ZOOKEEPER_PORT);
     }

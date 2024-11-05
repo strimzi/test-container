@@ -105,6 +105,7 @@
         <fasterxml.jackson-core.version>2.18.0</fasterxml.jackson-core.version>
         <fasterxml.jackson-databind.version>2.18.0</fasterxml.jackson-databind.version>
         <toxiproxy.java.version>2.1.7</toxiproxy.java.version>
+        <pitest-annotations.version>1.3.3</pitest-annotations.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.11.0</jupiter.version>
@@ -124,6 +125,8 @@
         <maven.checkstyle.version>3.5.0</maven.checkstyle.version>
         <maven.gpg.version>1.6</maven.gpg.version>
         <sonatype.nexus.staging>1.7.0</sonatype.nexus.staging>
+        <pit-junit-plugin.version>1.2.1</pit-junit-plugin.version>
+        <pit-plugin.version>1.17.0</pit-plugin.version>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.26.1</commons-compress.version>
@@ -190,6 +193,12 @@
             <artifactId>toxiproxy-java</artifactId>
             <version>${toxiproxy.java.version}</version>
         </dependency>
+        <!-- for mutation testing       -->
+        <dependency>
+            <groupId>com.arcmutate</groupId>
+            <artifactId>pitest-annotations</artifactId>
+            <version>${pitest-annotations.version}</version>
+        </dependency>
 
         <!-- TEST DEPENDENCY -->
         <dependency>
@@ -239,6 +248,13 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--  needed for PIT (mutation testing)   -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${jupiter.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -397,6 +413,35 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${pit-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>${pit-junit-plugin.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <targetClasses>
+                        <!-- we not want to include also WaitException, Utils classes etc. -->
+                        <param>io.strimzi.test.container.Strimzi*</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>io.strimzi.test.container.Strimzi*</param>
+                    </targetTests>
+                    <avoidCallsTo>
+                        <avoidCallsTo>java.util.logging</avoidCallsTo>
+                        <avoidCallsTo>org.apache.log4j</avoidCallsTo>
+                        <avoidCallsTo>org.slf4j</avoidCallsTo>
+                        <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
+                    </avoidCallsTo>
+                    <mutationThreshold>82</mutationThreshold>
+                    <coverageThreshold>73</coverageThreshold>
+                </configuration>
             </plugin>
         </plugins>
     </build>
