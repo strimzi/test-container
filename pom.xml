@@ -441,6 +441,7 @@
                     </avoidCallsTo>
                     <mutationThreshold>82</mutationThreshold>
                     <coverageThreshold>73</coverageThreshold>
+                    <verbose>true</verbose>
                 </configuration>
             </plugin>
         </plugins>
