@@ -248,6 +248,13 @@ This command will execute mutation tests based on the pitest-maven plugin and di
 After running the command, results will be available in an HTML report located in target/pit-reports/<timestamp>. 
 Open the index.html file in a browser to view detailed information about the mutation coverage.
 
+#### Using `@DoNotMutate` Annotation
+
+For parts of the code primarily covered by integration tests, we can use the `@DoNotMutate` annotation. 
+Applying this annotation to code ensures that mutation testing will ignore it. 
+This is particularly useful for code components that are challenging to test at a unit level but well-covered in integration tests. 
+Using `@DoNotMutate` helps keep mutation coverage metrics meaningful by excluding areas where mutation detection would not add value.
+
 ### Additional tips
 
 1. In case you are using `Azure pipelines` Ryuk needs to be turned off, since Azure does not allow starting privileged containers.
