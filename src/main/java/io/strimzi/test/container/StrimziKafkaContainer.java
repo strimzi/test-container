@@ -501,17 +501,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
 
         // Construct JAAS configuration for OAUTHBEARER
-        final String jaasConfig = String.format(
-            "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
-                "oauth.client.id=\"%s\" " +
-                "oauth.client.secret=\"%s\" " +
-                "oauth.token.endpoint.uri=\"%s\" " +
-                "oauth.username.claim=\"%s\";",
-            this.clientId,
-            this.clientSecret,
-            this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/token",
-            this.usernameClaim // e.g., "preferred_username"
-        );
+        final String jaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
         // Define Callback Handlers for OAUTHBEARER
         final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
         final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
