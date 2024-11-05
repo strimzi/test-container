@@ -18,6 +18,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
+import org.apache.logging.log4j.Level;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
@@ -314,6 +315,25 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest.start();
         assertThrows(IllegalStateException.class, () -> systemUnderTest.getProxy());
         systemUnderTest.stop();
+    }
+
+    @Test
+    void testWithKafkaLog() {
+        systemUnderTest = new StrimziKafkaContainer()
+            .waitForRunning()
+            .withKafkaLog(Level.DEBUG);
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("INFO"));
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("DEBUG"));
+
+        systemUnderTest.stop();
+        systemUnderTest.withKafkaLog(Level.TRACE);
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("INFO"));
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("DEBUG"));
+        assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("TRACE"));
     }
 
     @Test

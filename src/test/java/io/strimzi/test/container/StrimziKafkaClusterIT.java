@@ -56,54 +56,38 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
     @Test
     void testKafkaClusterStartup() throws IOException, InterruptedException {
-        try {
-            setUpKafkaCluster();
+        setUpKafkaCluster();
 
-            verifyReadinessOfKafkaCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyReadinessOfKafkaCluster();
     }
 
     @Test
     void testKafkaClusterStartupWithSharedNetwork() throws IOException, InterruptedException {
-        try {
-            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-                .withSharedNetwork()
-                .build();
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withSharedNetwork()
+            .build();
+        systemUnderTest.start();
 
-            verifyReadinessOfKafkaCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyReadinessOfKafkaCluster();
     }
 
     @Test
     void testKafkaClusterFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
         setUpKafkaCluster();
 
-        try {
-            verifyFunctionalityOfKafkaCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyFunctionalityOfKafkaCluster();
     }
 
     @Test
     void testKafkaClusterWithSharedNetworkFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
-        try {
-            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-                .withSharedNetwork()
-                .build();
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withSharedNetwork()
+            .build();
+        systemUnderTest.start();
 
-            verifyFunctionalityOfKafkaCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyFunctionalityOfKafkaCluster();
     }
 
     @Test
@@ -134,7 +118,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                 is(bootstrapUrls.stream().collect(Collectors.joining(","))));
         } finally {
             kafkaCluster.stop();
-            systemUnderTest.stop();
         }
     }
 
@@ -219,6 +202,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
     @AfterEach
     void tearDown() {
-        systemUnderTest.stop();
+        if (systemUnderTest != null) {
+            systemUnderTest.stop();
+        }
     }
 }

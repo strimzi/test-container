@@ -102,14 +102,19 @@
         <docker-java.version>3.3.6</docker-java.version>
         <kafka.version>3.8.1</kafka.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <fasterxml.jackson-core.version>2.17.0</fasterxml.jackson-core.version>
-        <fasterxml.jackson-databind.version>2.17.0</fasterxml.jackson-databind.version>
+        <fasterxml.jackson-core.version>2.18.0</fasterxml.jackson-core.version>
+        <fasterxml.jackson-databind.version>2.18.0</fasterxml.jackson-databind.version>
         <toxiproxy.java.version>2.1.7</toxiproxy.java.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.11.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
+        <!-- for Java 11 compatibility (newer versions does not support Java 11)  -->
+        <testcontainers-keycloak.version>2.6.0</testcontainers-keycloak.version>
+        <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
+        <kafka-oauth-client.version>0.15.0</kafka-oauth-client.version>
+        <mockito.version>5.14.2</mockito.version>
 
         <!-- PLUGIN VERSIONS       -->
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
@@ -169,7 +174,6 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>${log4j.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -212,6 +216,31 @@
             <version>${kafka.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.dasniko</groupId>
+            <artifactId>testcontainers-keycloak</artifactId>
+            <version>${testcontainers-keycloak.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--  for JaasClientOauthLoginCallbackHandler callback      -->
+        <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>kafka-oauth-client</artifactId>
+            <version>${kafka-oauth-client.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${fasterxml.jackson-annotations.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- overriding version of commons-compress for Test container - Vulnerability -->
         <dependency>
@@ -228,12 +257,6 @@
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>${commons-codec.version}</version>
-        </dependency>
-        <!-- overriding version of commons-compress for Test container - Vulnerability -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit4.version}</version>
         </dependency>
     </dependencies>
 

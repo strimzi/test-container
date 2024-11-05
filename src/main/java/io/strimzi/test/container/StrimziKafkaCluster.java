@@ -141,6 +141,12 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
+    /**
+     * Builder class for {@code StrimziKafkaCluster}.
+     * <p>
+     * Use this builder to create instances of {@code StrimziKafkaCluster} with customized configurations.
+     * </p>
+     */
     public static class StrimziKafkaClusterBuilder {
         private int brokersNum;
         private int internalTopicReplicationFactor;
@@ -222,6 +228,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
             return this;
         }
 
+        /**
+         * Enables KRaft mode for the Kafka cluster.
+         * <p>
+         * KRaft mode allows Kafka to operate without ZooKeeper.
+         * </p>
+         *
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
         public StrimziKafkaClusterBuilder withKraft() {
             this.enableKRaft = true;
             return this;
@@ -269,10 +283,20 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .collect(Collectors.joining(","));
     }
 
+    /**
+     * Checks if the Kafka cluster is based on ZooKeeper.
+     *
+     * @return {@code true} if ZooKeeper is used; {@code false} if KRaft mode is enabled
+     */
     public boolean isZooKeeperBasedKafkaCluster() {
         return !this.enableKraft;
     }
 
+    /**
+     * Checks if the Kafka cluster is running in KRaft mode.
+     *
+     * @return {@code true} if KRaft mode is enabled; {@code false} otherwise
+     */
     public boolean isKraftKafkaCluster() {
         return this.enableKraft;
     }
@@ -336,7 +360,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                         for (KafkaContainer kafkaContainer : this.brokers) {
                             Container.ExecResult result = ((StrimziKafkaContainer) kafkaContainer).execInContainer(
                                 "bash", "-c",
-                                "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:9093 describe --status"
+                                "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
                             );
                             String output = result.getStdout();
 

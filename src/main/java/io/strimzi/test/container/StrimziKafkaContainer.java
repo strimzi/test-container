@@ -8,6 +8,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
+import org.apache.logging.log4j.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -27,14 +28,17 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
@@ -63,7 +67,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public static final int KAFKA_PORT = 9092;
 
+    /**
+     * Prefix for network aliases.
+     */
     protected static final String NETWORK_ALIAS_PREFIX = "broker-";
+    protected static final int INTER_BROKER_LISTENER_PORT = 9091;
 
     /**
      * Lazy image name provider
@@ -87,6 +95,22 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private ToxiproxyContainer proxyContainer;
     private ToxiproxyClient toxiproxyClient;
     private Proxy proxy;
+
+    protected Set<String> listenerNames = new HashSet<>();
+
+    // OAuth fields
+    private boolean oauthEnabled;
+    private String realm;
+    private String clientId;
+    private String clientSecret;
+    private String oauthUri;
+    private String usernameClaim;
+
+    // OAuth over PLAIN
+    private String saslUsername;
+    private String saslPassword;
+
+    private AuthenticationType authenticationType = AuthenticationType.NONE;
 
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
@@ -119,6 +143,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
+    @SuppressWarnings({"NPathComplexity", "CyclomaticComplexity"})
     protected void doStart() {
         if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
             this.proxyContainer.start();
@@ -147,6 +172,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
         super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
         // we need it for the startZookeeper(); and startKafka(); to run container before...
+
+        if (this.isOAuthEnabled()) {
+            // Set OAuth environment variables (using properties does not propagate to System properties)
+            this.addEnv("OAUTH_JWKS_ENDPOINT_URI", this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/certs");
+            this.addEnv("OAUTH_VALID_ISSUER_URI", this.oauthUri + "/realms/" + this.realm);
+            this.addEnv("OAUTH_CLIENT_ID", this.clientId);
+            this.addEnv("OAUTH_CLIENT_SECRET", this.clientSecret);
+            this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/token");
+            this.addEnv("OAUTH_USERNAME_CLAIM", this.usernameClaim);
+        }
+
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
     }
@@ -187,7 +223,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
-    @SuppressWarnings({"JavaNCSS", "NPathComplexity", "CyclomaticComplexity"})
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -200,75 +235,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         LOGGER.info("Mapped port: {}", kafkaExposedPort);
 
-        final String bootstrapServers = getBootstrapServers();
-        final String bsListenerName = extractListenerName(bootstrapServers);
-
-        StringBuilder advertisedListeners = new StringBuilder(bootstrapServers);
-
-        Collection<ContainerNetwork> cns = containerInfo.getNetworkSettings().getNetworks().values();
-
-        int advertisedListenerNumber = 1;
-        List<String> advertisedListenersNames = new ArrayList<>();
-
-        for (ContainerNetwork cn : cns) {
-            // must be always unique
-            final String advertisedName = "BROKER" + advertisedListenerNumber;
-            advertisedListeners.append(",").append(advertisedName).append("://").append(cn.getIpAddress()).append(":9093");
-            advertisedListenersNames.add(advertisedName);
-            advertisedListenerNumber++;
-        }
-
-        LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
-
-        StringBuilder kafkaListeners = new StringBuilder();
-        StringBuilder kafkaListenerSecurityProtocol = new StringBuilder();
-
-        advertisedListenersNames.forEach(name -> {
-            // listeners
-            kafkaListeners
-                    .append(name)
-                    .append("://0.0.0.0:9093")
-                    .append(",");
-            // listener.security.protocol.map
-            kafkaListenerSecurityProtocol
-                    .append(name)
-                    .append(":PLAINTEXT")
-                    .append(",");
-        });
-
-        kafkaListeners.append(bsListenerName).append("://0.0.0.0:").append(KAFKA_PORT);
-        kafkaListenerSecurityProtocol.append("PLAINTEXT:PLAINTEXT");
-        if (!bsListenerName.equals("PLAINTEXT")) {
-            kafkaListenerSecurityProtocol.append(",").append(bsListenerName).append(":").append(bsListenerName);
-        }
-
-        if (this.useKraft) {
-            // adding Controller listener for Kraft mode
-            // (wildcard address for multi-node setup; that way we other nodes can connect and communicate between each other)
-            kafkaListeners.append(",").append("CONTROLLER://0.0.0.0:9094");
-            kafkaListenerSecurityProtocol.append(",").append("CONTROLLER:PLAINTEXT");
-        }
-
-        Map<String, String> kafkaConfiguration = new HashMap<>();
-
-        kafkaConfiguration.put("listeners", kafkaListeners.toString());
-        kafkaConfiguration.put("advertised.listeners", advertisedListeners.toString());
-        kafkaConfiguration.put("listener.security.protocol.map", kafkaListenerSecurityProtocol.toString());
-        kafkaConfiguration.put("inter.broker.listener.name", "BROKER1");
-        kafkaConfiguration.put("broker.id", String.valueOf(this.brokerId));
-
-        // additional kafka config
-        if (this.kafkaConfigurationMap != null) {
-            kafkaConfiguration.putAll(this.kafkaConfigurationMap);
-        }
-
         if (this.nodeId == null) {
             LOGGER.warn("Node ID is not set. Using broker ID {} as the default node ID.", this.brokerId);
             this.nodeId = this.brokerId;
         }
 
-        final Properties defaultServerProperties = this.buildDefaultServerProperties();
-        final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, kafkaConfiguration);
+        final String[] listenersConfig = this.buildListenersConfig(containerInfo);
+        final Properties defaultServerProperties = this.buildDefaultServerProperties(
+            listenersConfig[0],
+            listenersConfig[1]);
+        final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, this.kafkaConfigurationMap);
 
         // copy override file to the container
         if (this.useKraft) {
@@ -314,7 +290,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return this.useKraft || this.externalZookeeperConnect != null;
     }
 
-    private String extractListenerName(String bootstrapServers) {
+    protected String extractListenerName(String bootstrapServers) {
         // extract listener name from given bootstrap servers
         String[] strings = bootstrapServers.split(":");
         if (strings.length < 3) {
@@ -324,15 +300,71 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return strings[0];
     }
 
-    static String writeOverrideString(Map<String, String> kafkaConfigurationMap) {
-        StringBuilder kafkaConfiguration = new StringBuilder();
-        kafkaConfigurationMap.forEach((configName, configValue) ->
-                kafkaConfiguration
-                        .append(" --override ")
-                        .append('\'').append(configName.replace("'", "'\"'\"'"))
-                        .append("=")
-                        .append(configValue.replace("'", "'\"'\"'")).append('\''));
-        return kafkaConfiguration.toString();
+    /**
+     * Builds the listener configurations for the Kafka broker based on the container's network settings.
+     *
+     * @param containerInfo Container network information.
+     * @return An array containing:
+     *          The 'listeners' configuration string.
+     *          The 'advertised.listeners' configuration string.
+     */
+    protected String[] buildListenersConfig(final InspectContainerResponse containerInfo) {
+        final String bootstrapServers = getBootstrapServers();
+        final String bsListenerName = extractListenerName(bootstrapServers);
+        final Collection<ContainerNetwork> networks = containerInfo.getNetworkSettings().getNetworks().values();
+        final List<String> advertisedListenersNames = new ArrayList<>();
+        final StringBuilder kafkaListeners = new StringBuilder();
+        final StringBuilder advertisedListeners = new StringBuilder();
+
+        // add first PLAINTEXT listener
+        advertisedListeners.append(bootstrapServers);
+        kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
+        this.listenerNames.add(bsListenerName);
+
+        int listenerNumber = 1;
+        int portNumber = INTER_BROKER_LISTENER_PORT;
+
+        // configure advertised listeners
+        for (ContainerNetwork network : networks) {
+            String advertisedName = "BROKER" + listenerNumber;
+            advertisedListeners.append(",")
+                .append(advertisedName)
+                .append("://")
+                .append(network.getIpAddress())
+                .append(":")
+                .append(portNumber);
+            advertisedListenersNames.add(advertisedName);
+            listenerNumber++;
+            portNumber--;
+        }
+
+        portNumber = INTER_BROKER_LISTENER_PORT;
+
+        // configure listeners
+        for (String listener : advertisedListenersNames) {
+            kafkaListeners
+                .append(listener)
+                .append("://0.0.0.0:")
+                .append(portNumber)
+                .append(",");
+            this.listenerNames.add(listener);
+            portNumber--;
+        }
+
+        if (this.useKraft) {
+            final String controllerListenerName = "CONTROLLER";
+            // adding Controller listener for Kraft mode
+            // (wildcard address for multi-node setup; that way we other nodes can connect and communicate between each other)
+            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:9094");
+            this.listenerNames.add(controllerListenerName);
+        }
+
+        LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
+
+        return new String[] {
+            kafkaListeners.toString(),
+            advertisedListeners.toString()
+        };
     }
 
     /**
@@ -354,15 +386,25 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return Base64.getUrlEncoder().withoutPadding().encodeToString(uuidBytesArray);
     }
 
-    private Properties buildDefaultServerProperties() {
+    /**
+     * Builds the default Kafka server properties.
+     *
+     * @param listeners                   the listeners configuration
+     * @param advertisedListeners         the advertised listeners configuration
+     * @return the default server properties
+     */
+    @SuppressWarnings({"JavaNCSS"})
+    protected Properties buildDefaultServerProperties(final String listeners,
+                                                    final String advertisedListeners) {
         // Default properties for server.properties
         Properties properties = new Properties();
 
         // Common settings for both KRaft and non-KRaft modes
-        properties.setProperty("listeners", "PLAINTEXT://:9092");
-        properties.setProperty("inter.broker.listener.name", "PLAINTEXT");
-        properties.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
-        properties.setProperty("listener.security.protocol.map", "PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL");
+        properties.setProperty("listeners", listeners);
+        properties.setProperty("inter.broker.listener.name", "BROKER1");
+        properties.setProperty("broker.id", String.valueOf(this.brokerId));
+        properties.setProperty("advertised.listeners", advertisedListeners);
+        properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("PLAINTEXT"));
         properties.setProperty("num.network.threads", "3");
         properties.setProperty("num.io.threads", "8");
         properties.setProperty("socket.send.buffer.bytes", "102400");
@@ -382,8 +424,31 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             properties.setProperty("process.roles", "broker,controller");
             properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
             properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
-            properties.setProperty("listeners", "PLAINTEXT://:9092,CONTROLLER://:9093");
             properties.setProperty("controller.listener.names", "CONTROLLER");
+
+            if (this.authenticationType != AuthenticationType.NONE) {
+                switch (this.authenticationType) {
+                    case OAUTH_OVER_PLAIN:
+                        if (this.isOAuthEnabled()) {
+                            configureOAuthOverPlain(properties);
+                        } else {
+                            throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
+                        }
+                        break;
+                    case OAUTH_BEARER:
+                        if (this.isOAuthEnabled()) {
+                            configureOAuthBearer(properties);
+                        } else {
+                            throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
+                        }
+                        break;
+                    case SCRAM_SHA_256:
+                    case SCRAM_SHA_512:
+                    case GSSAPI:
+                    default:
+                        throw new IllegalStateException("Unsupported authentication type: " + this.authenticationType);
+                }
+            }
         } else if (this.externalZookeeperConnect != null) {
             LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
             properties.put("zookeeper.connect", this.externalZookeeperConnect);
@@ -396,21 +461,101 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return properties;
     }
 
-    private String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
-        // Apply overrides
-        overrides.forEach(defaultProperties::setProperty);
+    /**
+     * Configures OAuth over PLAIN authentication in the provided properties.
+     *
+     * @param properties The Kafka server properties to configure.
+     */
+    protected void configureOAuthOverPlain(Properties properties) {
+        properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
+        properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
+        properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT"));
+        properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
+        properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
+
+        // Construct the JAAS configuration with configurable username and password
+        final String jaasConfig = String.format(
+            "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
+            this.saslUsername,
+            this.saslPassword
+        );
+        // Callback handler classes
+        final String callbackHandler = "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler";
+
+        for (String listenerName : this.listenerNames) {
+            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".plain.sasl.jaas.config", jaasConfig);
+            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".plain.sasl.server.callback.handler.class", callbackHandler);
+        }
+    }
+
+    /**
+     * Configures OAuth Bearer authentication in the provided properties.
+     *
+     * @param properties The Kafka server properties to configure.
+     */
+    protected void configureOAuthBearer(Properties properties) {
+        properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
+        properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
+        properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT"));
+        properties.setProperty("sasl.mechanism.controller.protocol", "OAUTHBEARER");
+        properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
+
+        // Construct JAAS configuration for OAUTHBEARER
+        final String jaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
+        // Define Callback Handlers for OAUTHBEARER
+        final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
+        final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
+
+        for (final String listenerName : this.listenerNames) {
+            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".oauthbearer.sasl.jaas.config", jaasConfig);
+            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+        }
+    }
+
+    /**
+     * Configures the listener.security.protocol.map property based on the listenerNames set and the given security protocol.
+     *
+     * @param securityProtocol The security protocol to map each listener to (e.g., PLAINTEXT, SASL_PLAINTEXT).
+     * @return The listener.security.protocol.map configuration string.
+     */
+    protected String configureListenerSecurityProtocolMap(String securityProtocol) {
+        return this.listenerNames.stream()
+            .map(listenerName -> listenerName + ":" + securityProtocol)
+            .collect(Collectors.joining(","));
+    }
+
+    /**
+     * Overrides the default Kafka server properties with the provided overrides.
+     * If the overrides map is null or empty, it simply returns the default properties as a string.
+     *
+     * @param defaultProperties The default Kafka server properties.
+     * @param overrides         The properties to override. Can be null.
+     * @return A string representation of the combined server properties.
+     */
+    protected String overrideProperties(Properties defaultProperties, Map<String, String> overrides) {
+        // Check if overrides are not null and not empty before applying them
+        if (overrides != null && !overrides.isEmpty()) {
+            overrides.forEach(defaultProperties::setProperty);
+        }
 
         // Write properties to string
         StringWriter writer = new StringWriter();
         try {
             defaultProperties.store(writer, null);
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException("Failed to store Kafka server properties", e);
         }
 
         return writer.toString();
     }
 
+    /**
+     * Retrieves the internal ZooKeeper connection string.
+     *
+     * @return the internal ZooKeeper connection string
+     * @throws IllegalStateException if KRaft mode or external ZooKeeper is configured
+     */
     @Override
     public String getInternalZooKeeperConnect() {
         if (this.hasKraftOrExternalZooKeeperConfigured()) {
@@ -419,6 +564,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return getHost() + ":" + this.internalZookeeperExposedPort;
     }
 
+    /**
+     * Retrieves the bootstrap servers URL for Kafka clients.
+     *
+     * @return the bootstrap servers URL
+     */
     @Override
     public String getBootstrapServers() {
         if (proxyContainer != null) {
@@ -478,6 +628,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    /**
+     * Fluent method that sets the node ID.
+     *
+     * @param nodeId the node ID
+     * @return {@code StrimziKafkaContainer} instance
+     */
     public StrimziKafkaContainer withNodeId(final int nodeId) {
         this.nodeId = nodeId;
         return self();
@@ -566,9 +722,109 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    /**
+     * Fluent method to configure OAuth settings.
+     *
+     * @param realm                 the realm
+     * @param clientId              the OAuth client ID
+     * @param clientSecret          the OAuth client secret
+     * @param oauthUri              the OAuth URI
+     * @param usernameClaim         the preferred username claim for OAuth
+     * @return {@code StrimziKafkaContainer} instance
+     */
+    public StrimziKafkaContainer withOAuthConfig(final String realm,
+                                                 final String clientId,
+                                                 final String clientSecret,
+                                                 final String oauthUri,
+                                                 final String usernameClaim) {
+        this.oauthEnabled = true;
+        this.realm = realm;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.oauthUri = oauthUri;
+        this.usernameClaim = usernameClaim;
+        return self();
+    }
+
+    /**
+     * Sets the authentication type for the Kafka container.
+     *
+     * @param authType The authentication type to enable.
+     * @return StrimziKafkaContainer instance for method chaining.
+     */
+    public StrimziKafkaContainer withAuthenticationType(AuthenticationType authType) {
+        if (authType != null) {
+            this.authenticationType = authType;
+        }
+        return self();
+    }
+
+    /**
+     * Fluent method to set the SASL PLAIN mechanism's username.
+     *
+     * @param saslUsername The desired SASL username.
+     * @return StrimziKafkaContainer instance for method chaining.
+     */
+    public StrimziKafkaContainer withSaslUsername(String saslUsername) {
+        if (saslUsername != null && !saslUsername.trim().isEmpty()) {
+            this.saslUsername = saslUsername;
+        } else {
+            throw new IllegalArgumentException("SASL username cannot be null or empty.");
+        }
+        return self();
+    }
+
+    /**
+     * Fluent method to set the SASL PLAIN mechanism's password.
+     *
+     * @param saslPassword The desired SASL password.
+     * @return StrimziKafkaContainer instance for method chaining.
+     */
+    public StrimziKafkaContainer withSaslPassword(String saslPassword) {
+        if (saslPassword != null && !saslPassword.trim().isEmpty()) {
+            this.saslPassword = saslPassword;
+        } else {
+            throw new IllegalArgumentException("SASL password cannot be null or empty.");
+        }
+        return self();
+    }
+
     protected StrimziKafkaContainer withClusterId(String clusterId) {
         this.clusterId = clusterId;
-        return this;
+        return self();
+    }
+
+    /**
+     * Configures the Kafka container to use the specified logging level for Kafka logs.
+     * <p>
+     * This method generates a custom <code>log4j.properties</code> file with the desired logging level
+     * and copies it into the Kafka container. By setting the logging level, you can control the verbosity
+     * of Kafka's log output, which is useful for debugging or monitoring purposes.
+     * </p>
+     *
+     * <b>Example Usage:</b>
+     * <pre>{@code
+     * StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+     *     .withKafkaLog(Level.DEBUG)
+     *     .start();
+     * }</pre>
+     *
+     * @param level the desired {@link Level} of logging (e.g., DEBUG, INFO, WARN, ERROR)
+     * @return the current instance of {@code StrimziKafkaContainer} for method chaining
+     */
+    public StrimziKafkaContainer withKafkaLog(Level level) {
+        String log4jConfig = "log4j.rootLogger=" + level.name() + ", stdout\n" +
+            "log4j.appender.stdout=org.apache.log4j.ConsoleAppender\n" +
+            "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout\n" +
+            "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n\n";
+
+        // Copy the custom log4j.properties into the container
+        this.withCopyToContainer(
+            Transferable.of(log4jConfig.getBytes(StandardCharsets.UTF_8)),
+            "/opt/kafka/config/log4j.properties"
+        );
+
+        return self();
     }
 
     /**
@@ -608,5 +864,46 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /* test */ int getBrokerId() {
         return brokerId;
+    }
+
+    /**
+     * Checks if OAuth is enabled.
+     *
+     * @return {@code true} if OAuth is enabled; {@code false} otherwise
+     */
+    public boolean isOAuthEnabled() {
+        return this.oauthEnabled;
+    }
+
+    public String getSaslUsername() {
+        return saslUsername;
+    }
+
+    public String getSaslPassword() {
+        return saslPassword;
+    }
+
+    public String getRealm() {
+        return realm;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public String getClientSecret() {
+        return clientSecret;
+    }
+
+    public String getOauthUri() {
+        return oauthUri;
+    }
+
+    public String getUsernameClaim() {
+        return usernameClaim;
+    }
+
+    public AuthenticationType getAuthenticationType() {
+        return authenticationType;
     }
 }
