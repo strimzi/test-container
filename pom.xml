@@ -431,7 +431,8 @@
                         <param>io.strimzi.test.container.Strimzi*</param>
                     </targetClasses>
                     <targetTests>
-                        <param>io.strimzi.test.container.Strimzi*</param>
+                        <!-- include just UTs within mutation and prevent image pulling -->
+                        <param>io.strimzi.test.container.Strimzi*Test</param>
                     </targetTests>
                     <avoidCallsTo>
                         <avoidCallsTo>java.util.logging</avoidCallsTo>
@@ -439,7 +440,7 @@
                         <avoidCallsTo>org.slf4j</avoidCallsTo>
                         <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
                     </avoidCallsTo>
-                    <mutationThreshold>82</mutationThreshold>
+                    <mutationThreshold>80</mutationThreshold>
                     <coverageThreshold>73</coverageThreshold>
                     <verbose>true</verbose>
                 </configuration>

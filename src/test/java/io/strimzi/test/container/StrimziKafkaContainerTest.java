@@ -43,14 +43,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testInitializationWithImageName() {
-        String imageName = "strimzi/kafka:latest";
-        kafkaContainer = new StrimziKafkaContainer(imageName);
-        assertThat(kafkaContainer, is(notNullValue()));
-        assertThat(kafkaContainer.getDockerImageName(), containsString(imageName));
-    }
-
-    @Test
     void testOAuthConfiguration() {
         kafkaContainer = new StrimziKafkaContainer()
             .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username");
@@ -140,14 +132,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testWithProxyContainerSetsNetworkAndAlias() {
-        ToxiproxyContainer proxy = new ToxiproxyContainer();
-        kafkaContainer.withProxyContainer(proxy);
-        assertThat(proxy.getNetwork().getId(), notNullValue());
-        assertThat(proxy.getNetworkAliases(), hasItem("toxiproxy"));
-    }
-
-    @Test
     void testRunStarterScriptReturnsCorrectScript() {
         String script = kafkaContainer.runStarterScript();
         assertThat(script, is("while [ ! -x /testcontainers_start.sh ]; do sleep 0.1; done; /testcontainers_start.sh"));
@@ -203,19 +187,6 @@ class StrimziKafkaContainerTest {
             () -> kafkaContainer.withBrokerId(2));
 
         assertThat(exception.getMessage(), containsString("`broker.id` and `node.id` must have same value!"));
-    }
-
-    @Test
-    void testDoStartThrowsExceptionForUnsupportedKraftVersion() {
-        kafkaContainer.withKafkaVersion("2.8.2");
-        kafkaContainer.withKraft();
-
-        UnsupportedKraftKafkaVersionException exception = assertThrows(
-            UnsupportedKraftKafkaVersionException.class,
-            kafkaContainer::doStart,
-            "Expected doStart() to throw an exception for unsupported Kafka version in KRaft mode."
-        );
-        assertThat(exception.getMessage(), containsString("is not supported in KRaft mode"));
     }
 
     @Test

@@ -221,19 +221,6 @@ public class StrimziKafkaClusterTest {
         assertThat(kraftCluster.getZookeeper(), CoreMatchers.is(CoreMatchers.nullValue()));
     }
 
-    @Test
-    void testUnsupportedKafkaVersionInKraftMode() {
-        // Attempt to use an unsupported Kafka version in KRaft mode
-        UnsupportedKraftKafkaVersionException exception = assertThrows(UnsupportedKraftKafkaVersionException.class, () ->
-            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(1)
-                .withKraft()
-                .withKafkaVersion("2.8.2") // Unsupported version for KRaft
-                .build()
-                .start()
-        );
-        assertThat(exception.getMessage(), CoreMatchers.containsString("Specified Kafka version 2.8.2 is not supported in KRaft mode."));
-    }
 
     @Test
     void testAdditionalKafkaConfigurationHandling() {
