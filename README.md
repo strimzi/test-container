@@ -235,6 +235,19 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
+### Running Mutation Testing
+
+To run mutation testing and assess your code’s robustness against small changes, use the following Maven command:
+```bash
+mvn clean test-compile org.pitest:pitest-maven:mutationCoverage
+```
+This command will execute mutation tests based on the pitest-maven plugin and display results directly in the console.
+
+#### Viewing Mutation Testing Results
+
+After running the command, results will be available in an HTML report located in target/pit-reports/<timestamp>. 
+Open the index.html file in a browser to view detailed information about the mutation coverage.
+
 ### Additional tips
 
 1. In case you are using `Azure pipelines` Ryuk needs to be turned off, since Azure does not allow starting privileged containers.
