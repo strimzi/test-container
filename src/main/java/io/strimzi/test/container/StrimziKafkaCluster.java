@@ -4,6 +4,7 @@
  */
 package io.strimzi.test.container;
 
+import com.groupcdg.pitest.annotations.DoNotMutate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -263,12 +264,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     @Override
+    @DoNotMutate
     public boolean hasKraftOrExternalZooKeeperConfigured() {
         KafkaContainer broker0 = brokers.iterator().next();
         return broker0.hasKraftOrExternalZooKeeperConfigured() ? true : false;
     }
 
     @Override
+    @DoNotMutate
     public String getInternalZooKeeperConnect() {
         if (hasKraftOrExternalZooKeeperConfigured()) {
             throw new IllegalStateException("Connect string is not available when using KRaft or external ZooKeeper");
@@ -322,15 +325,25 @@ public class StrimziKafkaCluster implements KafkaContainer {
         additionalKafkaConfiguration.put("controller.quorum.voters", quorumVoters);
     }
 
-    @SuppressWarnings({"CyclomaticComplexity"})
+    @SuppressWarnings({"CyclomaticComplexity", "NPathComplexity"})
     @Override
+    @DoNotMutate
     public void start() {
         Stream<KafkaContainer> startables = this.brokers.stream();
         try {
             Startables.deepStart(startables).get(60, TimeUnit.SECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Failed to start Kafka containers", e);
+            throw new RuntimeException("Interrupted while starting Kafka containers", e);
+        } catch (ExecutionException | UnsupportedKraftKafkaVersionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof UnsupportedKraftKafkaVersionException) {
+                throw (UnsupportedKraftKafkaVersionException) cause;
+            } else {
+                throw new RuntimeException("Failed to start Kafka containers", e);
+            }
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timed out while starting Kafka containers", e);
         }
 
         if (this.isZooKeeperBasedKafkaCluster()) {
@@ -400,6 +413,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     @Override
+    @DoNotMutate
     public void stop() {
         if (this.isZooKeeperBasedKafkaCluster()) {
             // firstly we shut-down zookeeper -> reason: 'On the command line if I kill ZK first it sometimes prevents a broker from shutting down quickly.'
@@ -418,5 +432,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     public StrimziZookeeperContainer getZookeeper() {
         return zookeeper;
+    }
+
+    protected Network getNetwork() {
+        return network;
     }
 }

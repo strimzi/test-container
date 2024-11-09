@@ -163,6 +163,8 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
         assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("INFO"));
         assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("DEBUG"));
         assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("TRACE"));
+
+        systemUnderTest.stop();
     }
 
     private void verify() throws InterruptedException, ExecutionException, TimeoutException {

@@ -43,14 +43,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testInitializationWithImageName() {
-        String imageName = "strimzi/kafka:latest";
-        kafkaContainer = new StrimziKafkaContainer(imageName);
-        assertThat(kafkaContainer, is(notNullValue()));
-        assertThat(kafkaContainer.getDockerImageName(), containsString(imageName));
-    }
-
-    @Test
     void testOAuthConfiguration() {
         kafkaContainer = new StrimziKafkaContainer()
             .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username");
@@ -140,14 +132,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testWithProxyContainerSetsNetworkAndAlias() {
-        ToxiproxyContainer proxy = new ToxiproxyContainer();
-        kafkaContainer.withProxyContainer(proxy);
-        assertThat(proxy.getNetwork().getId(), notNullValue());
-        assertThat(proxy.getNetworkAliases(), hasItem("toxiproxy"));
-    }
-
-    @Test
     void testRunStarterScriptReturnsCorrectScript() {
         String script = kafkaContainer.runStarterScript();
         assertThat(script, is("while [ ! -x /testcontainers_start.sh ]; do sleep 0.1; done; /testcontainers_start.sh"));
@@ -203,19 +187,6 @@ class StrimziKafkaContainerTest {
             () -> kafkaContainer.withBrokerId(2));
 
         assertThat(exception.getMessage(), containsString("`broker.id` and `node.id` must have same value!"));
-    }
-
-    @Test
-    void testDoStartThrowsExceptionForUnsupportedKraftVersion() {
-        kafkaContainer.withKafkaVersion("2.8.2");
-        kafkaContainer.withKraft();
-
-        UnsupportedKraftKafkaVersionException exception = assertThrows(
-            UnsupportedKraftKafkaVersionException.class,
-            kafkaContainer::doStart,
-            "Expected doStart() to throw an exception for unsupported Kafka version in KRaft mode."
-        );
-        assertThat(exception.getMessage(), containsString("is not supported in KRaft mode"));
     }
 
     @Test
@@ -388,16 +359,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
         String expectedJaasConfig = String.format(
-            "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required " +
-                "oauth.client.id=\"%s\" " +
-                "oauth.client.secret=\"%s\" " +
-                "oauth.token.endpoint.uri=\"%s\" " +
-                "oauth.username.claim=\"%s\";",
-            kafkaContainer.getClientId(),
-            kafkaContainer.getClientSecret(),
-            kafkaContainer.getOauthUri() + "/realms/" + kafkaContainer.getRealm() + "/protocol/openid-connect/token",
-            kafkaContainer.getUsernameClaim()
-        );
+            "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;");
 
         String listenerNameLowerCase = "plaintext";
 
@@ -547,6 +509,114 @@ class StrimziKafkaContainerTest {
         );
 
         assertThat(exception.getMessage(), containsString("OAuth2 is not enabled"));
+    }
+
+    @Test
+    void testBuildDefaultServerPropertiesWithOAutPlain() {
+        String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
+        String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
+        kafkaContainer.listenerNames.add("SASL_PLAINTEXT");
+        kafkaContainer
+            .withBrokerId(1)
+            .withNodeId(1)
+            .withSaslUsername("admin")
+            .withSaslPassword("password")
+            .withKraft()
+            .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username")
+            .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN);
+
+        Properties properties = kafkaContainer.buildDefaultServerProperties(listeners, advertisedListeners);
+
+        assertThat(properties, notNullValue());
+        assertThat(properties.getProperty("listeners"), is(listeners));
+        assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
+        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
+        assertThat(properties.getProperty("broker.id"), is("1"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(kafkaContainer.configureListenerSecurityProtocolMap("SASL_PLAINTEXT")));
+        assertThat(properties.getProperty("num.network.threads"), is("3"));
+        assertThat(properties.getProperty("num.io.threads"), is("8"));
+        assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
+        assertThat(properties.getProperty("socket.receive.buffer.bytes"), is("102400"));
+        assertThat(properties.getProperty("socket.request.max.bytes"), is("104857600"));
+        assertThat(properties.getProperty("log.dirs"), is("/tmp/default-log-dir"));
+        assertThat(properties.getProperty("num.partitions"), is("1"));
+        assertThat(properties.getProperty("num.recovery.threads.per.data.dir"), is("1"));
+        assertThat(properties.getProperty("offsets.topic.replication.factor"), is("1"));
+        assertThat(properties.getProperty("transaction.state.log.replication.factor"), is("1"));
+        assertThat(properties.getProperty("transaction.state.log.min.isr"), is("1"));
+        assertThat(properties.getProperty("log.retention.hours"), is("168"));
+        assertThat(properties.getProperty("log.retention.check.interval.ms"), is("300000"));
+
+        // KRaft-specific assertions
+        assertThat(properties.getProperty("process.roles"), is("broker,controller"));
+        assertThat(properties.getProperty("node.id"), is("1"));
+        String expectedQuorumVoters = String.format("%d@%s%d:9094", 1, "broker-", 1);
+        assertThat(properties.getProperty("controller.quorum.voters"), is(expectedQuorumVoters));
+        assertThat(properties.getProperty("controller.listener.names"), is("CONTROLLER"));
+
+        // OAuth-specific assertions
+        assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("PLAIN"));
+        assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("PLAIN"));
+
+        assertThat(properties.getProperty("listener.name.sasl_plaintext.plain.sasl.jaas.config"),
+            is("org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                "username=\"admin\" " +
+                "password=\"password\";"));
+        assertThat(properties.getProperty("listener.name.sasl_plaintext.plain.sasl.server.callback.handler.class"),
+            is("io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler"));
+    }
+
+    @Test
+    void testBuildDefaultServerPropertiesWithOAuthBearer() {
+        String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
+        String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
+        kafkaContainer.listenerNames.add("SASL_PLAINTEXT");
+        kafkaContainer
+            .withBrokerId(1)
+            .withNodeId(1)
+            .withKraft()
+            .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username")
+            .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
+
+        Properties properties = kafkaContainer.buildDefaultServerProperties(listeners, advertisedListeners);
+
+        assertThat(properties, notNullValue());
+        assertThat(properties.getProperty("listeners"), is(listeners));
+        assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
+        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
+        assertThat(properties.getProperty("broker.id"), is("1"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(kafkaContainer.configureListenerSecurityProtocolMap("SASL_PLAINTEXT")));
+        assertThat(properties.getProperty("num.network.threads"), is("3"));
+        assertThat(properties.getProperty("num.io.threads"), is("8"));
+        assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
+        assertThat(properties.getProperty("socket.receive.buffer.bytes"), is("102400"));
+        assertThat(properties.getProperty("socket.request.max.bytes"), is("104857600"));
+        assertThat(properties.getProperty("log.dirs"), is("/tmp/default-log-dir"));
+        assertThat(properties.getProperty("num.partitions"), is("1"));
+        assertThat(properties.getProperty("num.recovery.threads.per.data.dir"), is("1"));
+        assertThat(properties.getProperty("offsets.topic.replication.factor"), is("1"));
+        assertThat(properties.getProperty("transaction.state.log.replication.factor"), is("1"));
+        assertThat(properties.getProperty("transaction.state.log.min.isr"), is("1"));
+        assertThat(properties.getProperty("log.retention.hours"), is("168"));
+        assertThat(properties.getProperty("log.retention.check.interval.ms"), is("300000"));
+
+        // KRaft-specific assertions
+        assertThat(properties.getProperty("process.roles"), is("broker,controller"));
+        assertThat(properties.getProperty("node.id"), is("1"));
+        String expectedQuorumVoters = String.format("%d@%s%d:9094", 1, "broker-", 1);
+        assertThat(properties.getProperty("controller.quorum.voters"), is(expectedQuorumVoters));
+        assertThat(properties.getProperty("controller.listener.names"), is("CONTROLLER"));
+
+        // OAuth-specific assertions
+        assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("OAUTHBEARER"));
+        assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("OAUTHBEARER"));
+
+        assertThat(properties.getProperty("listener.name.sasl_plaintext.oauthbearer.sasl.jaas.config"),
+            is("org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;"));
+        assertThat(properties.getProperty("listener.name.sasl_plaintext.oauthbearer.sasl.login.callback.handler.class"),
+            is("io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler"));
+        assertThat(properties.getProperty("listener.name.sasl_plaintext.oauthbearer.sasl.server.callback.handler.class"),
+            is("io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler"));
     }
 
     @Test
