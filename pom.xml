@@ -126,7 +126,7 @@
         <maven.gpg.version>1.6</maven.gpg.version>
         <sonatype.nexus.staging>1.7.0</sonatype.nexus.staging>
         <pit-junit-plugin.version>1.2.1</pit-junit-plugin.version>
-        <pit-plugin.version>1.17.0</pit-plugin.version>
+        <pit-plugin.version>dev-SNAPSHOT</pit-plugin.version>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.26.1</commons-compress.version>
@@ -427,8 +427,10 @@
                 </dependencies>
                 <configuration>
                     <targetClasses>
-                        <!-- we not want to include also WaitException, Utils classes etc. -->
+                        <!-- we not want to include also WaitException, Utils, KafkaVersionService because we mainly
+                            focus mutation core classes (i.e., Strimzi*, KafkaContainer) -->
                         <param>io.strimzi.test.container.Strimzi*</param>
+                        <param>io.strimzi.test.container.KafkaContainer</param>
                     </targetClasses>
                     <targetTests>
                         <!-- include just UTs within mutation and prevent image pulling -->
