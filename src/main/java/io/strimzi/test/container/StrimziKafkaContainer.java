@@ -192,7 +192,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @Override
     @DoNotMutate
     public void stop() {
-        if (proxyContainer != null) {
+        if (proxyContainer != null && proxyContainer.isRunning()) {
             proxyContainer.stop();
         }
         super.stop();
