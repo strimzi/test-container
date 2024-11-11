@@ -272,3 +272,14 @@ Using `@DoNotMutate` helps keep mutation coverage metrics meaningful by excludin
     export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
     export TESTCONTAINERS_RYUK_DISABLED=true
     ```
+   
+4. For users running tests with Podman, there is a known [issue](containers/podman#17640) that may occur:
+    ```plaintext
+    2024-10-31 09:48:40 ERROR [1:550] Could not start container
+    java.lang.RuntimeException: com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.NoHttpResponseException: localhost:2375 failed to respond
+    ```
+   To resolve please update your `/etc/containers/containers.conf` with:
+      ```plaintext
+      [engine]
+      service_timeout=0
+      ```
