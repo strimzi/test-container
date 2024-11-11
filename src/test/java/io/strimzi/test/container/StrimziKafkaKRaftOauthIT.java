@@ -74,6 +74,9 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
             if (this.systemUnderTest != null) {
                 this.systemUnderTest.stop();
             }
+            if (this.keycloakContainer != null) {
+                this.keycloakContainer.stop();
+            }
         }
     }
 

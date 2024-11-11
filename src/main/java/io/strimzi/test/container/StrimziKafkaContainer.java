@@ -192,7 +192,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @Override
     @DoNotMutate
     public void stop() {
-        if (proxyContainer != null && proxyContainer.isRunning()) {
+        if (proxyContainer != null) {
             proxyContainer.stop();
         }
         super.stop();
@@ -273,6 +273,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
             }
 
+            command += "cat /opt/kafka/config/kraft/server.properties \n";
             command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
         }
@@ -360,8 +361,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.useKraft) {
             final String controllerListenerName = "CONTROLLER";
             // adding Controller listener for Kraft mode
-            // (wildcard address for multi-node setup; that way we other nodes can connect and communicate between each other)
-            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:9094");
+            // (DNS alias for multi-node setup; that way we other nodes can connect and communicate between each other)
+            // we can't use 0.0.0.0 because https://github.com/apache/kafka/commit/9be27e715a209a892941bf35e66859d9c39c28c4
+            kafkaListeners.append(controllerListenerName).append("://" + NETWORK_ALIAS_PREFIX + this.brokerId + ":9094");
             this.listenerNames.add(controllerListenerName);
         }
 

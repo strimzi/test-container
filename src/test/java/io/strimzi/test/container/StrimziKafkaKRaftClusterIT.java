@@ -108,34 +108,31 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
 
     @Test
     void testStartClusterWithProxyContainer() {
-        setUpKafkaKRaftCluster();
-
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
-        StrimziKafkaCluster kafkaCluster = null;
-
         try {
-            kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(NUMBER_OF_REPLICAS)
                 .withProxyContainer(proxyContainer)
                 .withKraft()
                 .build();
 
-            kafkaCluster.start();
+            systemUnderTest.start();
             List<String> bootstrapUrls = new ArrayList<>();
-            for (KafkaContainer kafkaContainer : kafkaCluster.getBrokers()) {
+            for (KafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
                 Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
                 assertThat(proxy, notNullValue());
                 bootstrapUrls.add(kafkaContainer.getBootstrapServers());
             }
 
-            assertThat(kafkaCluster.getBootstrapServers(),
+            assertThat(systemUnderTest.getBootstrapServers(),
                 is(bootstrapUrls.stream().collect(Collectors.joining(","))));
         } finally {
-            kafkaCluster.stop();
-            systemUnderTest.stop();
+            if (systemUnderTest != null) {
+                systemUnderTest.stop();
+            }
         }
     }
 

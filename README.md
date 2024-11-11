@@ -194,7 +194,7 @@ Every Kafka broker request will pass through the proxy where you can simulate ne
 
 ```java
 ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-        DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.4.0")
+        DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
             .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
