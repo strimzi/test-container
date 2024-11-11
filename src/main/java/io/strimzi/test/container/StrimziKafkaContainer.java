@@ -273,7 +273,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
             }
 
-            command += "cat /opt/kafka/config/kraft/server.properties \n";
             command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
             command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
         }
