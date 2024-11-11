@@ -115,7 +115,7 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://broker-0:9094";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
 
         assertThat(listenersConfig[0], is(expectedListeners));
