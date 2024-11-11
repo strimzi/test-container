@@ -270,7 +270,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartBrokerWithProxyContainer(final String imageName) {
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.6.0")
+                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
         systemUnderTest = new StrimziKafkaContainer(imageName)
