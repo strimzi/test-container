@@ -41,7 +41,9 @@ public class AbstractIT {
     }
 
     protected void assumeDocker() {
-        Assumptions.assumeTrue(System.getenv("DOCKER_CMD") == null || "docker".equals(System.getenv("DOCKER_CMD")));
+        Assumptions.assumeTrue(
+            System.getenv("DOCKER_CMD") == null ||
+                ("docker".equals(System.getenv("DOCKER_CMD")) || "podman".equals(System.getenv("DOCKER_CMD"))));
     }
 
     protected void supportsKraftMode(final String imageName) {
