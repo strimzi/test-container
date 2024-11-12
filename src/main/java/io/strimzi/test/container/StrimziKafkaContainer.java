@@ -324,7 +324,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // add first PLAINTEXT listener
         advertisedListeners.append(bootstrapServers);
-        kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
+        kafkaListeners.append(bsListenerName).append(":").append("//").append(NETWORK_ALIAS_PREFIX).append(this.brokerId).append(":").append(KAFKA_PORT).append(",");
         this.listenerNames.add(bsListenerName);
 
         int listenerNumber = 1;
@@ -350,7 +350,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         for (String listener : advertisedListenersNames) {
             kafkaListeners
                 .append(listener)
-                .append("://0.0.0.0:")
+                .append("://")
+                .append(NETWORK_ALIAS_PREFIX)
+                .append(this.brokerId)
+                .append(":")
                 .append(portNumber)
                 .append(",");
             this.listenerNames.add(listener);
