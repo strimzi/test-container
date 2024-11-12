@@ -324,7 +324,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // add first PLAINTEXT listener
         advertisedListeners.append(bootstrapServers);
-        kafkaListeners.append(bsListenerName).append(":").append("//").append(NETWORK_ALIAS_PREFIX).append(this.brokerId).append(":").append(KAFKA_PORT).append(",");
+        kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
         this.listenerNames.add(bsListenerName);
 
         int listenerNumber = 1;
@@ -350,10 +350,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         for (String listener : advertisedListenersNames) {
             kafkaListeners
                 .append(listener)
-                .append("://")
-                .append(NETWORK_ALIAS_PREFIX)
-                .append(this.brokerId)
-                .append(":")
+                .append("://0.0.0.0:")
                 .append(portNumber)
                 .append(",");
             this.listenerNames.add(listener);
@@ -362,10 +359,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.useKraft) {
             final String controllerListenerName = "CONTROLLER";
+            final int controllerPort = 9094;
             // adding Controller listener for Kraft mode
             // (DNS alias for multi-node setup; that way we other nodes can connect and communicate between each other)
             // we can't use 0.0.0.0 because https://github.com/apache/kafka/commit/9be27e715a209a892941bf35e66859d9c39c28c4
-            kafkaListeners.append(controllerListenerName).append("://" + NETWORK_ALIAS_PREFIX + this.brokerId + ":9094");
+            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
+            advertisedListeners.append(",")
+                .append(controllerListenerName)
+                .append("://")
+                .append(getHost())
+                .append(":")
+                .append(controllerPort);
             this.listenerNames.add(controllerListenerName);
         }
 

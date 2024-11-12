@@ -49,7 +49,7 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://broker-0:9092,BROKER1://broker-0:9091,";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
 
         assertThat(listenersConfig[0], is(expectedListeners));
@@ -83,7 +83,7 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://broker-0:9092,BROKER1://broker-0:9091,BROKER2://broker-0:9090,";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,BROKER2://0.0.0.0:9090,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,BROKER2://172.18.0.2:9090";
 
         assertThat(listenersConfig[0], is(expectedListeners));
@@ -115,8 +115,8 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://broker-0:9092,BROKER1://broker-0:9091,CONTROLLER://broker-0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -149,7 +149,7 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://broker-0:9092,BROKER1://broker-0:9091,";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
 
         assertThat(listenersConfig[0], is(expectedListeners));
@@ -180,7 +180,7 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://broker-0:9092,";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092";
 
         assertThat(listenersConfig[0], is(expectedListeners));
@@ -211,7 +211,7 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "SSL://broker-0:9092,BROKER1://broker-0:9091,";
+        String expectedListeners = "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,";
         String expectedAdvertisedListeners = "SSL://localhost:9093,BROKER1://172.17.0.2:9091";
 
         assertThat(listenersConfig[0], is(expectedListeners));
@@ -282,10 +282,10 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://broker-0:9092," +
-            "BROKER1://broker-0:9091," +
-            "BROKER2://broker-0:9090," +
-            "BROKER3://broker-0:9089,";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092," +
+            "BROKER1://0.0.0.0:9091," +
+            "BROKER2://0.0.0.0:9090," +
+            "BROKER3://0.0.0.0:9089,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092," +
             "BROKER1://172.17.0.2:9091," +
             "BROKER2://172.18.0.2:9090," +
