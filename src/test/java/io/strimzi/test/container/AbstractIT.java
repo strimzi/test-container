@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.provider.Arguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,22 +39,11 @@ public class AbstractIT {
         return parameters.stream();
     }
 
-    protected void assumeDocker() {
-        Assumptions.assumeTrue(
-            System.getenv("DOCKER_CMD") == null ||
-                ("docker".equals(System.getenv("DOCKER_CMD")) || "podman".equals(System.getenv("DOCKER_CMD"))));
-    }
-
     protected void supportsKraftMode(final String imageName) {
         Assumptions.assumeTrue(!imageName.contains("-kafka-2."));
     }
 
     protected boolean isLessThanKafka350(final String kafkaVersion) {
         return KafkaVersionService.KafkaVersion.compareVersions(kafkaVersion, "3.5.0") == -1;
-    }
-
-    @BeforeEach
-    void setUpEach() {
-        assumeDocker();
     }
 }
