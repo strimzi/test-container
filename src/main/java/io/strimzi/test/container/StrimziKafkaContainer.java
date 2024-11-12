@@ -361,8 +361,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             final String controllerListenerName = "CONTROLLER";
             final int controllerPort = 9094;
             // adding Controller listener for Kraft mode
-            // (DNS alias for multi-node setup; that way we other nodes can connect and communicate between each other)
-            // we can't use 0.0.0.0 because https://github.com/apache/kafka/commit/9be27e715a209a892941bf35e66859d9c39c28c4
             kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
             advertisedListeners.append(",")
                 .append(controllerListenerName)
