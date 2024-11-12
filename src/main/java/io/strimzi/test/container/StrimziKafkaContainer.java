@@ -279,15 +279,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
-                properties,
-                this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties"
+            properties,
+            this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties"
         ));
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
         copyFileToContainer(
-                Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
-                STARTER_SCRIPT
+            Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
+            STARTER_SCRIPT
         );
     }
 
@@ -302,7 +302,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         String[] strings = bootstrapServers.split(":");
         if (strings.length < 3) {
             throw new IllegalArgumentException("The configured boostrap servers '" + bootstrapServers +
-                    "' must be prefixed with a listener name.");
+                "' must be prefixed with a listener name.");
         }
         return strings[0];
     }
@@ -421,7 +421,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     @SuppressWarnings({"JavaNCSS"})
     protected Properties buildDefaultServerProperties(final String listeners,
-                                                    final String advertisedListeners) {
+                                                      final String advertisedListeners) {
         // Default properties for server.properties
         Properties properties = new Properties();
 
@@ -603,6 +603,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             return String.format("PLAINTEXT://%s", getProxy().getListen());
         }
         return bootstrapServersProvider.apply(this);
+    }
+
+    public String getInternalBootstrapServers() {
+        final String brokerAddress = this.getContainerInfo().getNetworkSettings().getNetworks().values().iterator().next().getIpAddress();
+        return String.format("BROKER1://%s:%s", brokerAddress, INTER_BROKER_LISTENER_PORT);
     }
 
     /**
