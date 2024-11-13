@@ -110,7 +110,7 @@
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.11.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
-        <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
+        <maven-failsafe-plugin.version>3.1.2</maven-failsafe-plugin.version>
         <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
         <!-- for Java 11 compatibility (newer versions does not support Java 11)  -->
         <testcontainers-keycloak.version>2.6.0</testcontainers-keycloak.version>
