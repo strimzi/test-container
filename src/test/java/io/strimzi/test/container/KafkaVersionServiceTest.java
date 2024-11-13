@@ -8,7 +8,6 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class KafkaVersionServiceTest {
 
@@ -37,46 +36,5 @@ public class KafkaVersionServiceTest {
         assertThat(KAFKA_VERSION_3_3_1.getImage(), CoreMatchers.is("custom-image1"));
         assertThat(KAFKA_VERSION_3_2_0.getVersion(), CoreMatchers.is("3.2.0"));
         assertThat(KAFKA_VERSION_3_2_0.getImage(), CoreMatchers.is("custom-image2"));
-    }
-
-    @Test
-    void testExtractVersionFromImageNameRC() {
-        String imageName = "quay.io/strimzi-test-container/test-container:0.107.0-rc1-kafka-3.7.1";
-        String expectedVersion = "3.7.1";
-
-        String extractedVersion = KafkaVersionService.KafkaVersion.extractVersionFromImageName(imageName);
-
-        assertThat(extractedVersion, CoreMatchers.is(expectedVersion));
-    }
-
-    @Test
-    void testExtractVersionFromImageNameGA() {
-        String imageName = "quay.io/strimzi-test-container/test-container:0.105.0-kafka-3.6.0";
-        String expectedVersion = "3.6.0";
-
-        String extractedVersion = KafkaVersionService.KafkaVersion.extractVersionFromImageName(imageName);
-
-        assertThat(extractedVersion, CoreMatchers.is(expectedVersion));
-    }
-
-    @Test
-    void testExtractVersionFromImageNameInvalidFormatNoKafka() {
-        String imageName = "quay.io/strimzi-test-container/test-container:0.107.0-rc1-nokafka-3.7.1";
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> KafkaVersionService.KafkaVersion.extractVersionFromImageName(imageName));
-        assertThat(exception.getMessage(), CoreMatchers.containsString("Cannot extract Kafka version from image name"));
-    }
-
-    @Test
-    void testExtractVersionFromImageNameInvalidFormatNoVersion() {
-        String imageName = "quay.io/strimzi-test-container/test-container:0.107.0-rc1-kafka-";
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> KafkaVersionService.KafkaVersion.extractVersionFromImageName(imageName));
-        assertThat(exception.getMessage(), CoreMatchers.containsString("Cannot extract Kafka version from image name"));
-    }
-
-    @Test
-    void testExtractVersionFromImageNameAdditionalSuffix() {
-        String imageName = "quay.io/strimzi-test-container/test-container:0.107.0-rc1-kafka-3.7.1-suffix";
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> KafkaVersionService.KafkaVersion.extractVersionFromImageName(imageName));
-        assertThat(exception.getMessage(), CoreMatchers.containsString("Cannot extract Kafka version from image name"));
     }
 }

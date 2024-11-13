@@ -14,8 +14,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -25,7 +23,6 @@ import java.util.stream.Collectors;
 class KafkaVersionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaVersionService.class);
-    private static final Pattern KAFKA_VERSION_PATTERN = Pattern.compile(".*-kafka-(\\d+\\.\\d+\\.\\d+)$");
 
     private static class InstanceHolder {
         public static final KafkaVersionService INSTANCE = new KafkaVersionService();
@@ -136,29 +133,6 @@ class KafkaVersionService {
 
             }
             return components.length - otherComponents.length;
-        }
-
-        /**
-         * Extracts the Kafka version from a Docker image name.
-         *
-         * <p>Expects the image name to contain "-kafka-" followed by the version number at the end.
-         * For example:
-         * <ul>
-         *   <li>"quay.io/strimzi-test-container/test-container:0.107.0-rc1-kafka-3.7.1" returns "3.7.1"</li>
-         *   <li>"quay.io/strimzi-test-container/test-container:0.105.0-kafka-3.6.0" returns "3.6.0"</li>
-         * </ul>
-         *
-         * @param imageName the Docker image name (e.g., "quay.io/...:0.107.0-rc1-kafka-3.7.1")
-         * @return the extracted Kafka version (e.g., "3.7.1")
-         * @throws IllegalArgumentException if the version cannot be extracted
-         */
-        public static String extractVersionFromImageName(final String imageName) {
-            final Matcher matcher = KAFKA_VERSION_PATTERN.matcher(imageName);
-            if (matcher.find()) {
-                return matcher.group(1); // Returns the Kafka version string like "3.9.0"
-            } else {
-                throw new IllegalArgumentException("Cannot extract Kafka version from image name: " + imageName);
-            }
         }
 
         /**
