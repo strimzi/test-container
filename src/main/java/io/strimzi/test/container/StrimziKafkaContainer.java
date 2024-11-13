@@ -362,12 +362,24 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             final int controllerPort = 9094;
             // adding Controller listener for Kraft mode
             kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
-            advertisedListeners.append(",")
-                .append(controllerListenerName)
-                .append("://")
-                .append(getHost())
-                .append(":")
-                .append(controllerPort);
+            try {
+                if ((this.kafkaVersion != null && KafkaVersionService.KafkaVersion.compareVersions(this.kafkaVersion, "3.9.0") >= 0) ||
+                    KafkaVersionService.KafkaVersion.compareVersions(KafkaVersionService.getInstance().extractVersionFromImageName(this.imageNameProvider.get()), "3.9.0") >= 0) {
+                    // We add CONTROLLER listener to advertised.listeners only when Kafka version is >= `3.9.0`, older version failed with:
+                    // Exception in thread "main" java.lang.IllegalArgumentException: requirement failed:
+                    //   The advertised.listeners config must not contain KRaft controller listeners from controller.listener.names when
+                    //   process.roles contains the broker role because Kafka clients that send requests via advertised listeners do not
+                    //   send requests to KRaft controllers -- they only send requests to KRaft brokers.
+                    advertisedListeners.append(",")
+                        .append(controllerListenerName)
+                        .append("://")
+                        .append(getHost())
+                        .append(":")
+                        .append(controllerPort);
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
             this.listenerNames.add(controllerListenerName);
         }
 
