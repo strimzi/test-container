@@ -149,7 +149,7 @@ public class StrimziKafkaContainerMockTest {
         };
         kafkaContainer.withKraft();
 
-        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
