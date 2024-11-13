@@ -364,7 +364,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
             try {
                 if ((this.kafkaVersion != null && KafkaVersionService.KafkaVersion.compareVersions(this.kafkaVersion, "3.9.0") >= 0) ||
-                    KafkaVersionService.KafkaVersion.compareVersions(KafkaVersionService.getInstance().extractVersionFromImageName(this.imageNameProvider.get()), "3.9.0") >= 0) {
+                    KafkaVersionService.KafkaVersion.compareVersions(KafkaVersionService.KafkaVersion.extractVersionFromImageName(this.imageNameProvider.get()), "3.9.0") >= 0) {
                     // We add CONTROLLER listener to advertised.listeners only when Kafka version is >= `3.9.0`, older version failed with:
                     // Exception in thread "main" java.lang.IllegalArgumentException: requirement failed:
                     //   The advertised.listeners config must not contain KRaft controller listeners from controller.listener.names when
