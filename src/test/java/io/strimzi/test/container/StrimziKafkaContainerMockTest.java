@@ -23,10 +23,46 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StrimziKafkaContainerMockTest {
 
+    private final static String KAFKA_3_9_0 = "3.9.0";
+
     private StrimziKafkaContainer kafkaContainer;
 
     @Test
-    void testBuildListenersConfigSingleNetwork() {
+    void testBuildListenersConfigSingleNetworkWithKRaftAndSpecificVersion() {
+        // Mocking InspectContainerResponse
+        InspectContainerResponse containerInfo = Mockito.mock(InspectContainerResponse.class);
+        NetworkSettings networkSettings = Mockito.mock(NetworkSettings.class);
+        Mockito.when(containerInfo.getNetworkSettings()).thenReturn(networkSettings);
+
+        // Mocking network settings with a single network
+        Map<String, ContainerNetwork> networks = new HashMap<>();
+        ContainerNetwork containerNetwork = Mockito.mock(ContainerNetwork.class);
+        Mockito.when(containerNetwork.getIpAddress()).thenReturn("172.17.0.2");
+        networks.put("bridge", containerNetwork);
+        Mockito.when(networkSettings.getNetworks()).thenReturn(networks);
+
+        // Mocking getBootstrapServers
+        kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            public String getBootstrapServers() {
+                return "PLAINTEXT://localhost:9092";
+            }
+        };
+
+        String[] listenersConfig = kafkaContainer
+            .withKafkaVersion(KAFKA_3_9_0)
+            .withKraft()
+            .buildListenersConfig(containerInfo);
+
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
+
+        assertThat(listenersConfig[0], is(expectedListeners));
+        assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
+    }
+
+    @Test
+    void testBuildListenersConfigSingleNetworkWithKafka390() {
         // Mocking InspectContainerResponse
         InspectContainerResponse containerInfo = Mockito.mock(InspectContainerResponse.class);
         NetworkSettings networkSettings = Mockito.mock(NetworkSettings.class);
@@ -105,7 +141,7 @@ public class StrimziKafkaContainerMockTest {
         Mockito.when(networkSettings.getNetworks()).thenReturn(networks);
 
         // Enabling KRaft mode
-        kafkaContainer = new StrimziKafkaContainer() {
+        kafkaContainer = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:0.109.0-kafka-3.9.0") {
             @Override
             public String getBootstrapServers() {
                 return "PLAINTEXT://localhost:9092";
@@ -115,8 +151,8 @@ public class StrimziKafkaContainerMockTest {
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://broker-0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
+        String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
