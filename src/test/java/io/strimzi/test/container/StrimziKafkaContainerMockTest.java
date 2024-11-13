@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StrimziKafkaContainerMockTest {
 
+    private final static String KAFKA_3_9_0 = "3.9.0";
+
     private StrimziKafkaContainer kafkaContainer;
 
     @Test
@@ -47,7 +49,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion("3.9.0").buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
@@ -81,7 +83,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,BROKER2://0.0.0.0:9090,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,BROKER2://172.18.0.2:9090";
@@ -113,7 +115,7 @@ public class StrimziKafkaContainerMockTest {
         };
         kafkaContainer.withKraft();
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
@@ -147,7 +149,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
@@ -178,7 +180,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092";
@@ -209,7 +211,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,";
         String expectedAdvertisedListeners = "SSL://localhost:9093,BROKER1://172.17.0.2:9091";
@@ -280,7 +282,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withKafkaVersion(KAFKA_3_9_0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092," +
             "BROKER1://0.0.0.0:9091," +
