@@ -110,7 +110,7 @@
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.11.0</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
-        <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
+        <maven-surefire-failsafe-plugin.version>3.1.2</maven-surefire-failsafe-plugin.version>
         <!-- for Java 11 compatibility (newer versions does not support Java 11)  -->
         <testcontainers-keycloak.version>2.6.0</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
@@ -132,6 +132,10 @@
         <commons-compress.version>1.26.1</commons-compress.version>
         <commons-codec.version>1.16.1</commons-codec.version>
         <junit4.version>4.13.2</junit4.version>
+
+        <!-- properties to skip surefire tests during failsafe execution -->
+        <skipTests>false</skipTests>
+        <skip.surefire.tests>${skipTests}</skip.surefire.tests>
     </properties>
 
     <distributionManagement>
@@ -332,7 +336,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>${maven-failsafe-plugin.version}</version>
+                <version>${maven-surefire-failsafe-plugin.version}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -341,6 +345,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-failsafe-plugin.version}</version>
+                <configuration>
+                    <skipTests>${skip.surefire.tests}</skipTests>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
