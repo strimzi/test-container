@@ -41,17 +41,17 @@ public class StrimziKafkaCluster implements KafkaContainer {
     // instance attributes
     private final int brokersNum;
     private final int internalTopicReplicationFactor;
-    private Map<String, String> additionalKafkaConfiguration;
-    private ToxiproxyContainer proxyContainer;
-    private boolean enableSharedNetwork;
-    private String kafkaVersion;
-    private boolean enableKraft;
+    private final Map<String, String> additionalKafkaConfiguration;
+    private final ToxiproxyContainer proxyContainer;
+    private final boolean enableSharedNetwork;
+    private final String kafkaVersion;
+    private final boolean enableKraft;
 
     // not editable
     private final Network network;
     private StrimziZookeeperContainer zookeeper;
     private Collection<KafkaContainer> brokers;
-    private String clusterId;
+    private final String clusterId;
 
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
         this.brokersNum = builder.brokersNum;
@@ -267,7 +267,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @DoNotMutate
     public boolean hasKraftOrExternalZooKeeperConfigured() {
         KafkaContainer broker0 = brokers.iterator().next();
-        return broker0.hasKraftOrExternalZooKeeperConfigured() ? true : false;
+        return broker0.hasKraftOrExternalZooKeeperConfigured();
     }
 
     @Override
@@ -347,7 +347,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         if (this.isZooKeeperBasedKafkaCluster()) {
-            Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(1).toMillis(), Duration.ofMinutes(1).toMillis(),
+            Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(1), Duration.ofMinutes(1),
                 () -> {
                     Container.ExecResult result;
                     try {
@@ -367,7 +367,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 });
         } else if (this.isKraftKafkaCluster()) {
             // Readiness check for KRaft mode
-            Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1).toMillis(), Duration.ofMinutes(1).toMillis(),
+            Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1), Duration.ofMinutes(1),
                 () -> {
                     try {
                         for (KafkaContainer kafkaContainer : this.brokers) {

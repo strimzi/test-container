@@ -85,7 +85,7 @@ class KafkaVersionService {
                 }
                 throw new UnknownKafkaVersionException("Doesn't know the specified Kafka version: " + kafkaVersion + ". " +
                     "The supported Kafka versions are: " +
-                    KafkaVersionService.getInstance().logicalKafkaVersionEntities.stream().map(KafkaVersion::getVersion).collect(Collectors.toList()).toString());
+                    KafkaVersionService.getInstance().logicalKafkaVersionEntities.stream().map(KafkaVersion::getVersion).collect(Collectors.toList()));
             }
         }
         return imageName;
@@ -197,7 +197,7 @@ class KafkaVersionService {
      */
     public KafkaVersion latestRelease() {
         // at least one release in the json schema is needed
-        if (this.logicalKafkaVersionEntities == null || this.logicalKafkaVersionEntities.size() < 1) {
+        if (this.logicalKafkaVersionEntities.isEmpty()) {
             throw new IllegalStateException("Wrong json schema! It must have at least one release");
         }
 
@@ -227,7 +227,7 @@ class KafkaVersionService {
      *                                                     *
      * |    2.8.1   &lt;---&gt;     2.8.2  &lt;---&gt;   3.0.0  |
      * ============================================================
-     * Assuming that test container images `kafka_versions.yaml` has following content:
+     * Assuming that test container images `kafka_versions.yaml` has the following content:
      * {
      *   "version": 1,
      *   "kafkaVersions": {
@@ -239,7 +239,7 @@ class KafkaVersionService {
      * @return LogicalKafkaVersion the previous minor release
      */
     public KafkaVersion previousMinor() {
-        if (this.logicalKafkaVersionEntities == null || this.logicalKafkaVersionEntities.size() < 1) {
+        if (this.logicalKafkaVersionEntities.isEmpty()) {
             throw new IllegalStateException("Wrong json schema! It must have at least one release");
         }
 

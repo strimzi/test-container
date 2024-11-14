@@ -38,7 +38,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -128,7 +127,7 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
             }
 
             assertThat(systemUnderTest.getBootstrapServers(),
-                is(bootstrapUrls.stream().collect(Collectors.joining(","))));
+                is(String.join(",", bootstrapUrls)));
         } finally {
             if (systemUnderTest != null) {
                 systemUnderTest.stop();
@@ -194,7 +193,7 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
 
             producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(2).toMillis(),
+            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10), Duration.ofMinutes(2),
                 () -> {
                     ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 

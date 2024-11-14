@@ -69,7 +69,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
             verify();
 
             assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://" +
-                systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
         } finally {
             systemUnderTest.stop();
         }

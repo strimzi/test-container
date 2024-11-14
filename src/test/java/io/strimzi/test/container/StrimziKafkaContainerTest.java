@@ -27,10 +27,10 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StrimziKafkaContainerTest {
 
@@ -358,8 +358,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
-        String expectedJaasConfig = String.format(
-            "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;");
+        String expectedJaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
 
         String listenerNameLowerCase = "plaintext";
 
