@@ -1,0 +1,3 @@
+Hello, this is Strimzi test container!
+This is a test message.
+Another message.

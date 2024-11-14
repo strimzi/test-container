@@ -5,6 +5,7 @@
 package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.groupcdg.pitest.annotations.DoNotMutate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -18,6 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * StrimziConsumerContainer is a specialized container that wraps the Kafka console consumer.
+ * It allows you to configure and run the consumer with various options in integration tests.
+ */
 public class StrimziConsumerContainer extends GenericContainer<StrimziConsumerContainer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziConsumerContainer.class);
@@ -303,11 +308,13 @@ public class StrimziConsumerContainer extends GenericContainer<StrimziConsumerCo
      *
      * @return the command
      */
+    @DoNotMutate
     protected String runStarterScript() {
         return "while [ ! -x " + STARTER_SCRIPT + " ]; do sleep 0.1; done; " + STARTER_SCRIPT;
     }
 
     @Override
+    @DoNotMutate
     protected void doStart() {
         if (!this.imageNameProvider.isDone()) {
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
@@ -318,6 +325,7 @@ public class StrimziConsumerContainer extends GenericContainer<StrimziConsumerCo
     }
 
     @Override
+    @DoNotMutate
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
@@ -343,5 +351,13 @@ public class StrimziConsumerContainer extends GenericContainer<StrimziConsumerCo
     public StrimziConsumerContainer withKafkaVersion(String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
         return self();
+    }
+
+    public List<String> getCommandOptions() {
+        return commandOptions;
+    }
+
+    public String getKafkaVersion() {
+        return kafkaVersion;
     }
 }
