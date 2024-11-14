@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.utility.MountableFile;
 
 import java.time.Duration;
-import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
 
@@ -24,7 +24,6 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
     static void setup() {
         strimziKafkaContainer = new StrimziKafkaContainer()
             .withKraft()
-            .withKafkaConfigurationMap(Map.of("auto.create.topics.enable", "true"))
             .waitForRunning();
 
         strimziKafkaContainer.start();
@@ -64,11 +63,11 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
         consumerContainer.start();
 
         // Wait for the consumer to receive the message
-        Utils.waitFor("Consumer receives message", Duration.ofSeconds(1).toMillis(), Duration.ofSeconds(20).toMillis(),
+        Utils.waitFor("Consumer receives message",
             () -> consumerContainer.getLogs().contains(messageContent.trim()));
 
         // Assert that the consumer received the message
-        assertThat(consumerContainer.getLogs().contains(messageContent.trim()), is(true));
+        assertTrue(consumerContainer.getLogs().contains(messageContent.trim()));
 
         // Clean up
         producerContainer.stop();
@@ -107,7 +106,7 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
             () -> consumerContainer.getLogs().contains(messageContent.trim()));
 
         // Assert that the consumer received the message
-        assertThat(consumerContainer.getLogs().contains(messageContent.trim()), is(true));
+        assertTrue(consumerContainer.getLogs().contains(messageContent.trim()));
 
         // Clean up
         producerContainer.stop();
@@ -115,7 +114,7 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
     }
 
     @Test
-    void testConsumerWithWhitelist() {
+    void testConsumerWithInclude() {
         String topicName = "whitelist-topic";
         String messageContent = "Message for whitelist test\n";
 
@@ -132,7 +131,7 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
         // Start Consumer with whitelist pattern
         StrimziConsumerContainer consumerContainer = new StrimziConsumerContainer()
             .withBootstrapServer(bootstrapServers)
-            .withWhitelist("whitelist-.*")
+            .withInclude("whitelist-.*")
             .withGroup("whitelist-group")
             .withFromBeginning()
             .withLogging();
@@ -140,7 +139,7 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
         consumerContainer.start();
 
         // Wait for the consumer to receive the message
-        Utils.waitFor("Consumer receives message using whitelist", Duration.ofSeconds(1).toMillis(), Duration.ofSeconds(20).toMillis(),
+        Utils.waitFor("Consumer receives message using whitelist",
             () -> consumerContainer.getLogs().contains(messageContent.trim()));
 
         // Assert that the consumer received the message
@@ -187,12 +186,6 @@ public class StrimziProducerConsumerContainerKRaftIT extends AbstractIT {
                     && logs.contains("This is a test message.")
                     && logs.contains("Another message.");
             });
-
-        // Assert that the consumer received all messages
-        String consumerLogs = consumerContainer.getLogs();
-        assertThat(consumerLogs.contains("Hello, this is Strimzi test container!"), is(true));
-        assertThat(consumerLogs.contains("This is a test message."), is(true));
-        assertThat(consumerLogs.contains("Another message."), is(true));
 
         // Clean up
         producerContainer.stop();

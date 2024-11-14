@@ -281,17 +281,6 @@ public class StrimziConsumerContainer extends GenericContainer<StrimziConsumerCo
     }
 
     /**
-     * Includes topics matching the given regular expression (deprecated).
-     *
-     * @param whitelistPattern the regular expression pattern
-     * @return the StrimziConsumerContainer instance
-     */
-    public StrimziConsumerContainer withWhitelist(String whitelistPattern) {
-        this.commandOptions.add("--whitelist " + whitelistPattern);
-        return self();
-    }
-
-    /**
      * Enables logging output from the container to the SLF4J logger.
      *
      * @return the StrimziConsumerContainer instance

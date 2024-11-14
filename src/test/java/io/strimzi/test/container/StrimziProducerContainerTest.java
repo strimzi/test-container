@@ -29,20 +29,6 @@ public class StrimziProducerContainerTest {
     }
 
     @Test
-    public void testWithBrokerList() {
-        StrimziProducerContainer container = new StrimziProducerContainer()
-            .withBrokerList("localhost:9092");
-        assertTrue(container.getCommandOptions().contains("--broker-list localhost:9092"));
-    }
-
-    @Test
-    public void testWithCompressionCodec() {
-        StrimziProducerContainer container = new StrimziProducerContainer()
-            .withCompressionCodec();
-        assertTrue(container.getCommandOptions().contains("--compression-codec"));
-    }
-
-    @Test
     public void testWithCompressionCodecWithValue() {
         StrimziProducerContainer container = new StrimziProducerContainer()
             .withCompressionCodec("gzip");
@@ -115,7 +101,7 @@ public class StrimziProducerContainerTest {
     @Test
     public void testWithReaderConfig() {
         StrimziProducerContainer container = new StrimziProducerContainer()
-             .withReaderConfig(MountableFile.forClasspathResource("reader.properties"));
+             .withReaderConfig(MountableFile.forClasspathResource("producer.properties"));
         assertTrue(container.getCommandOptions().contains("--reader-config /tmp/reader.properties"));
     }
 

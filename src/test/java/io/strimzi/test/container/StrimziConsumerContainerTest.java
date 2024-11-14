@@ -155,13 +155,6 @@ public class StrimziConsumerContainerTest {
     }
 
     @Test
-    public void testWithWhitelist() {
-        StrimziConsumerContainer container = new StrimziConsumerContainer()
-             .withWhitelist(".*test.*");
-        assertTrue(container.getCommandOptions().contains("--whitelist .*test.*"));
-    }
-
-    @Test
     public void testWithLogging() {
         StrimziConsumerContainer container = new StrimziConsumerContainer()
              .withLogging();

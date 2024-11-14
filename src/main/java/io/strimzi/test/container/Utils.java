@@ -87,6 +87,10 @@ class Utils {
         }
     }
 
+    static long waitFor(String description, BooleanSupplier ready) {
+        return waitFor(description, 1_000, 30_000, ready);
+    }
+
     /**
      * Converts the contents of {@code file} to a new Transferable. If the file is
      * null, an empty Optional is returned. This method reads the contents of the

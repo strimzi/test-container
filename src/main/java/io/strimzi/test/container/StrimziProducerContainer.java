@@ -85,27 +85,6 @@ public class StrimziProducerContainer extends GenericContainer<StrimziProducerCo
     }
 
     /**
-     * Sets the broker list (deprecated in favor of bootstrap-server).
-     *
-     * @param brokerList the broker list
-     * @return the StrimziProducerContainer instance
-     */
-    public StrimziProducerContainer withBrokerList(String brokerList) {
-        this.commandOptions.add("--broker-list " + brokerList);
-        return self();
-    }
-
-    /**
-     * Sets the compression codec without specifying a value (defaults to 'gzip').
-     *
-     * @return the StrimziProducerContainer instance
-     */
-    public StrimziProducerContainer withCompressionCodec() {
-        this.commandOptions.add("--compression-codec");
-        return self();
-    }
-
-    /**
      * Sets the compression codec with a specified value.
      *
      * @param codec the compression codec ('none', 'gzip', 'snappy', 'lz4', 'zstd')
