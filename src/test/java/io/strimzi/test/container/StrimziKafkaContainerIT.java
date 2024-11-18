@@ -72,7 +72,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
             systemUnderTest.start();
 
             assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
-                    + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                    + systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
         }
     }
 
@@ -123,7 +123,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest.start();
 
         assertThat(systemUnderTest.getBootstrapServers(), is("SSL://"
-                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                + systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
     }
 
     @ParameterizedTest(name = "testStartContainerWithServerProperties-{0}")
@@ -140,7 +140,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         assertThat(logsFromKafka, containsString("auto.create.topics.enable = false"));
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
-                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                + systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
     }
 
     @Test
@@ -155,7 +155,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest.start();
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
-                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                + systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getDockerImageName(), is(imageName));
 
@@ -172,7 +172,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest.start();
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
-                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                + systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getDockerImageName(), is(imageName));
     }
@@ -188,7 +188,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest.start();
 
         assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://"
-                + systemUnderTest.getContainerIpAddress() + ":" + systemUnderTest.getMappedPort(9092)));
+                + systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
 
         assertThat(systemUnderTest.getNetwork().getId(), is(network.getId()));
     }
@@ -349,7 +349,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
                 producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-                Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(2).toMillis(),
+                Utils.waitFor("Consumer records are present", Duration.ofSeconds(10), Duration.ofMinutes(2),
                     () -> {
                         ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 

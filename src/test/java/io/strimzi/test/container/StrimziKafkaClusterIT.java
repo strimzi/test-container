@@ -6,7 +6,6 @@ package io.strimzi.test.container;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import eu.rekawek.toxiproxy.Proxy;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -111,7 +110,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             }
 
             assertThat(systemUnderTest.getBootstrapServers(),
-                is(bootstrapUrls.stream().collect(Collectors.joining(","))));
+                is(String.join(",", bootstrapUrls)));
         } finally {
             systemUnderTest.stop();
         }
@@ -173,7 +172,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
-            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10).toMillis(), Duration.ofMinutes(2).toMillis(),
+            Utils.waitFor("Consumer records are present", Duration.ofSeconds(10), Duration.ofMinutes(2),
                 () -> {
                     ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 

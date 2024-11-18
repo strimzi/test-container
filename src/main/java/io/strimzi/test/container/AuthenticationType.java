@@ -37,5 +37,5 @@ public enum AuthenticationType {
     /**
      * GSSAPI (Kerberos) authentication.
      */
-    GSSAPI;
+    GSSAPI
 }
