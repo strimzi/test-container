@@ -16,7 +16,6 @@ import org.testcontainers.utility.MountableFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -76,14 +75,6 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         super.addEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
         // env for readiness
         super.addEnv("ZOO_4LW_COMMANDS_WHITELIST", "ruok");
-
-        // Create labels for the container
-        final ContainerLabels labels = new ContainerLabels()
-            .withLabel(ContainerLabels.STRIMZI_TEST_CONTAINER_LABEL, "true")
-            .withLabel(ContainerLabels.STRIMZI_TEST_ID_LABEL, UUID.randomUUID().toString());
-
-        // Add the labels to the container
-        labels.toMap().forEach(this::withLabel);
     }
 
     @Override

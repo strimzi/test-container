@@ -141,14 +141,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // exposing kafka port from the container
         super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
         super.addEnv("LOG_DIR", "/tmp");
-
-        // Create labels for the container
-        final ContainerLabels labels = new ContainerLabels()
-            .withLabel(ContainerLabels.STRIMZI_TEST_CONTAINER_LABEL, "true")
-            .withLabel(ContainerLabels.STRIMZI_TEST_ID_LABEL, UUID.randomUUID().toString());
-
-        // Add the labels to the container
-        labels.toMap().forEach(this::withLabel);
     }
 
     @Override
