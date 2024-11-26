@@ -11,12 +11,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.model.Container;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.provider.Arguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class AbstractIT {
 
@@ -45,5 +52,16 @@ public class AbstractIT {
 
     protected boolean isLessThanKafka350(final String kafkaVersion) {
         return KafkaVersionService.KafkaVersion.compareVersions(kafkaVersion, "3.5.0") == -1;
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        final DockerClient dockerClient = DockerClientFactory.lazyClient();
+
+        final List<Container> testContainers = dockerClient.listContainersCmd()
+            .withLabelFilter(Map.of(ContainerLabels.STRIMZI_TEST_CONTAINER_LABEL, "true"))
+            .exec();
+
+        assertThat(testContainers.size(), CoreMatchers.is(0));
     }
 }
