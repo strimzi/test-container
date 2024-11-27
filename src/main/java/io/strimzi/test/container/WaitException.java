@@ -4,8 +4,12 @@
  */
 package io.strimzi.test.container;
 
+import java.time.Duration;
+import java.util.function.BooleanSupplier;
+
 /**
- * Extension for RuntimeException used in active waiting @see TestUtils.waitFor(...) method.
+ * Extension for RuntimeException used in active waiting. See the
+ * {@link Utils#waitFor(String, Duration, Duration, BooleanSupplier)} method.
  * Usage of this Exception should be always associated with active waiting where the condition
  * should not always be met which results in WaitException.
  */
