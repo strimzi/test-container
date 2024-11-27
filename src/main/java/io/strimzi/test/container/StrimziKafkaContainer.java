@@ -44,9 +44,9 @@ import java.util.stream.Collectors;
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
  * given version. There are two options for how to use it. The first one is using an embedded zookeeper which will run
- * inside Kafka container. The Another option is to use @StrimziZookeeperContainer as an external Zookeeper.
+ * inside Kafka container. The Another option is to use {@link StrimziZookeeperContainer} as an external Zookeeper.
  * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
- * integration testing but for more hardcore testing we suggest using @StrimziKafkaCluster.
+ * integration testing but for more hardcore testing we suggest using {@link StrimziKafkaCluster}.
  * <br><br>
  * Optionally, you can configure a {@code proxyContainer} to simulate network conditions (i.e. connection cut, latency).
  * This class uses {@code getBootstrapServers()} to build the {@code KAFKA_ADVERTISED_LISTENERS} configuration.
@@ -614,7 +614,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{kafkaConfigurationMap}.
+     * Fluent method, which sets {@code kafkaConfigurationMap}.
      *
      * @param kafkaConfigurationMap kafka configuration
      * @return StrimziKafkaContainer instance
@@ -625,7 +625,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{externalZookeeperConnect}.
+     * Fluent method, which sets {@code externalZookeeperConnect}.
      * <p>
      * If the broker was created using Kraft, this method throws an {@link IllegalArgumentException}.
      *
@@ -641,7 +641,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{brokerId}.
+     * Fluent method, which sets {@code brokerId}.
      *
      * @param brokerId broker id
      * @return StrimziKafkaContainer instance
@@ -667,7 +667,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{kafkaVersion}.
+     * Fluent method, which sets {@code kafkaVersion}.
      *
      * @param kafkaVersion kafka version
      * @return StrimziKafkaContainer instance
@@ -678,7 +678,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets @code{useKraft}.
+     * Fluent method, which sets {@code useKraft}.
      * <p>
      * Flag to signal if we deploy Kafka with ZooKeeper or not.
      *
