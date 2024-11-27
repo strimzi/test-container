@@ -427,7 +427,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     /**
-     * Get @code{StrimziZookeeperContainer} instance
+     * Get {@code StrimziZookeeperContainer} instance
      * @return StrimziZookeeperContainer instance
      */
     public StrimziZookeeperContainer getZookeeper() {

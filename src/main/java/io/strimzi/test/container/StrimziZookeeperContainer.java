@@ -20,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * StrimziZookeeperContainer is an instance of the Zookeeper encapsulated inside a docker container using image from
- * quay.io/strimzi/kafka with the given version. It can be combined with @StrimziKafkaContainer but we suggest to use
- * directly @StrimziKafkaCluster for more complicated testing.
+ * quay.io/strimzi/kafka with the given version. It can be combined with {@link StrimziKafkaContainer} but we suggest to use
+ * directly {@link StrimziKafkaCluster} for more complicated testing.
  */
 @SuppressFBWarnings("EQ_DOESNT_OVERRIDE_EQUALS")
 public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeperContainer> {
@@ -123,7 +123,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
     }
 
     /**
-     * Fluent method, which sets @code{kafkaVersion}.
+     * Fluent method, which sets {@code kafkaVersion}.
      *
      * @param kafkaVersion kafka version
      * @return StrimziKafkaContainer instance
