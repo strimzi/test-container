@@ -21,6 +21,7 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.hamcrest.CoreMatchers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,56 +54,40 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
 
     @Test
     void testKafkaClusterStartup() throws InterruptedException, ExecutionException {
-        try {
-            setUpKafkaKRaftCluster();
+        setUpKafkaKRaftCluster();
 
-            verifyReadinessOfKRaftCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyReadinessOfKRaftCluster();
     }
 
     @Test
     void testKafkaClusterStartupWithSharedNetwork() throws InterruptedException, ExecutionException {
-        try {
-            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-                .withSharedNetwork()
-                .withKraft()
-                .build();
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withSharedNetwork()
+            .withKraft()
+            .build();
+        systemUnderTest.start();
 
-            verifyReadinessOfKRaftCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyReadinessOfKRaftCluster();
     }
 
     @Test
     void testKafkaClusterFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
         setUpKafkaKRaftCluster();
 
-        try {
-            verifyFunctionalityOfKafkaCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyFunctionalityOfKafkaCluster();
     }
 
     @Test
     void testKafkaClusterWithSharedNetworkFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
-        try {
-            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-                .withSharedNetwork()
-                .withKraft()
-                .build();
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withSharedNetwork()
+            .withKraft()
+            .build();
+        systemUnderTest.start();
 
-            verifyFunctionalityOfKafkaCluster();
-        } finally {
-            systemUnderTest.stop();
-        }
+        verifyFunctionalityOfKafkaCluster();
     }
 
     @Test
@@ -111,28 +96,22 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
                 DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
-        try {
-            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-                .withProxyContainer(proxyContainer)
-                .withKraft()
-                .build();
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withProxyContainer(proxyContainer)
+            .withKraft()
+            .build();
 
-            systemUnderTest.start();
-            List<String> bootstrapUrls = new ArrayList<>();
-            for (KafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
-                Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
-                assertThat(proxy, notNullValue());
-                bootstrapUrls.add(kafkaContainer.getBootstrapServers());
-            }
-
-            assertThat(systemUnderTest.getBootstrapServers(),
-                is(String.join(",", bootstrapUrls)));
-        } finally {
-            if (systemUnderTest != null) {
-                systemUnderTest.stop();
-            }
+        systemUnderTest.start();
+        List<String> bootstrapUrls = new ArrayList<>();
+        for (KafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
+            Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
+            assertThat(proxy, notNullValue());
+            bootstrapUrls.add(kafkaContainer.getBootstrapServers());
         }
+
+        assertThat(systemUnderTest.getBootstrapServers(),
+            is(String.join(",", bootstrapUrls)));
     }
 
     private void setUpKafkaKRaftCluster() {
@@ -213,6 +192,13 @@ public class StrimziKafkaKRaftClusterIT extends AbstractIT {
 
                     return true;
                 });
+        }
+    }
+
+    @AfterEach
+    void afterEach() {
+        if (this.systemUnderTest != null) {
+            this.systemUnderTest.stop();
         }
     }
 }
