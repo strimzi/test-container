@@ -49,100 +49,83 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     void testStartContainerWithEmptyConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
         supportsKraftMode(imageName);
 
-        try {
-            systemUnderTest = new StrimziKafkaContainer(imageName)
-                .withBrokerId(1)
-                .withKraft()
-                .waitForRunning();
+        systemUnderTest = new StrimziKafkaContainer(imageName)
+            .withBrokerId(1)
+            .withKraft()
+            .waitForRunning();
 
-            systemUnderTest.start();
-            assertThat(systemUnderTest.getClusterId(), notNullValue());
+        systemUnderTest.start();
+        assertThat(systemUnderTest.getClusterId(), notNullValue());
 
-            String logsFromKafka = systemUnderTest.getLogs();
-            if (isLessThanKafka350(kafkaVersion)) {
-                assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
-            } else {
-                assertThat(logsFromKafka, containsString("ControllerServer id=1"));
-                assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
-            }
-
-            verify();
-
-            assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://" +
-                systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
-        } finally {
-            systemUnderTest.stop();
+        String logsFromKafka = systemUnderTest.getLogs();
+        if (isLessThanKafka350(kafkaVersion)) {
+            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
+        } else {
+            assertThat(logsFromKafka, containsString("ControllerServer id=1"));
+            assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
         }
+
+        verify();
+
+        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://" +
+            systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
     }
 
     @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithSomeConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
         supportsKraftMode(imageName);
-        try {
-            Map<String, String> kafkaConfiguration = new HashMap<>();
 
-            kafkaConfiguration.put("log.cleaner.enable", "false");
-            kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
-            kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
-            kafkaConfiguration.put("log.index.interval.bytes", "2048");
+        Map<String, String> kafkaConfiguration = new HashMap<>();
 
-            systemUnderTest = new StrimziKafkaContainer(imageName)
-                .withBrokerId(1)
-                .withKraft()
-                .withKafkaConfigurationMap(kafkaConfiguration)
-                .waitForRunning();
+        kafkaConfiguration.put("log.cleaner.enable", "false");
+        kafkaConfiguration.put("log.cleaner.backoff.ms", "1000");
+        kafkaConfiguration.put("ssl.enabled.protocols", "TLSv1");
+        kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
-            systemUnderTest.start();
+        systemUnderTest = new StrimziKafkaContainer(imageName)
+            .withBrokerId(1)
+            .withKraft()
+            .withKafkaConfigurationMap(kafkaConfiguration)
+            .waitForRunning();
 
-            String logsFromKafka = systemUnderTest.getLogs();
+        systemUnderTest.start();
 
-            if (isLessThanKafka350(kafkaVersion)) {
-                assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
-            } else {
-                assertThat(logsFromKafka, containsString("ControllerServer id=1"));
-                assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
-            }
-            assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
-            assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
-            assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
-            assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
+        String logsFromKafka = systemUnderTest.getLogs();
 
-            verify();
-        } finally {
-            systemUnderTest.stop();
+        if (isLessThanKafka350(kafkaVersion)) {
+            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
+        } else {
+            assertThat(logsFromKafka, containsString("ControllerServer id=1"));
+            assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
         }
+        assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
+        assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
+        assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
+        assertThat(logsFromKafka, containsString("log.index.interval.bytes = 2048"));
+
+        verify();
     }
 
     @Test
     void testUnsupportedKRaftUsingKafkaVersion() {
-        try {
-            systemUnderTest = new StrimziKafkaContainer()
-                .withKafkaVersion("2.8.2")
-                .withBrokerId(1)
-                .withKraft()
-                .waitForRunning();
+        systemUnderTest = new StrimziKafkaContainer()
+            .withKafkaVersion("2.8.2")
+            .withBrokerId(1)
+            .withKraft()
+            .waitForRunning();
 
-            assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
-        } finally {
-            systemUnderTest.stop();
-        }
-
+        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
     }
 
     @Test
     void testUnsupportedKRaftUsingImageName() {
-        try {
-            systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.2")
-                .withBrokerId(1)
-                .withKraft()
-                .waitForRunning();
+        systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.2")
+            .withBrokerId(1)
+            .withKraft()
+            .waitForRunning();
 
-            assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
-        } finally {
-            systemUnderTest.stop();
-
-        }
+        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
     }
 
     @Test
@@ -163,8 +146,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
         assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("INFO"));
         assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("DEBUG"));
         assertThat(systemUnderTest.getLogs(), CoreMatchers.containsString("TRACE"));
-
-        systemUnderTest.stop();
     }
 
     private void verify() throws InterruptedException, ExecutionException, TimeoutException {
