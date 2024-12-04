@@ -374,7 +374,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     advertisedListeners.append(",")
                         .append(controllerListenerName)
                         .append("://")
-                        .append(getHost())
+                        .append(NETWORK_ALIAS_PREFIX + this.brokerId)
                         .append(":")
                         .append(controllerPort);
                 }
