@@ -781,4 +781,12 @@ class StrimziKafkaContainerTest {
 
         assertThat(kafkaContainer.getClusterId(), nullValue());
     }
+
+    @Test
+    void testWithLogToConsoleSetsFlag() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withLogToConsole();
+
+        assertThat(container.isEnableLogToConsole(), CoreMatchers.is(true));
+    }
 }
