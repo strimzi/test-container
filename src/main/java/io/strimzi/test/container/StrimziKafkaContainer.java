@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
@@ -91,6 +92,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
+    private boolean enableLogToConsole;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -184,6 +186,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.addEnv("OAUTH_CLIENT_SECRET", this.clientSecret);
             this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/token");
             this.addEnv("OAUTH_USERNAME_CLAIM", this.usernameClaim);
+        }
+
+        if (this.enableLogToConsole) {
+            this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.brokerId)));
         }
 
         super.setCommand("sh", "-c", runStarterScript());
@@ -855,6 +861,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
+     * Enables logging of the container's stdout and stderr to the console.
+     * Attaches an SLF4J log consumer for viewing logs in the test output.
+     *
+     * @return the current instance for method chaining
+     */
+    public StrimziKafkaContainer withLogToConsole() {
+        this.enableLogToConsole = true;
+        return self();
+    }
+
+    /**
      * Retrieves a synchronized Proxy instance for this Kafka broker.
      *
      * This method ensures that only one instance of Proxy is created per broker. If the proxy has not been
@@ -891,6 +908,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /* test */ int getBrokerId() {
         return brokerId;
+    }
+
+    /* test */ boolean isEnableLogToConsole() {
+        return enableLogToConsole;
     }
 
     /**

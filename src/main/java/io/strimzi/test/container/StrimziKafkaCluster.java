@@ -46,6 +46,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final boolean enableSharedNetwork;
     private final String kafkaVersion;
     private final boolean enableKraft;
+    private final boolean enableBrokerContainerSlf4jLogging;
 
     // not editable
     private final Network network;
@@ -63,6 +64,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.kafkaVersion = builder.kafkaVersion;
         this.enableKraft = builder.enableKRaft;
         this.clusterId = builder.clusterId;
+        this.enableBrokerContainerSlf4jLogging = builder.enableBrokerContainerSlf4jLogging;
 
         validateBrokerNum(this.brokersNum);
         validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
@@ -107,6 +109,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion);
+
+                if (this.enableBrokerContainerSlf4jLogging) {
+                    kafkaContainer.withLogToConsole();
+                }
 
                 // if it's ZK-based Kafka cluster we depend on ZK container and we need to specify external ZK connect
                 if (this.isZooKeeperBasedKafkaCluster()) {
@@ -157,6 +163,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private String kafkaVersion;
         private boolean enableKRaft;
         private String clusterId;
+        private boolean enableBrokerContainerSlf4jLogging;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -239,6 +246,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
          */
         public StrimziKafkaClusterBuilder withKraft() {
             this.enableKRaft = true;
+            return this;
+        }
+
+        public StrimziKafkaClusterBuilder withBrokerContainerSlf4jLogging() {
+            this.enableBrokerContainerSlf4jLogging = true;
             return this;
         }
 
