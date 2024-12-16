@@ -235,7 +235,7 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### x) Logging Kafka Container/Cluster Output to SLF4J
+#### xii) Logging Kafka Container/Cluster Output to SLF4J
 
 If you want to enable logging of the Kafka container’s output to SLF4J, 
 you can set the environment variable STRIMZI_TEST_CONTAINER_LOGGING_ENABLED to true. 
