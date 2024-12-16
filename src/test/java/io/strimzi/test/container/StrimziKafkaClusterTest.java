@@ -369,17 +369,4 @@ public class StrimziKafkaClusterTest {
         String[] servers = bootstrapServers.split(",");
         assertThat(servers.length, CoreMatchers.is(3));
     }
-
-    @Test
-    void testWithLogContainersToConsoleEnabled() {
-        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(3)
-            .withInternalTopicReplicationFactor(3)
-            .withBrokerContainerSlf4jLogging()
-            .build();
-
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            assertThat(((StrimziKafkaContainer) broker).isEnableLogToConsole(), CoreMatchers.is(true));
-        }
-    }
 }

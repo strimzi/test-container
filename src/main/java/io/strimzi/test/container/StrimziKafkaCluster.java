@@ -110,10 +110,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion);
 
-                if (this.enableBrokerContainerSlf4jLogging) {
-                    kafkaContainer.withLogToConsole();
-                }
-
                 // if it's ZK-based Kafka cluster we depend on ZK container and we need to specify external ZK connect
                 if (this.isZooKeeperBasedKafkaCluster()) {
                     kafkaContainer.withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
@@ -246,11 +242,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
          */
         public StrimziKafkaClusterBuilder withKraft() {
             this.enableKRaft = true;
-            return this;
-        }
-
-        public StrimziKafkaClusterBuilder withBrokerContainerSlf4jLogging() {
-            this.enableBrokerContainerSlf4jLogging = true;
             return this;
         }
 

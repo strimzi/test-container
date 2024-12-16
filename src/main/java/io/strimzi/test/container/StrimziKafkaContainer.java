@@ -79,6 +79,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Lazy image name provider
      */
     private final CompletableFuture<String> imageNameProvider;
+    private final boolean enableBrokerContainerSlf4jLogging = Boolean.parseBoolean(
+        System.getenv().getOrDefault("STRIMZI_TEST_CONTAINER_LOGGING_ENABLED", "false"));
 
     // instance attributes
     private int kafkaExposedPort;
@@ -92,7 +94,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
-    private boolean enableLogToConsole;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -188,7 +189,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.addEnv("OAUTH_USERNAME_CLAIM", this.usernameClaim);
         }
 
-        if (this.enableLogToConsole) {
+        if (this.enableBrokerContainerSlf4jLogging) {
             this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.brokerId)));
         }
 
@@ -861,17 +862,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Enables logging of the container's stdout and stderr to the console.
-     * Attaches an SLF4J log consumer for viewing logs in the test output.
-     *
-     * @return the current instance for method chaining
-     */
-    public StrimziKafkaContainer withLogToConsole() {
-        this.enableLogToConsole = true;
-        return self();
-    }
-
-    /**
      * Retrieves a synchronized Proxy instance for this Kafka broker.
      *
      * This method ensures that only one instance of Proxy is created per broker. If the proxy has not been
@@ -908,10 +898,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /* test */ int getBrokerId() {
         return brokerId;
-    }
-
-    /* test */ boolean isEnableLogToConsole() {
-        return enableLogToConsole;
     }
 
     /**
