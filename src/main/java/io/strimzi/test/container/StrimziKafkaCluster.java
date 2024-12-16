@@ -46,7 +46,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final boolean enableSharedNetwork;
     private final String kafkaVersion;
     private final boolean enableKraft;
-    private final boolean enableBrokerContainerSlf4jLogging;
 
     // not editable
     private final Network network;
@@ -64,7 +63,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.kafkaVersion = builder.kafkaVersion;
         this.enableKraft = builder.enableKRaft;
         this.clusterId = builder.clusterId;
-        this.enableBrokerContainerSlf4jLogging = builder.enableBrokerContainerSlf4jLogging;
 
         validateBrokerNum(this.brokersNum);
         validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
@@ -159,7 +157,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private String kafkaVersion;
         private boolean enableKRaft;
         private String clusterId;
-        private boolean enableBrokerContainerSlf4jLogging;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
