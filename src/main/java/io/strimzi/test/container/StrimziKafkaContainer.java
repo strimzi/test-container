@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
@@ -78,6 +79,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Lazy image name provider
      */
     private final CompletableFuture<String> imageNameProvider;
+    private final boolean enableBrokerContainerSlf4jLogging = Boolean.parseBoolean(
+        System.getenv().getOrDefault("STRIMZI_TEST_CONTAINER_LOGGING_ENABLED", "false"));
 
     // instance attributes
     private int kafkaExposedPort;
@@ -184,6 +187,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.addEnv("OAUTH_CLIENT_SECRET", this.clientSecret);
             this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/token");
             this.addEnv("OAUTH_USERNAME_CLAIM", this.usernameClaim);
+        }
+
+        if (this.enableBrokerContainerSlf4jLogging) {
+            this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.brokerId)));
         }
 
         super.setCommand("sh", "-c", runStarterScript());
