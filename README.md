@@ -206,7 +206,7 @@ systemUnderTest.start();
 strimziKafkaContainer.getProxy().setConnectionCut(true);
 ```
 
-#### xi) Run a multi-node Kafka cluster
+#### x) Run a multi-node Kafka cluster
 
 To run a multi-node Kafka cluster, you can use the StrimziKafkaCluster class with the builder pattern.
 
@@ -235,7 +235,7 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xii) Logging Kafka Container/Cluster Output to SLF4J
+#### xi) Logging Kafka Container/Cluster Output to SLF4J
 
 If you want to enable logging of the Kafka container’s output to SLF4J, 
 you can set the environment variable STRIMZI_TEST_CONTAINER_LOGGING_ENABLED to true. 
