@@ -179,17 +179,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testWithBrokerIdThrowsExceptionWhenKraftAndIdsMismatch() {
-        kafkaContainer.withKraft();
-        kafkaContainer.withNodeId(1);
-
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-            () -> kafkaContainer.withBrokerId(2));
-
-        assertThat(exception.getMessage(), containsString("`broker.id` and `node.id` must have same value!"));
-    }
-
-    @Test
     void testWithNodeIdReturnsSelf() {
         StrimziKafkaContainer result = kafkaContainer.withNodeId(1);
         assertSame(kafkaContainer, result, "withNodeId() should return the same instance for method chaining.");

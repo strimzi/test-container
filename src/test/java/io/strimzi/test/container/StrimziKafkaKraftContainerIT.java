@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.testcontainers.containers.ContainerLaunchException;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.time.Duration;
@@ -37,6 +38,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SuppressWarnings("ClassDataAbstractionCoupling")
@@ -127,6 +129,26 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
 
         assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
     }
+
+    @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
+    @MethodSource("retrieveKafkaVersionsFile")
+    void testUnsupportedKraftAndIdsMismatch(final String imageName, final String kafkaVersion) {
+        supportsKraftMode(imageName);
+        systemUnderTest = new StrimziKafkaContainer(imageName)
+                .withNodeId(1)
+                .withBrokerId(2)
+                .withKraft()
+                .waitForRunning();
+        ContainerLaunchException exception = assertThrows(ContainerLaunchException.class,
+            () -> systemUnderTest.start());
+        Throwable cause = exception;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        assertEquals(cause.getClass(), IllegalStateException.class);
+        assertThat(cause.getMessage(), containsString("`broker.id` and `node.id` must have the same value!"));
+    }
+
 
     @Test
     void testWithKafkaLog() {
