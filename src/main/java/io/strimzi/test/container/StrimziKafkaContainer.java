@@ -253,6 +253,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.nodeId = this.brokerId;
         }
 
+        if (this.useKraft) {
+            if (this.brokerId != this.nodeId) {
+                throw new IllegalStateException("`broker.id` and `node.id` must have the same value!");
+            }
+        }
+
         final String[] listenersConfig = this.buildListenersConfig(containerInfo);
         final Properties defaultServerProperties = this.buildDefaultServerProperties(
             listenersConfig[0],
@@ -654,10 +660,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withBrokerId(final int brokerId) {
-        if (this.useKraft && this.brokerId != this.nodeId) {
-            throw new IllegalStateException("`broker.id` and `node.id` must have same value!");
-        }
-
         this.brokerId = brokerId;
         return self();
     }
