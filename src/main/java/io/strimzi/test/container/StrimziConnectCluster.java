@@ -73,7 +73,7 @@ public class StrimziConnectCluster {
         properties.setProperty("listeners", "http://:" + CONNECT_PORT + ",http://" + host + ":" + INTER_WORKER_PORT);
         properties.putAll(additionalConnectConfiguration);
         if (includeFileConnectors) {
-            String connectFileJar = "/opt/kafka/libs/connect-file-" + kafkaVersion + ".jar";
+            final String connectFileJar = "/opt/kafka/libs/connect-file-" + kafkaVersion + ".jar";
             if (properties.containsKey("plugin.path")) {
                 final String pluginPath = properties.getProperty("plugin.path");
                 properties.setProperty("plugin.path", pluginPath + "," + connectFileJar);
