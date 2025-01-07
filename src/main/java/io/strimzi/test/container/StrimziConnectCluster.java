@@ -34,7 +34,7 @@ public class StrimziConnectCluster {
 
     public StrimziConnectCluster(StrimziConnectClusterBuilder builder) {
         this.kafkaCluster = builder.kafkaCluster;
-        additionalConnectConfiguration = builder.additionalConnectConfiguration;
+        this.additionalConnectConfiguration = builder.additionalConnectConfiguration;
         kafkaVersion = builder.kafkaVersion == null
                 ? KafkaVersionService.getInstance().latestRelease().getVersion()
                 : builder.kafkaVersion;
