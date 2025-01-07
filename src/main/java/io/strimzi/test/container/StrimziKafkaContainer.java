@@ -829,7 +829,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Configures the Kafka container to use the specified logging level for Kafka logs.
+     * Configures the Kafka container to use the specified logging level for Kafka logs
+     * and the io.strimzi logger.
      * <p>
      * This method generates a custom <code>log4j.properties</code> file with the desired logging level
      * and copies it into the Kafka container. By setting the logging level, you can control the verbosity
@@ -848,6 +849,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withKafkaLog(Level level) {
         String log4jConfig = "log4j.rootLogger=" + level.name() + ", stdout\n" +
+            "log4j.logger.io.strimzi=" + level.name() + "\n" +
             "log4j.appender.stdout=org.apache.log4j.ConsoleAppender\n" +
             "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout\n" +
             "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n\n";
