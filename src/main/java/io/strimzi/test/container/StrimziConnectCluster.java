@@ -46,7 +46,7 @@ public class StrimziConnectCluster {
         workers = new ArrayList<>();
         for (int i = 0; i < builder.workersNum; i++) {
             final String host = NETWORK_ALIAS_PREFIX + i;
-            Properties configs = buildConfigs(host);
+            final Properties configs = buildConfigs(host);
             StrimziConnectContainer worker = new StrimziConnectContainer(imageName, kafkaCluster, configs)
                     .withNetwork(kafkaCluster.getNetwork())
                     .withNetworkAliases(host)
