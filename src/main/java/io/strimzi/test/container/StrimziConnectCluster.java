@@ -41,7 +41,7 @@ public class StrimziConnectCluster {
         this.includeFileConnectors = builder.includeFileConnectors;
         this.groupId = builder.groupId;
 
-        String imageName = KafkaVersionService.strimziTestContainerImageName(kafkaVersion);
+        final String imageName = KafkaVersionService.strimziTestContainerImageName(kafkaVersion);
 
         workers = new ArrayList<>();
         for (int i = 0; i < builder.workersNum; i++) {
