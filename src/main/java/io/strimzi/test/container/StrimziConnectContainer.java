@@ -55,7 +55,7 @@ class StrimziConnectContainer extends GenericContainer<StrimziConnectContainer> 
                 CONFIG_FILE);
 
         // Write starter script to a file in the container
-        String command = "/opt/kafka/bin/connect-distributed.sh " + CONFIG_FILE;
+        final String command = "/opt/kafka/bin/connect-distributed.sh " + CONFIG_FILE;
         copyFileToContainer(
                 Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
                 STARTER_SCRIPT
