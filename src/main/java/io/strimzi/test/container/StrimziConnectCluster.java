@@ -38,7 +38,7 @@ public class StrimziConnectCluster {
         this.kafkaVersion = builder.kafkaVersion == null
                 ? KafkaVersionService.getInstance().latestRelease().getVersion()
                 : builder.kafkaVersion;
-        includeFileConnectors = builder.includeFileConnectors;
+        this.includeFileConnectors = builder.includeFileConnectors;
         groupId = builder.groupId;
 
         String imageName = KafkaVersionService.strimziTestContainerImageName(kafkaVersion);
