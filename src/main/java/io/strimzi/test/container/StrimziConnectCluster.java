@@ -75,7 +75,7 @@ public class StrimziConnectCluster {
         if (includeFileConnectors) {
             String connectFileJar = "/opt/kafka/libs/connect-file-" + kafkaVersion + ".jar";
             if (properties.containsKey("plugin.path")) {
-                String pluginPath = properties.getProperty("plugin.path");
+                final String pluginPath = properties.getProperty("plugin.path");
                 properties.setProperty("plugin.path", pluginPath + "," + connectFileJar);
             } else {
                 properties.setProperty("plugin.path", connectFileJar);
