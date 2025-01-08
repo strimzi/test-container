@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.provider.Arguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +36,5 @@ public class AbstractIT {
             parameters.add(Arguments.of(fields.getValue().asText(), fields.getKey()));
         }
         return parameters.stream();
-    }
-
-    protected void supportsKraftMode(final String imageName) {
-        Assumptions.assumeTrue(!imageName.contains("-kafka-2."));
-    }
-
-    protected boolean isLessThanKafka350(final String kafkaVersion) {
-        return KafkaVersionService.KafkaVersion.compareVersions(kafkaVersion, "3.5.0") == -1;
     }
 }

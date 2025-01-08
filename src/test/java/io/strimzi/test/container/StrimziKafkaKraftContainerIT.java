@@ -49,8 +49,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithEmptyConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithEmptyConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
-        supportsKraftMode(imageName);
-
         systemUnderTest = new StrimziKafkaContainer(imageName)
             .withBrokerId(1)
             .withKraft()
@@ -60,12 +58,8 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
         assertThat(systemUnderTest.getClusterId(), notNullValue());
 
         String logsFromKafka = systemUnderTest.getLogs();
-        if (isLessThanKafka350(kafkaVersion)) {
-            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
-        } else {
-            assertThat(logsFromKafka, containsString("ControllerServer id=1"));
-            assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
-        }
+        assertThat(logsFromKafka, containsString("ControllerServer id=1"));
+        assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
 
         verify();
 
@@ -76,8 +70,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithSomeConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
-        supportsKraftMode(imageName);
-
         Map<String, String> kafkaConfiguration = new HashMap<>();
 
         kafkaConfiguration.put("log.cleaner.enable", "false");
@@ -95,12 +87,8 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
 
         String logsFromKafka = systemUnderTest.getLogs();
 
-        if (isLessThanKafka350(kafkaVersion)) {
-            assertThat(logsFromKafka, containsString("RaftManager nodeId=1"));
-        } else {
-            assertThat(logsFromKafka, containsString("ControllerServer id=1"));
-            assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
-        }
+        assertThat(logsFromKafka, containsString("ControllerServer id=1"));
+        assertThat(logsFromKafka, containsString("SocketServer listenerType=CONTROLLER, nodeId=1"));
         assertThat(logsFromKafka, containsString("log.cleaner.enable = false"));
         assertThat(logsFromKafka, containsString("log.cleaner.backoff.ms = 1000"));
         assertThat(logsFromKafka, containsString("ssl.enabled.protocols = [TLSv1]"));
