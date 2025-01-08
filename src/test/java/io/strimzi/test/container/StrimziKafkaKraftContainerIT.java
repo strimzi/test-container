@@ -105,17 +105,7 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
             .withKraft()
             .waitForRunning();
 
-        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
-    }
-
-    @Test
-    void testUnsupportedKRaftUsingImageName() {
-        systemUnderTest = new StrimziKafkaContainer("quay.io/strimzi-test-container/test-container:latest-kafka-2.8.2")
-            .withBrokerId(1)
-            .withKraft()
-            .waitForRunning();
-
-        assertThrows(UnsupportedKraftKafkaVersionException.class, () -> systemUnderTest.start());
+        assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
     }
 
     @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
