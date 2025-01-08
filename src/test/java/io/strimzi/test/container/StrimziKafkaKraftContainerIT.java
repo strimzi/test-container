@@ -111,7 +111,6 @@ public class StrimziKafkaKraftContainerIT extends AbstractIT {
     @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
     @MethodSource("retrieveKafkaVersionsFile")
     void testUnsupportedKraftAndIdsMismatch(final String imageName, final String kafkaVersion) {
-        supportsKraftMode(imageName);
         systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withNodeId(1)
                 .withBrokerId(2)
