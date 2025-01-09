@@ -90,13 +90,13 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testUnsupportedKraftVersionThrowsException() {
+    void testUnsupportedVersionThrowsException() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withKafkaVersion("2.8.2")
             .withKraft();
 
-        // "Specified Kafka version 2.8.2 is not supported in KRaft mode."
-        assertThrows(UnsupportedKraftKafkaVersionException.class, kafkaContainer::doStart);
+        // "Specified Kafka version 2.8.2 is not supported ."
+        assertThrows(UnknownKafkaVersionException.class, kafkaContainer::doStart);
     }
 
     @Test

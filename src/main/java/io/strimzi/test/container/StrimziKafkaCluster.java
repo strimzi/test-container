@@ -335,13 +335,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while starting Kafka containers", e);
-        } catch (ExecutionException | UnsupportedKraftKafkaVersionException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof UnsupportedKraftKafkaVersionException) {
-                throw (UnsupportedKraftKafkaVersionException) cause;
-            } else {
-                throw new RuntimeException("Failed to start Kafka containers", e);
-            }
+        } catch (ExecutionException e) {
+            throw new RuntimeException("Failed to start Kafka containers", e);
         } catch (TimeoutException e) {
             throw new RuntimeException("Timed out while starting Kafka containers", e);
         }
