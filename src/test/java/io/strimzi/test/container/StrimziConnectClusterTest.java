@@ -9,9 +9,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StrimziConnectClusterTest {
+
+    private static final String GROUP_ID = "groupId";
+    private static final int WORKERS = 1;
 
     @Test
     void testConnectClusterNegativeOrZeroNumberOfWorkers() {
@@ -21,7 +26,7 @@ public class StrimziConnectClusterTest {
                                 .withNumberOfBrokers(1)
                                 .build())
                         .withNumberOfWorkers(0)
-                        .withGroupId("groupId")
+                        .withGroupId(GROUP_ID)
                         .build()
         );
         assertThrows(IllegalArgumentException.class, () ->
@@ -30,7 +35,7 @@ public class StrimziConnectClusterTest {
                                 .withNumberOfBrokers(1)
                                 .build())
                         .withNumberOfWorkers(-1)
-                        .withGroupId("groupId")
+                        .withGroupId(GROUP_ID)
                         .build()
         );
     }
@@ -39,8 +44,8 @@ public class StrimziConnectClusterTest {
     void testConnectClusterWithoutBootstrapServers() {
         assertThrows(IllegalArgumentException.class, () ->
                 new StrimziConnectCluster.StrimziConnectClusterBuilder()
-                        .withGroupId("groupId")
-                        .withNumberOfWorkers(1)
+                        .withGroupId(GROUP_ID)
+                        .withNumberOfWorkers(WORKERS)
                         .build()
         );
     }
@@ -52,19 +57,20 @@ public class StrimziConnectClusterTest {
                         .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                                 .withNumberOfBrokers(1)
                                 .build())
-                        .withNumberOfWorkers(1)
+                        .withNumberOfWorkers(WORKERS)
                         .build()
         );
     }
 
     @Test
     void testConnectCluster() {
-        new StrimziConnectCluster.StrimziConnectClusterBuilder()
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
                 .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                         .withNumberOfBrokers(1)
                         .build())
-                .withGroupId("groupId")
+                .withGroupId(GROUP_ID)
                 .build();
+        assertThat(cluster.getWorkers().size(), is(WORKERS));
     }
 
     @Test
@@ -73,8 +79,9 @@ public class StrimziConnectClusterTest {
                 .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                         .withNumberOfBrokers(1)
                         .build())
-                .withGroupId("groupId")
+                .withGroupId(GROUP_ID)
                 .build();
+        assertThat(cluster.getWorkers().size(), is(WORKERS));
         assertThrows(IllegalStateException.class, cluster::getRestEndpoint);
     }
 
@@ -85,11 +92,12 @@ public class StrimziConnectClusterTest {
                         .withNumberOfBrokers(1)
                         .build())
                 .withNumberOfWorkers(2)
-                .withGroupId("groupId")
+                .withGroupId(GROUP_ID)
                 .withKafkaVersion("3.8.1")
                 .withAdditionalConnectConfiguration(Map.of("plugin.path", "/tmp"))
                 .withoutFileConnectors()
                 .build();
+        assertThat(cluster.getWorkers().size(), is(2));
     }
 
     @Test
@@ -99,9 +107,10 @@ public class StrimziConnectClusterTest {
                         .withNumberOfBrokers(1)
                         .build())
                 .withNumberOfWorkers(2)
-                .withGroupId("groupId")
+                .withGroupId(GROUP_ID)
                 .withAdditionalConnectConfiguration(Map.of("plugin.path", "/tmp"))
                 .build();
+        assertThat(cluster.getWorkers().size(), is(2));
     }
 
     @Test
@@ -112,8 +121,20 @@ public class StrimziConnectClusterTest {
                             .withNumberOfBrokers(1)
                             .build())
                     .withNumberOfWorkers(2)
-                    .withGroupId("groupId")
+                    .withGroupId(GROUP_ID)
                     .withAdditionalConnectConfiguration(null)
                     .build());
+    }
+
+    @Test
+    void testWithEmptyAdditionalConnectConfiguration() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId(GROUP_ID)
+                .withAdditionalConnectConfiguration(Map.of())
+                .build();
+        assertThat(cluster.getWorkers().size(), is(WORKERS));
     }
 }
