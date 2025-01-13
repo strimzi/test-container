@@ -611,6 +611,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
+     * Get the bootstrap servers that containers on the same network should use to connect
+     * @return a comma separated list of Kafka bootstrap servers
+     */
+    @DoNotMutate
+    public String getNetworkBootstrapServers() {
+        return NETWORK_ALIAS_PREFIX + brokerId + ":" + INTER_BROKER_LISTENER_PORT;
+    }
+
+    /**
      * Get the cluster id. This is only supported for KRaft containers.
      * @return The cluster id.
      */

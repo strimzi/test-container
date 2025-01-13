@@ -454,8 +454,8 @@
                         <avoidCallsTo>org.slf4j</avoidCallsTo>
                         <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
                     </avoidCallsTo>
-                    <mutationThreshold>91</mutationThreshold>
-                    <coverageThreshold>71</coverageThreshold>
+                    <mutationThreshold>92</mutationThreshold>
+                    <coverageThreshold>72</coverageThreshold>
                     <verbose>true</verbose>
                 </configuration>
             </plugin>

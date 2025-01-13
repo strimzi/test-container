@@ -36,6 +36,11 @@ class StrimziKafkaContainerTest {
 
     private StrimziKafkaContainer kafkaContainer;
 
+    @BeforeEach
+    void setUp() {
+        kafkaContainer = new StrimziKafkaContainer();
+    }
+
     @Test
     void testDefaultInitialization() {
         assertThat(kafkaContainer, is(notNullValue()));
@@ -105,11 +110,6 @@ class StrimziKafkaContainerTest {
         assertThrows(IllegalStateException.class, () -> new StrimziKafkaContainer()
             .withKraft()
             .withExternalZookeeperConnect("localhost:2181"));
-    }
-
-    @BeforeEach
-    void setUp() {
-        kafkaContainer = new StrimziKafkaContainer();
     }
 
     @Test

@@ -162,7 +162,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * Sets the number of Kafka brokers in the cluster.
          *
          * @param brokersNum the number of Kafka brokers
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withNumberOfBrokers(int brokersNum) {
             this.brokersNum = brokersNum;
@@ -174,7 +174,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * If not provided, it defaults to the number of brokers.
          *
          * @param internalTopicReplicationFactor the replication factor for internal topics
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withInternalTopicReplicationFactor(int internalTopicReplicationFactor) {
             this.internalTopicReplicationFactor = internalTopicReplicationFactor;
@@ -186,7 +186,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * These configurations are applied to all brokers in the cluster.
          *
          * @param additionalKafkaConfiguration a map of additional Kafka configuration options
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withAdditionalKafkaConfiguration(Map<String, String> additionalKafkaConfiguration) {
             if (additionalKafkaConfiguration != null) {
@@ -199,7 +199,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * Sets a {@code ToxiproxyContainer} to simulate network conditions such as latency or disconnection.
          *
          * @param proxyContainer the proxy container for simulating network conditions
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withProxyContainer(ToxiproxyContainer proxyContainer) {
             this.proxyContainer = proxyContainer;
@@ -210,7 +210,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * Enables a shared Docker network for the Kafka cluster.
          * This allows the Kafka cluster to interact with other containers on the same network.
          *
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withSharedNetwork() {
             this.enableSharedNetwork = true;
@@ -222,7 +222,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * If no version is provided, the latest Kafka version available from {@link KafkaVersionService} will be used.
          *
          * @param kafkaVersion the desired Kafka version for the cluster
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withKafkaVersion(String kafkaVersion) {
             this.kafkaVersion = kafkaVersion;
@@ -235,7 +235,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * KRaft mode allows Kafka to operate without ZooKeeper.
          * </p>
          *
-         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withKraft() {
             this.enableKRaft = true;
@@ -261,6 +261,17 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     public Collection<KafkaContainer> getBrokers() {
         return this.brokers;
+    }
+
+    /**
+     * Get the bootstrap servers that containers on the same network should use to connect
+     * @return a comma separated list of Kafka bootstrap servers
+     */
+    @DoNotMutate
+    public String getNetworkBootstrapServers() {
+        return brokers.stream()
+                .map(broker -> ((StrimziKafkaContainer) broker).getNetworkBootstrapServers())
+                .collect(Collectors.joining(","));
     }
 
     @Override
