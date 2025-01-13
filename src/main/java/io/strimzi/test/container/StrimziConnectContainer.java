@@ -68,7 +68,6 @@ class StrimziConnectContainer extends GenericContainer<StrimziConnectContainer> 
         return this;
     }
 
-    @DoNotMutate
     /* for testing */ Properties getConfigs() {
         return configs;
     }
