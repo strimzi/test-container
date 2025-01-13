@@ -67,4 +67,9 @@ class StrimziConnectContainer extends GenericContainer<StrimziConnectContainer> 
         super.waitingFor(Wait.forLogMessage(".*Finished starting connectors and tasks.*", 1));
         return this;
     }
+
+    @DoNotMutate
+    /* for testing */ Properties getConfigs() {
+        return configs;
+    }
 }

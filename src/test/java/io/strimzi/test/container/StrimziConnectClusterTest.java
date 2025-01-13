@@ -8,8 +8,11 @@ package io.strimzi.test.container;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Properties;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -136,5 +139,49 @@ public class StrimziConnectClusterTest {
                 .withAdditionalConnectConfiguration(Map.of())
                 .build();
         assertThat(cluster.getWorkers().size(), is(WORKERS));
+    }
+
+    @Test
+    void testIncludeFileConnectorsAddsPluginPath() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId("groupId")
+                .build();
+
+        Properties configs = ((StrimziConnectContainer) cluster.getWorkers().iterator().next()).getConfigs();
+        assertThat(configs.getProperty("plugin.path"), containsString("connect-file"));
+    }
+
+    @Test
+    void testAdditionalPluginPath() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId("groupId")
+                .withAdditionalConnectConfiguration(Map.of("plugin.path", "/other-path"))
+                .build();
+
+        Properties configs = ((StrimziConnectContainer) cluster.getWorkers().iterator().next()).getConfigs();
+        assertThat(configs.getProperty("plugin.path"), containsString("connect-file"));
+        assertThat(configs.getProperty("plugin.path"), containsString("/other-path"));
+    }
+
+    @Test
+    void testAdditionalPluginPathWithoutFileConnectors() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId("groupId")
+                .withoutFileConnectors()
+                .withAdditionalConnectConfiguration(Map.of("plugin.path", "/other-path"))
+                .build();
+
+        Properties configs = ((StrimziConnectContainer) cluster.getWorkers().iterator().next()).getConfigs();
+        assertThat(configs.getProperty("plugin.path"), not(containsString("connect-file")));
+        assertThat(configs.getProperty("plugin.path"), containsString("/other-path"));
     }
 }
