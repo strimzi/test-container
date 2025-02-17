@@ -96,8 +96,8 @@
         <maven.compiler.release>11</maven.compiler.release>
 
         <!-- DEPENDENCY CODE VERSIONS       -->
-        <test-containers.version>1.20.1</test-containers.version>
-        <spotbugs.version>4.8.4</spotbugs.version>
+        <test-containers.version>1.20.4</test-containers.version>
+        <spotbugs.version>4.9.1</spotbugs.version>
         <log4j.version>2.19.0</log4j.version>
         <docker-java.version>3.3.6</docker-java.version>
         <kafka.version>3.8.1</kafka.version>
@@ -108,7 +108,7 @@
         <pitest-annotations.version>1.3.3</pitest-annotations.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
-        <jupiter.version>5.11.0</jupiter.version>
+        <jupiter.version>5.11.4</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-surefire-failsafe-plugin.version>3.1.2</maven-surefire-failsafe-plugin.version>
         <!-- for Java 11 compatibility (newer versions does not support Java 11)  -->
@@ -126,7 +126,7 @@
         <maven.gpg.version>1.6</maven.gpg.version>
         <sonatype.nexus.staging>1.7.0</sonatype.nexus.staging>
         <pit-junit-plugin.version>1.2.1</pit-junit-plugin.version>
-        <pit-plugin.version>1.17.2</pit-plugin.version>
+        <pit-plugin.version>1.18.1</pit-plugin.version>
 
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.26.1</commons-compress.version>
