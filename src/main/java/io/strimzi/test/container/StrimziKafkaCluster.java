@@ -110,7 +110,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
                 // if it's ZK-based Kafka cluster we depend on ZK container and we need to specify external ZK connect
                 if (this.isZooKeeperBasedKafkaCluster()) {
-                    kafkaContainer.withExternalZookeeperConnect("zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
+                    kafkaContainer.withExternalZookeeperConnect(StrimziZookeeperContainer.ZOOKEEPER_NETWORK_ALIAS + ":" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
                         .dependsOn(this.zookeeper);
                 } else {
                     kafkaContainer
@@ -137,8 +137,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     private void validateInternalTopicReplicationFactor(int internalTopicReplicationFactor, int brokersNum) {
-        if (internalTopicReplicationFactor <= 0 || internalTopicReplicationFactor > brokersNum) {
-            throw new IllegalArgumentException("internalTopicReplicationFactor '" + internalTopicReplicationFactor + "' must be less than brokersNum and greater than 0");
+        if (internalTopicReplicationFactor < 1 || internalTopicReplicationFactor > brokersNum) {
+            throw new IllegalArgumentException(
+                "internalTopicReplicationFactor '" + internalTopicReplicationFactor +
+                    "' must be between 1 and " + brokersNum);
         }
     }
 
@@ -359,7 +361,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     try {
                         result = this.zookeeper.execInContainer(
                             "sh", "-c",
-                            "bin/zookeeper-shell.sh zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+                            "bin/zookeeper-shell.sh " + StrimziZookeeperContainer.ZOOKEEPER_NETWORK_ALIAS + ":" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
                         );
                         String brokers = result.getStdout();
 

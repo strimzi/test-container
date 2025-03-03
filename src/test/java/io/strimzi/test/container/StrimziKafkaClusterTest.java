@@ -87,6 +87,26 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
+    void testKafkaClusterWithProxyContainerAndKafkaClusterSetSameNetwork() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+
+        assertThat(proxyContainer.getNetwork(), CoreMatchers.nullValue());
+
+        StrimziKafkaCluster cluster =  new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withInternalTopicReplicationFactor(3)
+                .withProxyContainer(proxyContainer)
+                .withSharedNetwork()
+                .build();
+
+        System.out.println(proxyContainer.getNetwork());
+
+        assertThat(cluster.getNetwork(), CoreMatchers.notNullValue());
+        assertThat(proxyContainer.getNetwork(), CoreMatchers.notNullValue());
+        assertThat(cluster.getNetwork().getId(), CoreMatchers.is(proxyContainer.getNetwork().getId()));
+    }
+
+    @Test
     void testKafkaClusterWithSharedNetwork() {
         assertDoesNotThrow(() ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
@@ -160,6 +180,12 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getBrokers().size(), CoreMatchers.is(3));
         assertThat(((StrimziKafkaContainer) cluster.getBrokers().iterator().next()).getKafkaVersion(), CoreMatchers.is("3.7.1"));
         assertThat(cluster.getAdditionalKafkaConfiguration().get("log.retention.bytes"), CoreMatchers.is("10485760"));
+        assertThat(
+            ((StrimziKafkaContainer) cluster.getBrokers().iterator().next())
+                .getKafkaConfigurationMap()
+                .get("log.retention.bytes"),
+            CoreMatchers.is("10485760")
+        );
     }
 
     @Test
@@ -331,13 +357,22 @@ public class StrimziKafkaClusterTest {
     @Test
     void testValidateInternalTopicReplicationFactorBoundaries() {
         // Test with internalTopicReplicationFactor = 0 (should fail)
+        final int brokersNum = 3;
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(3)
+                .withNumberOfBrokers(brokersNum)
                 .withInternalTopicReplicationFactor(-1)
                 .build()
         );
-        assertThat(exception.getMessage(), CoreMatchers.containsString("must be less than brokersNum and greater than 0"));
+        assertThat(exception.getMessage(), CoreMatchers.containsString("internalTopicReplicationFactor '-1' must be between 1 and " + brokersNum));
+
+        // Case: Replication factor is 0 (Defaults to brokersNum, should pass)
+        assertDoesNotThrow(() ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withInternalTopicReplicationFactor(0)
+                .build()
+        );
 
         // Test with internalTopicReplicationFactor = 3 (equal to brokersNum, should pass)
         assertDoesNotThrow(() ->
@@ -354,7 +389,7 @@ public class StrimziKafkaClusterTest {
                 .withInternalTopicReplicationFactor(4)
                 .build()
         );
-        assertThat(exception.getMessage(), CoreMatchers.containsString("must be less than brokersNum and greater than 0"));
+        assertThat(exception.getMessage(), CoreMatchers.containsString("internalTopicReplicationFactor '4' must be between 1 and 3"));
     }
 
     @Test

@@ -33,6 +33,10 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
      * Default ZooKeeper port
      */
     public static final int ZOOKEEPER_PORT = 2181;
+    /**
+     * Default ZooKeeper network alias
+     */
+    public static final String ZOOKEEPER_NETWORK_ALIAS = "zookeeper";
 
     /**
      * Lazy image name provider
@@ -70,7 +74,7 @@ public class StrimziZookeeperContainer extends GenericContainer<StrimziZookeeper
         super.setNetwork(Network.SHARED);
         // exposing zookeeper port from the container
         super.setExposedPorts(Collections.singletonList(ZOOKEEPER_PORT));
-        super.setNetworkAliases(Collections.singletonList("zookeeper"));
+        super.setNetworkAliases(Collections.singletonList(ZOOKEEPER_NETWORK_ALIAS));
         super.addEnv("LOG_DIR", "/tmp");
         super.addEnv("ZOOKEEPER_CLIENT_PORT", String.valueOf(ZOOKEEPER_PORT));
         // env for readiness
