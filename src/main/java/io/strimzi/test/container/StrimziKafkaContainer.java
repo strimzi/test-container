@@ -753,7 +753,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withProxyContainer(final ToxiproxyContainer proxyContainer) {
         if (proxyContainer != null) {
             this.proxyContainer = proxyContainer;
-            proxyContainer.setNetwork(Network.SHARED);
             proxyContainer.setNetworkAliases(Collections.singletonList("toxiproxy"));
         }
         return self();
@@ -903,6 +902,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /* test */ int getBrokerId() {
         return brokerId;
+    }
+
+    /* test */ Map<String, String> getKafkaConfigurationMap() {
+        return kafkaConfigurationMap;
     }
 
     /**

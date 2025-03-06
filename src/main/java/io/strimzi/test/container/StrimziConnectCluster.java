@@ -235,4 +235,8 @@ public class StrimziConnectCluster {
             return new StrimziConnectCluster(this);
         }
     }
+
+    /* test */ String getKafkaVersion() {
+        return kafkaVersion;
+    }
 }

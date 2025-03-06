@@ -184,4 +184,17 @@ public class StrimziConnectClusterTest {
         assertThat(configs.getProperty("plugin.path"), not(containsString("connect-file")));
         assertThat(configs.getProperty("plugin.path"), containsString("/other-path"));
     }
+
+    @Test
+    void testDefaultKafkaVersion() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+            .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .build())
+            .withGroupId(GROUP_ID)
+            .build();
+
+        String expectedVersion = KafkaVersionService.getInstance().latestRelease().getVersion();
+        assertThat(cluster.getKafkaVersion(), is(expectedVersion));
+    }
 }
