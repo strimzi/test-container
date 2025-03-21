@@ -49,7 +49,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     // not editable
     private final Network network;
-    private StrimziZookeeperContainer zookeeper;
     private Collection<KafkaContainer> brokers;
     private final String clusterId;
 
@@ -66,11 +65,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
         validateBrokerNum(this.brokersNum);
         validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
-
-        if (this.isZooKeeperBasedKafkaCluster()) {
-            this.zookeeper = new StrimziZookeeperContainer()
-                .withNetwork(this.network);
-        }
 
         if (this.proxyContainer != null) {
             this.proxyContainer.setNetwork(this.network);
@@ -106,22 +100,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withKafkaConfigurationMap(defaultKafkaConfigurationForMultiNode)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
-                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion);
-
-                // if it's ZK-based Kafka cluster we depend on ZK container and we need to specify external ZK connect
-                if (this.isZooKeeperBasedKafkaCluster()) {
-                    kafkaContainer.withExternalZookeeperConnect(StrimziZookeeperContainer.ZOOKEEPER_NETWORK_ALIAS + ":" + StrimziZookeeperContainer.ZOOKEEPER_PORT)
-                        .dependsOn(this.zookeeper);
-                } else {
-                    kafkaContainer
-                        // if KRaft we need to enable it
-                        .withKraft()
-                        // One must set `node.id` to the same value as `broker.id` if we use KRaft mode
-                        .withNodeId(brokerId)
-                        // pass shared `cluster.id` to each broker
-                        .withClusterId(this.clusterId)
-                        .waitForRunning();
-                }
+                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
+                    // if KRaft we need to enable it
+                    .withKraft()
+                    // One must set `node.id` to the same value as `broker.id` if we use KRaft mode
+                    .withNodeId(brokerId)
+                    // pass shared `cluster.id` to each broker
+                    .withClusterId(this.clusterId)
+                    .waitForRunning();
 
                 LOGGER.info("Started broker with id: {}", kafkaContainer);
 
@@ -284,15 +270,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     @Override
-    @DoNotMutate
-    public String getInternalZooKeeperConnect() {
-        if (hasKraftOrExternalZooKeeperConfigured()) {
-            throw new IllegalStateException("Connect string is not available when using KRaft or external ZooKeeper");
-        }
-        return getZookeeper() != null ? getZookeeper().getConnectString() : null;
-    }
-
-    @Override
     public String getBootstrapServers() {
         return brokers.stream()
             .map(KafkaContainer::getBootstrapServers)
@@ -354,92 +331,58 @@ public class StrimziKafkaCluster implements KafkaContainer {
             throw new RuntimeException("Timed out while starting Kafka containers", e);
         }
 
-        if (this.isZooKeeperBasedKafkaCluster()) {
-            Utils.waitFor("Kafka brokers nodes to be connected to the ZooKeeper", Duration.ofSeconds(1), Duration.ofMinutes(1),
-                () -> {
-                    Container.ExecResult result;
-                    try {
-                        result = this.zookeeper.execInContainer(
-                            "sh", "-c",
-                            "bin/zookeeper-shell.sh " + StrimziZookeeperContainer.ZOOKEEPER_NETWORK_ALIAS + ":" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
+        // Readiness check for KRaft mode
+        Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1), Duration.ofMinutes(1),
+            () -> {
+                try {
+                    for (KafkaContainer kafkaContainer : this.brokers) {
+                        Container.ExecResult result = ((StrimziKafkaContainer) kafkaContainer).execInContainer(
+                            "bash", "-c",
+                            "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
                         );
-                        String brokers = result.getStdout();
+                        String output = result.getStdout();
 
-                        LOGGER.info("Running Kafka brokers: {}", result.getStdout());
+                        LOGGER.info("Metadata quorum status from broker {}: {}", ((StrimziKafkaContainer) kafkaContainer).getBrokerId(), output);
 
-                        return brokers != null && brokers.split(",").length == this.brokersNum;
-                    } catch (IOException | InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException("Failed to execute command in ZooKeeper container", e);
-                    }
-                });
-        } else if (this.isKraftKafkaCluster()) {
-            // Readiness check for KRaft mode
-            Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1), Duration.ofMinutes(1),
-                () -> {
-                    try {
-                        for (KafkaContainer kafkaContainer : this.brokers) {
-                            Container.ExecResult result = ((StrimziKafkaContainer) kafkaContainer).execInContainer(
-                                "bash", "-c",
-                                "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
-                            );
-                            String output = result.getStdout();
-
-                            LOGGER.info("Metadata quorum status from broker {}: {}", ((StrimziKafkaContainer) kafkaContainer).getBrokerId(), output);
-
-                            if (output == null || output.isEmpty()) {
-                                return false;
-                            }
-
-                            // Check if LeaderId is present and valid
-                            final Pattern leaderIdPattern = Pattern.compile("LeaderId:\\s+(\\d+)");
-                            final Matcher leaderIdMatcher = leaderIdPattern.matcher(output);
-
-                            if (!leaderIdMatcher.find()) {
-                                return false; // LeaderId not found
-                            }
-
-                            String leaderIdStr = leaderIdMatcher.group(1);
-                            try {
-                                int leaderId = Integer.parseInt(leaderIdStr);
-                                if (leaderId < 0) {
-                                    return false; // Invalid LeaderId
-                                }
-                            } catch (NumberFormatException e) {
-                                return false; // LeaderId is not a valid integer
-                            }
-
-                            // If LeaderId is present and valid, we assume the broker is ready
+                        if (output == null || output.isEmpty()) {
+                            return false;
                         }
-                        return true; // All brokers have a valid LeaderId
-                    } catch (IOException | InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException("Failed to execute command in Kafka container", e);
+
+                        // Check if LeaderId is present and valid
+                        final Pattern leaderIdPattern = Pattern.compile("LeaderId:\\s+(\\d+)");
+                        final Matcher leaderIdMatcher = leaderIdPattern.matcher(output);
+
+                        if (!leaderIdMatcher.find()) {
+                            return false; // LeaderId not found
+                        }
+
+                        String leaderIdStr = leaderIdMatcher.group(1);
+                        try {
+                            int leaderId = Integer.parseInt(leaderIdStr);
+                            if (leaderId < 0) {
+                                return false; // Invalid LeaderId
+                            }
+                        } catch (NumberFormatException e) {
+                            return false; // LeaderId is not a valid integer
+                        }
+
+                        // If LeaderId is present and valid, we assume the broker is ready
                     }
-                });
-        }
+                    return true; // All brokers have a valid LeaderId
+                } catch (IOException | InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Failed to execute command in Kafka container", e);
+                }
+            });
     }
 
     @Override
     @DoNotMutate
     public void stop() {
-        if (this.isZooKeeperBasedKafkaCluster()) {
-            // firstly we shut-down zookeeper -> reason: 'On the command line if I kill ZK first it sometimes prevents a broker from shutting down quickly.'
-            this.zookeeper.stop();
-        }
-
         // stop all kafka containers in parallel
         this.brokers.stream()
             .parallel()
             .forEach(KafkaContainer::stop);
-    }
-
-    /**
-     * Get {@code StrimziZookeeperContainer} instance
-     * @return StrimziZookeeperContainer instance
-     */
-    public StrimziZookeeperContainer getZookeeper() {
-        return zookeeper;
     }
 
     protected Network getNetwork() {

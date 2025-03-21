@@ -23,16 +23,6 @@ public interface KafkaContainer extends Startable {
     boolean hasKraftOrExternalZooKeeperConfigured();
 
     /**
-     * Get the internal ZooKeeper connect string.
-     *
-     * @return ZooKeeper connect string
-     *
-     * @throws IllegalStateException
-     *      if in KRaft mode or using an external ZooKeeper
-     */
-    String getInternalZooKeeperConnect();
-
-    /**
      * Get the Kafka cluster bootstrap servers.
      *
      * @return bootstrap servers

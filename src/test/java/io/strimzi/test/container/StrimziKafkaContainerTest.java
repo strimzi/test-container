@@ -105,14 +105,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testIllegalStateWhenUsingExternalZooKeeperWithKraft() {
-        // "Cannot configure an external Zookeeper and use Kraft at the same time"
-        assertThrows(IllegalStateException.class, () -> new StrimziKafkaContainer()
-            .withKraft()
-            .withExternalZookeeperConnect("localhost:2181"));
-    }
-
-    @Test
     void testGetProxyWithoutConfigurationThrowsException() {
         assertThrows(IllegalStateException.class, kafkaContainer::getProxy);
     }
@@ -135,12 +127,6 @@ class StrimziKafkaContainerTest {
     void testRunStarterScriptReturnsCorrectScript() {
         String script = kafkaContainer.runStarterScript();
         assertThat(script, is("while [ ! -x /testcontainers_start.sh ]; do sleep 0.1; done; /testcontainers_start.sh"));
-    }
-
-    @Test
-    void testGetInternalZooKeeperConnectWithoutKRaftOrExternalThrowsException() {
-        kafkaContainer.withKraft();
-        assertThrows(IllegalStateException.class, kafkaContainer::getInternalZooKeeperConnect);
     }
 
     @Test
@@ -195,13 +181,6 @@ class StrimziKafkaContainerTest {
     void testHasKraftOrExternalZooKeeperConfiguredReturnsTrueWhenKraftEnabled() {
         kafkaContainer.withKraft();
         assertThat("Expected true when KRaft is enabled.",
-            kafkaContainer.hasKraftOrExternalZooKeeperConfigured(), CoreMatchers.is(true));
-    }
-
-    @Test
-    void testHasKraftOrExternalZooKeeperConfiguredReturnsTrueWhenExternalZooKeeperConfigured() {
-        kafkaContainer.withExternalZookeeperConnect("zookeeper:2181");
-        assertThat("Expected true when external ZooKeeper is configured.",
             kafkaContainer.hasKraftOrExternalZooKeeperConfigured(), CoreMatchers.is(true));
     }
 
@@ -357,45 +336,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testBuildDefaultServerProperties() {
-        String listeners = "PLAINTEXT://0.0.0.0:9092";
-        String advertisedListeners = "PLAINTEXT://localhost:9092";
-        kafkaContainer.listenerNames.add("PLAINTEXT");
-        kafkaContainer.withBrokerId(1);
-
-        Properties properties = kafkaContainer.buildDefaultServerProperties(listeners, advertisedListeners);
-
-        // Common settings for both KRaft and non-KRaft modes
-        assertThat(properties.getProperty("listeners"), is(listeners));
-        assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
-        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT"));
-        assertThat(properties.getProperty("num.network.threads"), is("3"));
-        assertThat(properties.getProperty("num.io.threads"), is("8"));
-        assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
-        assertThat(properties.getProperty("socket.receive.buffer.bytes"), is("102400"));
-        assertThat(properties.getProperty("socket.request.max.bytes"), is("104857600"));
-        assertThat(properties.getProperty("log.dirs"), is("/tmp/default-log-dir"));
-        assertThat(properties.getProperty("num.partitions"), is("1"));
-        assertThat(properties.getProperty("num.recovery.threads.per.data.dir"), is("1"));
-        assertThat(properties.getProperty("offsets.topic.replication.factor"), is("1"));
-        assertThat(properties.getProperty("transaction.state.log.replication.factor"), is("1"));
-        assertThat(properties.getProperty("transaction.state.log.min.isr"), is("1"));
-        assertThat(properties.getProperty("log.retention.hours"), is("168"));
-        assertThat(properties.getProperty("log.retention.check.interval.ms"), is("300000"));
-
-        // Since useKraft is false, KRaft-specific properties should not be set
-        assertThat("process.roles should not be set when useKraft is false", properties.getProperty("process.roles"), nullValue());
-        assertThat("node.id should not be set when useKraft is false", properties.getProperty("node.id"), nullValue());
-        assertThat("controller.quorum.voters should not be set when useKraft is false", properties.getProperty("controller.quorum.voters"), nullValue());
-        assertThat("controller.listener.names should not be set when useKraft is false", properties.getProperty("controller.listener.names"), nullValue());
-
-        // Check that zookeeper.connect is set to the internal ZooKeeper
-        assertThat(properties.getProperty("zookeeper.connect"), is("localhost:2181"));
-    }
-
-    @Test
     void testBuildDefaultServerPropertiesWithKRaft() {
         String listeners = "PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "PLAINTEXT://localhost:9092";
@@ -436,46 +376,6 @@ class StrimziKafkaContainerTest {
 
         // zookeeper.connect should not be set
         assertThat("zookeeper.connect should not be set when useKraft is true", properties.getProperty("zookeeper.connect"), nullValue());
-    }
-
-    @Test
-    void testBuildDefaultServerPropertiesWithExternalZooKeeper() {
-        String listeners = "PLAINTEXT://0.0.0.0:9092";
-        String advertisedListeners = "PLAINTEXT://localhost:9092";
-        kafkaContainer.listenerNames.add("PLAINTEXT");
-        kafkaContainer.withBrokerId(1)
-            .withExternalZookeeperConnect("zookeeper:2181");
-
-        Properties properties = kafkaContainer.buildDefaultServerProperties(listeners, advertisedListeners);
-
-        // Common properties
-        assertThat(properties.getProperty("listeners"), is(listeners));
-        assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
-        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT"));
-        assertThat(properties.getProperty("num.network.threads"), is("3"));
-        assertThat(properties.getProperty("num.io.threads"), is("8"));
-        assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
-        assertThat(properties.getProperty("socket.receive.buffer.bytes"), is("102400"));
-        assertThat(properties.getProperty("socket.request.max.bytes"), is("104857600"));
-        assertThat(properties.getProperty("log.dirs"), is("/tmp/default-log-dir"));
-        assertThat(properties.getProperty("num.partitions"), is("1"));
-        assertThat(properties.getProperty("num.recovery.threads.per.data.dir"), is("1"));
-        assertThat(properties.getProperty("offsets.topic.replication.factor"), is("1"));
-        assertThat(properties.getProperty("transaction.state.log.replication.factor"), is("1"));
-        assertThat(properties.getProperty("transaction.state.log.min.isr"), is("1"));
-        assertThat(properties.getProperty("log.retention.hours"), is("168"));
-        assertThat(properties.getProperty("log.retention.check.interval.ms"), is("300000"));
-
-        // zookeeper.connect should be set to external value
-        assertThat(properties.getProperty("zookeeper.connect"), is("zookeeper:2181"));
-
-        // KRaft-specific properties should not be set
-        assertThat("process.roles should not be set when useKraft is false", properties.getProperty("process.roles"), nullValue());
-        assertThat("node.id should not be set when useKraft is false", properties.getProperty("node.id"), nullValue());
-        assertThat("controller.quorum.voters should not be set when useKraft is false", properties.getProperty("controller.quorum.voters"), nullValue());
-        assertThat("controller.listener.names should not be set when useKraft is false", properties.getProperty("controller.listener.names"), nullValue());
     }
 
     @Test
@@ -668,14 +568,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testHasKraftOrExternalZooKeeperConfiguredWithExternalZooKeeper() {
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withExternalZookeeperConnect("zookeeper:2181");
-
-        assertTrue(kafkaContainer.hasKraftOrExternalZooKeeperConfigured());
-    }
-
-    @Test
     void testHasKraftOrExternalZooKeeperConfiguredNeitherSet() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
 
@@ -689,31 +581,6 @@ class StrimziKafkaContainerTest {
         StrimziKafkaContainer result = kafkaContainer.withKafkaLog(Level.DEBUG);
 
         assertSame(kafkaContainer, result, "withKafkaLog() should return the same instance for method chaining.");
-    }
-
-    @Test
-    void testGetInternalZooKeeperConnectThrowsExceptionWhenKraftOrExternalZooKeeperConfigured() {
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withKraft();
-
-        IllegalStateException exception = assertThrows(
-            IllegalStateException.class,
-            kafkaContainer::getInternalZooKeeperConnect,
-            "Expected getInternalZooKeeperConnect() to throw an exception when KRaft is configured."
-        );
-
-        assertThat(exception.getMessage(), containsString("Connect string is not available when using KRaft or external ZooKeeper"));
-    }
-
-    @Test
-    void testGetInternalZooKeeperConnectReturnsConnectString() {
-        // This test covers the else condition where neither KRaft nor external ZooKeeper is configured
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
-
-        String connectString = kafkaContainer.getInternalZooKeeperConnect();
-
-        // port will be 0 because we do not invoke containerIsStarting method when such port is assigned
-        assertThat(connectString, containsString("localhost:0"));
     }
 
     @Test

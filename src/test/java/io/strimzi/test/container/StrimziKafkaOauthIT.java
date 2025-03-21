@@ -23,7 +23,7 @@ import java.util.Properties;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StrimziKafkaKRaftOauthIT extends AbstractIT {
+public class StrimziKafkaOauthIT extends AbstractIT {
 
     private static final String KEYCLOAK_NETWORK_ALIAS = "keycloak";
     private static final Integer KEYCLOAK_PORT = 8080;

@@ -4,10 +4,8 @@
  */
 package io.strimzi.test.container;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import eu.rekawek.toxiproxy.Proxy;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -19,21 +17,23 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.hamcrest.CoreMatchers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.Container;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
+import org.testcontainers.utility.DockerImageName;
 
-import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -43,37 +43,37 @@ import java.util.concurrent.TimeoutException;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import org.testcontainers.utility.DockerImageName;
 
 @SuppressWarnings({"ClassFanOutComplexity", "ClassDataAbstractionCoupling"})
 public class StrimziKafkaClusterIT extends AbstractIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainerIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaClusterIT.class);
     private static final int NUMBER_OF_REPLICAS = 3;
 
     private StrimziKafkaCluster systemUnderTest;
 
     @Test
-    void testKafkaClusterStartup() throws IOException, InterruptedException {
-        setUpKafkaCluster();
+    void testKafkaClusterStartup() throws InterruptedException, ExecutionException {
+        setUpKafkaKRaftCluster();
 
-        verifyReadinessOfKafkaCluster();
+        verifyReadinessOfKRaftCluster();
     }
 
     @Test
-    void testKafkaClusterStartupWithSharedNetwork() throws IOException, InterruptedException {
+    void testKafkaClusterStartupWithSharedNetwork() throws InterruptedException, ExecutionException {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
             .withSharedNetwork()
+            .withKraft()
             .build();
         systemUnderTest.start();
 
-        verifyReadinessOfKafkaCluster();
+        verifyReadinessOfKRaftCluster();
     }
 
     @Test
     void testKafkaClusterFunctionality() throws ExecutionException, InterruptedException, TimeoutException {
-        setUpKafkaCluster();
+        setUpKafkaKRaftCluster();
 
         verifyFunctionalityOfKafkaCluster();
     }
@@ -83,6 +83,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
             .withSharedNetwork()
+            .withKraft()
             .build();
         systemUnderTest.start();
 
@@ -95,48 +96,47 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                 DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
-        try {
-            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-                .withProxyContainer(proxyContainer)
-                .build();
-
-            systemUnderTest.start();
-            List<String> bootstrapUrls = new ArrayList<>();
-            for (KafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
-                Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
-                assertThat(proxy, notNullValue());
-                bootstrapUrls.add(kafkaContainer.getBootstrapServers());
-            }
-
-            assertThat(systemUnderTest.getBootstrapServers(),
-                is(String.join(",", bootstrapUrls)));
-        } finally {
-            systemUnderTest.stop();
-        }
-    }
-
-    private void setUpKafkaCluster() {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withProxyContainer(proxyContainer)
+            .withKraft()
+            .build();
+
+        systemUnderTest.start();
+        List<String> bootstrapUrls = new ArrayList<>();
+        for (KafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
+            Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
+            assertThat(proxy, notNullValue());
+            bootstrapUrls.add(kafkaContainer.getBootstrapServers());
+        }
+
+        assertThat(systemUnderTest.getBootstrapServers(),
+            is(String.join(",", bootstrapUrls)));
+    }
+
+    private void setUpKafkaKRaftCluster() {
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withKraft()
             .build();
         systemUnderTest.start();
     }
 
-    private void verifyReadinessOfKafkaCluster() throws IOException, InterruptedException {
-        // exercise (fetch the data)
-        final Container.ExecResult result = this.systemUnderTest.getZookeeper().execInContainer(
-            "sh", "-c",
-            "bin/zookeeper-shell.sh zookeeper:" + StrimziZookeeperContainer.ZOOKEEPER_PORT + " ls /brokers/ids | tail -n 1"
-        );
+    private void verifyReadinessOfKRaftCluster() throws InterruptedException, ExecutionException {
+        try (Admin adminClient = AdminClient.create(ImmutableMap.of(
+            AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()))) {
+            // Check broker availability
+            Collection<Node> brokers = adminClient.describeCluster().nodes().get();
+            assertThat(brokers, notNullValue());
+            // Check if we have 3 brokers
+            assertThat(brokers.size(), CoreMatchers.equalTo(3));
 
-        final String brokers = result.getStdout();
-        // verify that all kafka brokers are bind to zookeeper
-        assertThat(brokers, notNullValue());
-        // three brokers
-        assertThat(brokers, CoreMatchers.containsString("[0, 1, 2]"));
+            // Optionally check controller status
+            Node controller = adminClient.describeCluster().controller().get();
+            assertThat(controller, notNullValue());
 
-        LOGGER.info("Brokers are {}", systemUnderTest.getBootstrapServers());
+            LOGGER.info("Brokers are {}", systemUnderTest.getBootstrapServers());
+        }
     }
 
     private void verifyFunctionalityOfKafkaCluster() throws ExecutionException, InterruptedException, TimeoutException {
@@ -196,9 +196,9 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     @AfterEach
-    void tearDown() {
-        if (systemUnderTest != null) {
-            systemUnderTest.stop();
+    void afterEach() {
+        if (this.systemUnderTest != null) {
+            this.systemUnderTest.stop();
         }
     }
 }
