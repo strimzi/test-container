@@ -27,10 +27,8 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StrimziKafkaContainerTest {
 
@@ -97,8 +95,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testUnsupportedVersionThrowsException() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withKafkaVersion("2.8.2")
-            .withKraft();
+            .withKafkaVersion("2.8.2");
 
         // "Specified Kafka version 2.8.2 is not supported ."
         assertThrows(UnknownKafkaVersionException.class, kafkaContainer::doStart);
@@ -168,20 +165,6 @@ class StrimziKafkaContainerTest {
     void testWithNodeIdReturnsSelf() {
         StrimziKafkaContainer result = kafkaContainer.withNodeId(1);
         assertSame(kafkaContainer, result, "withNodeId() should return the same instance for method chaining.");
-    }
-
-    @Test
-    void testHasKraftOrExternalZooKeeperConfiguredReturnsFalseWhenNeitherConfigured() {
-        kafkaContainer = new StrimziKafkaContainer();
-        assertThat("Expected false when neither KRaft nor external ZooKeeper is configured.",
-            kafkaContainer.hasKraftOrExternalZooKeeperConfigured(), CoreMatchers.is(false));
-    }
-
-    @Test
-    void testHasKraftOrExternalZooKeeperConfiguredReturnsTrueWhenKraftEnabled() {
-        kafkaContainer.withKraft();
-        assertThat("Expected true when KRaft is enabled.",
-            kafkaContainer.hasKraftOrExternalZooKeeperConfigured(), CoreMatchers.is(true));
     }
 
     @Test
@@ -343,7 +326,6 @@ class StrimziKafkaContainerTest {
         kafkaContainer
             .withBrokerId(1)
             .withNodeId(1)
-            .withKraft()
             .withAuthenticationType(AuthenticationType.NONE);
 
         Properties properties = kafkaContainer.buildDefaultServerProperties(listeners, advertisedListeners);
@@ -386,7 +368,6 @@ class StrimziKafkaContainerTest {
         kafkaContainer
             .withBrokerId(1)
             .withNodeId(1)
-            .withKraft()
             .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
             // OAuth is not enabled, no OAuth config is provided
 
@@ -409,7 +390,6 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withSaslUsername("admin")
             .withSaslPassword("password")
-            .withKraft()
             .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username")
             .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN);
 
@@ -462,7 +442,6 @@ class StrimziKafkaContainerTest {
         kafkaContainer
             .withBrokerId(1)
             .withNodeId(1)
-            .withKraft()
             .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username")
             .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
 
@@ -557,21 +536,6 @@ class StrimziKafkaContainerTest {
             assertThat(uuid, CoreMatchers.not(CoreMatchers.equalTo(metadataTopicIdInternal)));
             assertThat(uuid, CoreMatchers.not(CoreMatchers.equalTo(zeroIdImpactInternal)));
         }
-    }
-
-    @Test
-    void testHasKraftOrExternalZooKeeperConfiguredWithKraft() {
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withKraft();
-
-        assertTrue(kafkaContainer.hasKraftOrExternalZooKeeperConfigured());
-    }
-
-    @Test
-    void testHasKraftOrExternalZooKeeperConfiguredNeitherSet() {
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
-
-        assertFalse(kafkaContainer.hasKraftOrExternalZooKeeperConfigured());
     }
 
     @Test

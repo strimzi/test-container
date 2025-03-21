@@ -51,7 +51,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     void testStartContainerWithEmptyConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
         systemUnderTest = new StrimziKafkaContainer(imageName)
             .withBrokerId(1)
-            .withKraft()
             .waitForRunning();
 
         systemUnderTest.start();
@@ -79,7 +78,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
         systemUnderTest = new StrimziKafkaContainer(imageName)
             .withBrokerId(1)
-            .withKraft()
             .withKafkaConfigurationMap(kafkaConfiguration)
             .waitForRunning();
 
@@ -102,7 +100,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest = new StrimziKafkaContainer()
             .withKafkaVersion("2.8.2")
             .withBrokerId(1)
-            .withKraft()
             .waitForRunning();
 
         assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
@@ -114,7 +111,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         systemUnderTest = new StrimziKafkaContainer(imageName)
                 .withNodeId(1)
                 .withBrokerId(2)
-                .withKraft()
                 .waitForRunning();
         ContainerLaunchException exception = assertThrows(ContainerLaunchException.class,
             () -> systemUnderTest.start());
@@ -131,7 +127,6 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     void testWithKafkaLog() {
         systemUnderTest = new StrimziKafkaContainer()
             .waitForRunning()
-            .withKraft()
             .withKafkaLog(Level.DEBUG);
         systemUnderTest.start();
 

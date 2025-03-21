@@ -64,7 +64,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
             .withSharedNetwork()
-            .withKraft()
             .build();
         systemUnderTest.start();
 
@@ -83,7 +82,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
             .withSharedNetwork()
-            .withKraft()
             .build();
         systemUnderTest.start();
 
@@ -99,7 +97,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
             .withProxyContainer(proxyContainer)
-            .withKraft()
             .build();
 
         systemUnderTest.start();
@@ -117,7 +114,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     private void setUpKafkaKRaftCluster() {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-            .withKraft()
             .build();
         systemUnderTest.start();
     }

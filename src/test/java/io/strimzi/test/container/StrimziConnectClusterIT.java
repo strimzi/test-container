@@ -53,7 +53,6 @@ public class StrimziConnectClusterIT {
         kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withSharedNetwork()
                 .withNumberOfBrokers(1)
-                .withKraft()
                 .build();
         kafkaCluster.start();
     }

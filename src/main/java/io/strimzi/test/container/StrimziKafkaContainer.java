@@ -208,11 +208,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     @DoNotMutate
     public StrimziKafkaContainer waitForRunning() {
-        if (this.useKraft) {
-            super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
-        } else {
-            super.waitingFor(Wait.forLogMessage(".*Recorded new.*controller, from now on will use [node|broker].*", 1));
-        }
+        super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         return this;
     }
 
@@ -230,10 +226,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.nodeId = this.brokerId;
         }
 
-        if (this.useKraft) {
-            if (this.brokerId != this.nodeId) {
-                throw new IllegalStateException("`broker.id` and `node.id` must have the same value!");
-            }
+        if (this.brokerId != this.nodeId) {
+            throw new IllegalStateException("`broker.id` and `node.id` must have the same value!");
         }
 
         final String[] listenersConfig = this.buildListenersConfig(containerInfo);
@@ -243,11 +237,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, this.kafkaConfigurationMap);
 
         // copy override file to the container
-        if (this.useKraft) {
-            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
-        } else {
-            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/server.properties");
-        }
+        copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
 
         String command = "#!/bin/bash \n";
 
@@ -270,12 +260,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
                 STARTER_SCRIPT
         );
-    }
-
-    @Override
-    @DoNotMutate
-    public boolean hasKraftOrExternalZooKeeperConfigured() {
-        return this.useKraft;
     }
 
     protected String extractListenerName(String bootstrapServers) {
@@ -339,19 +323,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             portNumber--;
         }
 
-        if (this.useKraft) {
-            final String controllerListenerName = "CONTROLLER";
-            final int controllerPort = 9094;
-            // adding Controller listener for Kraft mode
-            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
-            advertisedListeners.append(",")
-                .append(controllerListenerName)
-                .append("://")
-                .append(NETWORK_ALIAS_PREFIX + this.brokerId)
-                .append(":")
-                .append(controllerPort);
-            this.listenerNames.add(controllerListenerName);
-        }
+        final String controllerListenerName = "CONTROLLER";
+        final int controllerPort = 9094;
+        // adding Controller listener for Kraft mode
+        kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
+        advertisedListeners.append(",")
+            .append(controllerListenerName)
+            .append("://")
+            .append(NETWORK_ALIAS_PREFIX + this.brokerId)
+            .append(":")
+            .append(controllerPort);
+        this.listenerNames.add(controllerListenerName);
 
         LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
@@ -609,18 +591,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withKafkaVersion(final String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
-        return self();
-    }
-
-    /**
-     * Fluent method, which sets {@code useKraft}.
-     * <p>
-     * Flag to signal if we deploy Kafka with ZooKeeper or not.
-     *
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withKraft() {
-        this.useKraft = true;
         return self();
     }
 

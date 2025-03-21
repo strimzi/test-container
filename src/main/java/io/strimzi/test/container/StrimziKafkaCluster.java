@@ -80,10 +80,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.replication.factor", String.valueOf(internalTopicReplicationFactor));
         defaultKafkaConfigurationForMultiNode.put("transaction.state.log.min.isr", String.valueOf(internalTopicReplicationFactor));
 
-        if (this.isKraftKafkaCluster()) {
-            // we have to configure quorum voters but also we simplify process because we use network aliases (i.e., broker-<id>)
-            this.configureQuorumVoters(additionalKafkaConfiguration);
-        }
+        // we have to configure quorum voters but also we simplify process because we use network aliases (i.e., broker-<id>)
+        this.configureQuorumVoters(additionalKafkaConfiguration);
 
         if (additionalKafkaConfiguration != null) {
             defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
@@ -101,8 +99,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    // if KRaft we need to enable it
-                    .withKraft()
                     // One must set `node.id` to the same value as `broker.id` if we use KRaft mode
                     .withNodeId(brokerId)
                     // pass shared `cluster.id` to each broker
@@ -218,19 +214,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         /**
-         * Enables KRaft mode for the Kafka cluster.
-         * <p>
-         * KRaft mode allows Kafka to operate without ZooKeeper.
-         * </p>
-         *
-         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
-         */
-        public StrimziKafkaClusterBuilder withKraft() {
-            this.enableKRaft = true;
-            return this;
-        }
-
-        /**
          * Builds and returns a {@code StrimziKafkaCluster} instance based on the provided configurations.
          *
          * @return a new instance of {@code StrimziKafkaCluster}
@@ -263,35 +246,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     @Override
-    @DoNotMutate
-    public boolean hasKraftOrExternalZooKeeperConfigured() {
-        KafkaContainer broker0 = brokers.iterator().next();
-        return broker0.hasKraftOrExternalZooKeeperConfigured();
-    }
-
-    @Override
     public String getBootstrapServers() {
         return brokers.stream()
             .map(KafkaContainer::getBootstrapServers)
             .collect(Collectors.joining(","));
-    }
-
-    /**
-     * Checks if the Kafka cluster is based on ZooKeeper.
-     *
-     * @return {@code true} if ZooKeeper is used; {@code false} if KRaft mode is enabled
-     */
-    public boolean isZooKeeperBasedKafkaCluster() {
-        return !this.enableKraft;
-    }
-
-    /**
-     * Checks if the Kafka cluster is running in KRaft mode.
-     *
-     * @return {@code true} if KRaft mode is enabled; {@code false} otherwise
-     */
-    public boolean isKraftKafkaCluster() {
-        return this.enableKraft;
     }
 
     /* test */ int getInternalTopicReplicationFactor() {

@@ -16,13 +16,6 @@ import org.testcontainers.lifecycle.Startable;
  */
 public interface KafkaContainer extends Startable {
     /**
-     * Check if the cluster is running in KRaft mode or it is using an external ZK.
-     *
-     * @return true only in KRaft mode or when using an external ZK
-     */
-    boolean hasKraftOrExternalZooKeeperConfigured();
-
-    /**
      * Get the Kafka cluster bootstrap servers.
      *
      * @return bootstrap servers

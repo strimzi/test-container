@@ -51,7 +51,6 @@ public class StrimziKafkaOauthIT extends AbstractIT {
                 .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
                 .withSaslUsername("kafka-broker")
                 .withSaslPassword("kafka-broker-secret")
-                .withKraft()
                 .waitForRunning();
             this.systemUnderTest.start();
 
@@ -102,7 +101,6 @@ public class StrimziKafkaOauthIT extends AbstractIT {
                 .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
                 .withSaslUsername("kafka-broker")
                 .withSaslPassword("kafka-broker-secret")
-                .withKraft()
                 .waitForRunning();
             this.systemUnderTest.start();
 
@@ -188,7 +186,6 @@ public class StrimziKafkaOauthIT extends AbstractIT {
                     keycloakAuthUri,
                     "preferred_username")
                 .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
-                .withKraft()
                 .withNetwork(Network.SHARED)
                 .waitForRunning();
             this.systemUnderTest.start();
