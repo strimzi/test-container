@@ -37,8 +37,4 @@ public class AbstractIT {
         }
         return parameters.stream();
     }
-
-    protected boolean isLessThanKafka400(final String kafkaVersion) {
-        return KafkaVersionService.KafkaVersion.compareVersions(kafkaVersion, "4.0.0") == -1;
-    }
 }
