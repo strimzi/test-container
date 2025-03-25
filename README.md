@@ -1,6 +1,10 @@
+[![Build Status](https://dev.azure.com/cncf/strimzi/_apis/build/status/test-container?branchName=main)](https://dev.azure.com/cncf/strimzi/_build/latest?definitionId=43&branchName=main)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Twitter Follow](https://img.shields.io/twitter/follow/strimziio.svg?style=social&label=Follow&style=for-the-badge)](https://twitter.com/strimziio)
-
+[![GitHub release](https://img.shields.io/github/release/strimzi/test-container.svg)](https://github.com/strimzi/test-container/releases/latest)
+[![Maven Central](https://img.shields.io/maven-central/v/io.strimzi/strimzi-test-container)](https://search.maven.org/artifact/io.strimzi/strimzi-test-container)
+[![Pull Requests](https://img.shields.io/github/issues-pr/strimzi/test-container)](https://github.com/strimzi/test-container/pulls)
+[![Issues](https://img.shields.io/github/issues/strimzi/test-container)](https://github.com/strimzi/test-container/issues)
+[![Twitter Follow](https://img.shields.io/twitter/follow/strimziio?style=social)](https://twitter.com/strimziio)
 # Test container repository
 
 The test container repository primarily relates to developing and maintaining test container code using an [Apache Kafka®](https://kafka.apache.org) image from the [strimzi/test-container-images](https://github.com/strimzi/test-container-images) repository.
