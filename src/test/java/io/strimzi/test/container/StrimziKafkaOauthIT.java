@@ -23,7 +23,7 @@ import java.util.Properties;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class StrimziKafkaKRaftOauthIT extends AbstractIT {
+public class StrimziKafkaOauthIT extends AbstractIT {
 
     private static final String KEYCLOAK_NETWORK_ALIAS = "keycloak";
     private static final Integer KEYCLOAK_PORT = 8080;
@@ -51,7 +51,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                 .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
                 .withSaslUsername("kafka-broker")
                 .withSaslPassword("kafka-broker-secret")
-                .withKraft()
                 .waitForRunning();
             this.systemUnderTest.start();
 
@@ -102,7 +101,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                 .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
                 .withSaslUsername("kafka-broker")
                 .withSaslPassword("kafka-broker-secret")
-                .withKraft()
                 .waitForRunning();
             this.systemUnderTest.start();
 
@@ -188,7 +186,6 @@ public class StrimziKafkaKRaftOauthIT extends AbstractIT {
                     keycloakAuthUri,
                     "preferred_username")
                 .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
-                .withKraft()
                 .withNetwork(Network.SHARED)
                 .waitForRunning();
             this.systemUnderTest.start();

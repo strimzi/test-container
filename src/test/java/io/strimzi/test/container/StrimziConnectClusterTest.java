@@ -96,7 +96,7 @@ public class StrimziConnectClusterTest {
                         .build())
                 .withNumberOfWorkers(2)
                 .withGroupId(GROUP_ID)
-                .withKafkaVersion("3.8.1")
+                .withKafkaVersion("4.0.0")
                 .withAdditionalConnectConfiguration(Map.of("plugin.path", "/tmp"))
                 .withoutFileConnectors()
                 .build();

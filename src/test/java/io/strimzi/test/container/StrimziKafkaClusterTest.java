@@ -93,11 +93,11 @@ public class StrimziKafkaClusterTest {
         assertThat(proxyContainer.getNetwork(), CoreMatchers.nullValue());
 
         StrimziKafkaCluster cluster =  new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(3)
-                .withInternalTopicReplicationFactor(3)
-                .withProxyContainer(proxyContainer)
-                .withSharedNetwork()
-                .build();
+            .withNumberOfBrokers(3)
+            .withInternalTopicReplicationFactor(3)
+            .withProxyContainer(proxyContainer)
+            .withSharedNetwork()
+            .build();
 
         System.out.println(proxyContainer.getNetwork());
 
@@ -228,27 +228,6 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testZooKeeperBasedKafkaClusterSetup() {
-        // ZooKeeper-based cluster
-        StrimziKafkaCluster zookeeperCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(3)
-            .build();
-
-        assertThat(zookeeperCluster.isZooKeeperBasedKafkaCluster(), CoreMatchers.is(true));
-        assertThat(zookeeperCluster.getZookeeper(), CoreMatchers.is(CoreMatchers.notNullValue()));
-
-        // KRaft-based cluster
-        StrimziKafkaCluster kraftCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(3)
-            .withKraft()
-            .build();
-
-        assertThat(kraftCluster.isZooKeeperBasedKafkaCluster(), CoreMatchers.is(false));
-        assertThat(kraftCluster.getZookeeper(), CoreMatchers.is(CoreMatchers.nullValue()));
-    }
-
-
-    @Test
     void testAdditionalKafkaConfigurationHandling() {
         // Null additional config
         StrimziKafkaCluster clusterWithNullConfig = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
@@ -257,7 +236,7 @@ public class StrimziKafkaClusterTest {
             .withAdditionalKafkaConfiguration(null)
             .build();
 
-        assertThat(clusterWithNullConfig.getAdditionalKafkaConfiguration().isEmpty(), CoreMatchers.is(true)); // should be empty
+        assertThat(clusterWithNullConfig.getAdditionalKafkaConfiguration(), Matchers.hasEntry("controller.quorum.voters", "0@broker-0:9094,1@broker-1:9094,2@broker-2:9094"));
 
         // Non-null additional config
         Map<String, String> additionalConfig = new HashMap<>();
@@ -270,26 +249,6 @@ public class StrimziKafkaClusterTest {
             .build();
 
         assertThat(clusterWithConfig.getAdditionalKafkaConfiguration(), Matchers.hasEntry("log.retention.ms", "60000"));
-    }
-
-    @Test
-    void testClusterModeFlags() {
-        // ZooKeeper-based cluster
-        StrimziKafkaCluster zookeeperCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(1)
-            .build();
-
-        assertThat(zookeeperCluster.isZooKeeperBasedKafkaCluster(), CoreMatchers.is(true));
-        assertThat(zookeeperCluster.isKraftKafkaCluster(), CoreMatchers.is(false));
-
-        // KRaft-based cluster
-        StrimziKafkaCluster kraftCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(1)
-            .withKraft()
-            .build();
-
-        assertThat(kraftCluster.isZooKeeperBasedKafkaCluster(), CoreMatchers.is(false));
-        assertThat(kraftCluster.isKraftKafkaCluster(), CoreMatchers.is(true));
     }
 
     @Test
@@ -317,7 +276,6 @@ public class StrimziKafkaClusterTest {
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
-            .withKraft()
             .withAdditionalKafkaConfiguration(additionalConfig)
             .build();
 
@@ -331,7 +289,6 @@ public class StrimziKafkaClusterTest {
     void testQuorumVotersConfigurationIsNotEmpty() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
-            .withKraft()
             .build();
 
         String quorumVoters = cluster.getAdditionalKafkaConfiguration().get("controller.quorum.voters");
@@ -351,7 +308,10 @@ public class StrimziKafkaClusterTest {
             .withAdditionalKafkaConfiguration(additionalConfig)
             .build();
 
-        assertThat(cluster.getAdditionalKafkaConfiguration(), CoreMatchers.is(additionalConfig));
+        assertThat(cluster.getAdditionalKafkaConfiguration(), CoreMatchers.allOf(
+            Matchers.hasEntry("log.retention.ms", "60000"),
+            Matchers.hasEntry("auto.create.topics.enable", "false")
+        ));
     }
 
     @Test

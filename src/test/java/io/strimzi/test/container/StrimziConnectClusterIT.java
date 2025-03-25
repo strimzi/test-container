@@ -53,7 +53,6 @@ public class StrimziConnectClusterIT {
         kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withSharedNetwork()
                 .withNumberOfBrokers(1)
-                .withKraft()
                 .build();
         kafkaCluster.start();
     }
@@ -107,7 +106,7 @@ public class StrimziConnectClusterIT {
 
     @Test
     public void testKafkaVersion() throws Exception {
-        String version = "3.8.1";
+        String version = "3.9.0";
         connectCluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
                 .withGroupId("my-cluster")
                 .withKafkaCluster(kafkaCluster)

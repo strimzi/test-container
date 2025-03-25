@@ -38,15 +38,13 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
  * given version. There are two options for how to use it. The first one is using an embedded zookeeper which will run
- * inside Kafka container. The Another option is to use {@link StrimziZookeeperContainer} as an external Zookeeper.
- * The additional configuration for Kafka broker can be injected via constructor. This container is a good fit for
+ * inside Kafka container.
  * integration testing but for more hardcore testing we suggest using {@link StrimziKafkaCluster}.
  * <br><br>
  * Optionally, you can configure a {@code proxyContainer} to simulate network conditions (i.e. connection cut, latency).
@@ -84,9 +82,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     // instance attributes
     private int kafkaExposedPort;
-    private int internalZookeeperExposedPort;
     private Map<String, String> kafkaConfigurationMap;
-    private String externalZookeeperConnect;
     private int brokerId;
     private Integer nodeId;
     private String kafkaVersion;
@@ -163,13 +159,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
 
-        // exposing Kafka and port from the container
-        if (!this.hasKraftOrExternalZooKeeperConfigured()) {
-            // expose internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
-            super.addExposedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
-        }
         super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
-        // we need it for the startZookeeper(); and startKafka(); to run container before...
 
         if (this.isOAuthEnabled()) {
             // Set OAuth environment variables (using properties does not propagate to System properties)
@@ -218,11 +208,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     @DoNotMutate
     public StrimziKafkaContainer waitForRunning() {
-        if (this.useKraft) {
-            super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
-        } else {
-            super.waitingFor(Wait.forLogMessage(".*Recorded new.*controller, from now on will use [node|broker].*", 1));
-        }
+        super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         return this;
     }
 
@@ -233,11 +219,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
 
-        // retrieve internal ZooKeeper internal port iff external ZooKeeper or KRaft is not specified/enabled
-        if (!this.hasKraftOrExternalZooKeeperConfigured()) {
-            this.internalZookeeperExposedPort = getMappedPort(StrimziZookeeperContainer.ZOOKEEPER_PORT);
-        }
-
         LOGGER.info("Mapped port: {}", kafkaExposedPort);
 
         if (this.nodeId == null) {
@@ -245,10 +226,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.nodeId = this.brokerId;
         }
 
-        if (this.useKraft) {
-            if (this.brokerId != this.nodeId) {
-                throw new IllegalStateException("`broker.id` and `node.id` must have the same value!");
-            }
+        if (this.brokerId != this.nodeId) {
+            throw new IllegalStateException("`broker.id` and `node.id` must have the same value!");
         }
 
         final String[] listenersConfig = this.buildListenersConfig(containerInfo);
@@ -258,34 +237,21 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final String serverPropertiesWithOverride = this.overrideProperties(defaultServerProperties, this.kafkaConfigurationMap);
 
         // copy override file to the container
-        if (this.useKraft) {
-            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
-        } else {
-            copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/server.properties");
-        }
+        copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
 
         String command = "#!/bin/bash \n";
 
-        if (!this.useKraft) {
-            if (this.externalZookeeperConnect != null) {
-                withEnv("KAFKA_ZOOKEEPER_CONNECT", this.externalZookeeperConnect);
-            } else {
-                command += "bin/zookeeper-server-start.sh config/zookeeper.properties &\n";
-            }
-            command += "bin/kafka-server-start.sh config/server.properties";
-        } else {
-            if (this.clusterId == null) {
-                this.clusterId = this.randomUuid();
-                LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
-            }
-
-            command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
-            command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
+        if (this.clusterId == null) {
+            this.clusterId = this.randomUuid();
+            LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
         }
+
+        command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
+        command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
 
         Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
                 properties,
-                this.useKraft ? "/opt/kafka/config/kraft/server.properties" : "/opt/kafka/config/server.properties"
+                "/opt/kafka/config/kraft/server.properties"
         ));
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
@@ -294,12 +260,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
                 STARTER_SCRIPT
         );
-    }
-
-    @Override
-    @DoNotMutate
-    public boolean hasKraftOrExternalZooKeeperConfigured() {
-        return this.useKraft || this.externalZookeeperConnect != null;
     }
 
     protected String extractListenerName(String bootstrapServers) {
@@ -363,31 +323,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             portNumber--;
         }
 
-        if (this.useKraft) {
-            final String controllerListenerName = "CONTROLLER";
-            final int controllerPort = 9094;
-            // adding Controller listener for Kraft mode
-            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
-            try {
-                if ((this.kafkaVersion != null && KafkaVersionService.KafkaVersion.compareVersions(this.kafkaVersion, "3.9.0") >= 0) ||
-                    KafkaVersionService.KafkaVersion.compareVersions(KafkaVersionService.KafkaVersion.extractVersionFromImageName(this.imageNameProvider.get()), "3.9.0") >= 0) {
-                    // We add CONTROLLER listener to advertised.listeners only when Kafka version is >= `3.9.0`, older version failed with:
-                    // Exception in thread "main" java.lang.IllegalArgumentException: requirement failed:
-                    //   The advertised.listeners config must not contain KRaft controller listeners from controller.listener.names when
-                    //   process.roles contains the broker role because Kafka clients that send requests via advertised listeners do not
-                    //   send requests to KRaft controllers -- they only send requests to KRaft brokers.
-                    advertisedListeners.append(",")
-                        .append(controllerListenerName)
-                        .append("://")
-                        .append(NETWORK_ALIAS_PREFIX + this.brokerId)
-                        .append(":")
-                        .append(controllerPort);
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-            this.listenerNames.add(controllerListenerName);
-        }
+        final String controllerListenerName = "CONTROLLER";
+        final int controllerPort = 9094;
+        // adding Controller listener for Kraft mode
+        kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
+        advertisedListeners.append(",")
+            .append(controllerListenerName)
+            .append("://")
+            .append(NETWORK_ALIAS_PREFIX + this.brokerId)
+            .append(":")
+            .append(controllerPort);
+        this.listenerNames.add(controllerListenerName);
 
         LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
@@ -451,42 +397,33 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("log.retention.check.interval.ms", "300000");
 
         // Add KRaft-specific settings if useKraft is enabled
-        if (this.useKraft) {
-            properties.setProperty("process.roles", "broker,controller");
-            properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
-            properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
-            properties.setProperty("controller.listener.names", "CONTROLLER");
+        properties.setProperty("process.roles", "broker,controller");
+        properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
+        properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
+        properties.setProperty("controller.listener.names", "CONTROLLER");
 
-            if (this.authenticationType != AuthenticationType.NONE) {
-                switch (this.authenticationType) {
-                    case OAUTH_OVER_PLAIN:
-                        if (this.isOAuthEnabled()) {
-                            configureOAuthOverPlain(properties);
-                        } else {
-                            throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
-                        }
-                        break;
-                    case OAUTH_BEARER:
-                        if (this.isOAuthEnabled()) {
-                            configureOAuthBearer(properties);
-                        } else {
-                            throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
-                        }
-                        break;
-                    case SCRAM_SHA_256:
-                    case SCRAM_SHA_512:
-                    case GSSAPI:
-                    default:
-                        throw new IllegalStateException("Unsupported authentication type: " + this.authenticationType);
-                }
+        if (this.authenticationType != AuthenticationType.NONE) {
+            switch (this.authenticationType) {
+                case OAUTH_OVER_PLAIN:
+                    if (this.isOAuthEnabled()) {
+                        configureOAuthOverPlain(properties);
+                    } else {
+                        throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
+                    }
+                    break;
+                case OAUTH_BEARER:
+                    if (this.isOAuthEnabled()) {
+                        configureOAuthBearer(properties);
+                    } else {
+                        throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
+                    }
+                    break;
+                case SCRAM_SHA_256:
+                case SCRAM_SHA_512:
+                case GSSAPI:
+                default:
+                    throw new IllegalStateException("Unsupported authentication type: " + this.authenticationType);
             }
-        } else if (this.externalZookeeperConnect != null) {
-            LOGGER.info("Using external ZooKeeper 'zookeeper.connect={}'.", this.externalZookeeperConnect);
-            properties.put("zookeeper.connect", this.externalZookeeperConnect);
-        } else {
-            // using internal ZooKeeper
-            LOGGER.info("Using internal ZooKeeper 'zookeeper.connect={}.'", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
-            properties.put("zookeeper.connect", "localhost:" + StrimziZookeeperContainer.ZOOKEEPER_PORT);
         }
 
         return properties;
@@ -582,20 +519,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Retrieves the internal ZooKeeper connection string.
-     *
-     * @return the internal ZooKeeper connection string
-     * @throws IllegalStateException if KRaft mode or external ZooKeeper is configured
-     */
-    @Override
-    public String getInternalZooKeeperConnect() {
-        if (this.hasKraftOrExternalZooKeeperConfigured()) {
-            throw new IllegalStateException("Connect string is not available when using KRaft or external ZooKeeper");
-        }
-        return getHost() + ":" + this.internalZookeeperExposedPort;
-    }
-
-    /**
      * Retrieves the bootstrap servers URL for Kafka clients.
      *
      * @return the bootstrap servers URL
@@ -639,22 +562,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets {@code externalZookeeperConnect}.
-     * <p>
-     * If the broker was created using Kraft, this method throws an {@link IllegalArgumentException}.
-     *
-     * @param externalZookeeperConnect connect string
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withExternalZookeeperConnect(final String externalZookeeperConnect) {
-        if (this.useKraft) {
-            throw new IllegalStateException("Cannot configure an external Zookeeper and use Kraft at the same time");
-        }
-        this.externalZookeeperConnect = externalZookeeperConnect;
-        return self();
-    }
-
-    /**
      * Fluent method, which sets {@code brokerId}.
      *
      * @param brokerId broker id
@@ -684,18 +591,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     public StrimziKafkaContainer withKafkaVersion(final String kafkaVersion) {
         this.kafkaVersion = kafkaVersion;
-        return self();
-    }
-
-    /**
-     * Fluent method, which sets {@code useKraft}.
-     * <p>
-     * Flag to signal if we deploy Kafka with ZooKeeper or not.
-     *
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withKraft() {
-        this.useKraft = true;
         return self();
     }
 
@@ -832,9 +727,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /**
      * Configures the Kafka container to use the specified logging level for Kafka logs
-     * and the io.strimzi logger.
+     * and the {@code io.strimzi} logger.
      * <p>
-     * This method generates a custom <code>log4j.properties</code> file with the desired logging level
+     * This method generates a custom <code>log4j2.yaml</code> file with the desired logging level
      * and copies it into the Kafka container. By setting the logging level, you can control the verbosity
      * of Kafka's log output, which is useful for debugging or monitoring purposes.
      * </p>
@@ -850,16 +745,30 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return the current instance of {@code StrimziKafkaContainer} for method chaining
      */
     public StrimziKafkaContainer withKafkaLog(Level level) {
-        String log4jConfig = "log4j.rootLogger=" + level.name() + ", stdout\n" +
-            "log4j.logger.io.strimzi=" + level.name() + "\n" +
-            "log4j.appender.stdout=org.apache.log4j.ConsoleAppender\n" +
-            "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout\n" +
-            "log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n\n";
+        final String log4j2Yaml =
+            "Configuration:\n" +
+                "  Properties:\n" +
+                "    Property:\n" +
+                "      - name: logPattern\n" +
+                "        value: \"[%d] %p %m (%c)%n\"\n" +
+                "  Appenders:\n" +
+                "    Console:\n" +
+                "      name: STDOUT\n" +
+                "      PatternLayout:\n" +
+                "        pattern: \"${logPattern}\"\n" +
+                "  Loggers:\n" +
+                "    Root:\n" +
+                "      level: " + level.name() + "\n" +
+                "      AppenderRef:\n" +
+                "        - ref: STDOUT\n" +
+                "    Logger:\n" +
+                "      - name: io.strimzi\n" +
+                "        level: " + level.name() + "\n";
 
-        // Copy the custom log4j.properties into the container
+        // Copy the custom log4j2.properties into the container
         this.withCopyToContainer(
-            Transferable.of(log4jConfig.getBytes(StandardCharsets.UTF_8)),
-            "/opt/kafka/config/log4j.properties"
+            Transferable.of(log4j2Yaml.getBytes(StandardCharsets.UTF_8)),
+            "/opt/kafka/config/log4j2.yaml"
         );
 
         return self();
