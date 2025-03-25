@@ -1,6 +1,6 @@
 {
   "kafkaVersions": {
-    "3.9.0": "quay.io/strimzi-test-container/test-container:latest-kafka-3.9.0",
-    "4.0.0": "quay.io/strimzi-test-container/test-container:latest-kafka-4.0.0"
+    "3.9.0": "quay.io/strimzi-test-container/test-container:0.110.0-rc1-kafka-3.9.0",
+    "4.0.0": "quay.io/strimzi-test-container/test-container:0.110.0-rc1-kafka-4.0.0"
   }
 }
