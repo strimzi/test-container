@@ -86,7 +86,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private int brokerId;
     private Integer nodeId;
     private String kafkaVersion;
-    private boolean useKraft;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
@@ -396,7 +395,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("log.retention.hours", "168");
         properties.setProperty("log.retention.check.interval.ms", "300000");
 
-        // Add KRaft-specific settings if useKraft is enabled
+        // Add KRaft-specific settings
         properties.setProperty("process.roles", "broker,controller");
         properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
         properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
@@ -617,8 +616,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withServerProperties(final MountableFile serverPropertiesFile) {
         /*
          * Save a reference to the file and delay copying to the container until the container
-         * is starting. This allows for `useKraft` to be set either before or after this method
-         * is called.
+         * is starting.
          */
         this.serverPropertiesFile = serverPropertiesFile;
         return self();
