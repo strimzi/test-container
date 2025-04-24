@@ -137,7 +137,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
         private String kafkaVersion;
-        private boolean enableKRaft;
         private String clusterId;
 
         /**
