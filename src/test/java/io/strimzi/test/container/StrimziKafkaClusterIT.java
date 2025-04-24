@@ -25,10 +25,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Container;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,6 +46,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -109,6 +118,38 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         assertThat(systemUnderTest.getBootstrapServers(),
             is(String.join(",", bootstrapUrls)));
+    }
+
+    @Test
+    void testCanCopyJarAndExposePort() throws IOException, InterruptedException {
+        final Path tempJar = Files.createTempFile("dummy-plugin", ".jar");
+
+        try (JarOutputStream jarOut = new JarOutputStream(Files.newOutputStream(tempJar))) {
+            JarEntry entry = new JarEntry("com/example/Dummy.class");
+            jarOut.putNextEntry(entry);
+            jarOut.write("noop".getBytes(StandardCharsets.UTF_8)); // fake bytecode
+            jarOut.closeEntry();
+        }
+
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .build();
+
+        systemUnderTest.start();
+
+        // Inject the generated JAR into the container
+        final String containerPath = "/opt/kafka/plugins/dummy-plugin.jar";
+        for (GenericContainer<?> container : systemUnderTest.getNodes()) {
+            container.copyFileToContainer(
+                MountableFile.forHostPath(tempJar),
+                containerPath
+            );
+        }
+
+        // Verify the file was copied
+        final Container.ExecResult result = systemUnderTest.getNodes().iterator().next()
+            .execInContainer("ls", "/opt/kafka/plugins/");
+        assertThat(result.getStdout(), CoreMatchers.containsString("dummy-plugin.jar"));
     }
 
     private void setUpKafkaKRaftCluster() {

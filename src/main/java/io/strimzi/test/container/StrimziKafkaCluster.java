@@ -8,6 +8,7 @@ import com.groupcdg.pitest.annotations.DoNotMutate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.lifecycle.Startables;
@@ -49,7 +50,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     // not editable
     private final Network network;
-    private Collection<KafkaContainer> brokers;
+    private Collection<KafkaContainer> nodes;
     private final String clusterId;
 
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
@@ -88,7 +89,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         // multi-node set up
-        this.brokers = IntStream
+        this.nodes = IntStream
             .range(0, this.brokersNum)
             .mapToObj(brokerId -> {
                 LOGGER.info("Starting broker with id {}", brokerId);
@@ -228,10 +229,24 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     /**
      * Get collection of Strimzi kafka containers
+     *
+     * @deprecated use {@link #getNodes()} instead.
      * @return collection of Strimzi kafka containers
      */
+    @Deprecated
     public Collection<KafkaContainer> getBrokers() {
-        return this.brokers;
+        return this.nodes;
+    }
+
+    /**
+     * Returns the underlying GenericContainer instances for Kafka brokers.
+     *
+     * @return Collection of GenericContainer representing the brokers
+     */
+    public Collection<GenericContainer<?>> getNodes() {
+        return nodes.stream()
+            .map(node -> (GenericContainer<?>) node)
+            .collect(Collectors.toList());
     }
 
     /**
@@ -240,14 +255,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     @DoNotMutate
     public String getNetworkBootstrapServers() {
-        return brokers.stream()
+        return nodes.stream()
                 .map(broker -> ((StrimziKafkaContainer) broker).getNetworkBootstrapServers())
                 .collect(Collectors.joining(","));
     }
 
     @Override
     public String getBootstrapServers() {
-        return brokers.stream()
+        return nodes.stream()
             .map(KafkaContainer::getBootstrapServers)
             .collect(Collectors.joining(","));
     }
@@ -277,7 +292,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @Override
     @DoNotMutate
     public void start() {
-        Stream<KafkaContainer> startables = this.brokers.stream();
+        Stream<KafkaContainer> startables = this.nodes.stream();
         try {
             Startables.deepStart(startables).get(60, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -293,7 +308,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1), Duration.ofMinutes(1),
             () -> {
                 try {
-                    for (KafkaContainer kafkaContainer : this.brokers) {
+                    for (KafkaContainer kafkaContainer : this.nodes) {
                         Container.ExecResult result = ((StrimziKafkaContainer) kafkaContainer).execInContainer(
                             "bash", "-c",
                             "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
@@ -338,7 +353,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @DoNotMutate
     public void stop() {
         // stop all kafka containers in parallel
-        this.brokers.stream()
+        this.nodes.stream()
             .parallel()
             .forEach(KafkaContainer::stop);
     }
