@@ -45,7 +45,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final ToxiproxyContainer proxyContainer;
     private final boolean enableSharedNetwork;
     private final String kafkaVersion;
-    private final boolean enableKraft;
 
     // not editable
     private final Network network;
@@ -60,7 +59,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.additionalKafkaConfiguration = builder.additionalKafkaConfiguration;
         this.proxyContainer = builder.proxyContainer;
         this.kafkaVersion = builder.kafkaVersion;
-        this.enableKraft = builder.enableKRaft;
         this.clusterId = builder.clusterId;
 
         validateBrokerNum(this.brokersNum);
@@ -139,7 +137,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
         private String kafkaVersion;
-        private boolean enableKRaft;
         private String clusterId;
 
         /**
