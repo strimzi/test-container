@@ -239,9 +239,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     /**
-     * Returns the underlying GenericContainer instances for Kafka brokers.
+     * Returns the underlying GenericContainer instances for all Kafka nodes in the cluster.
+     * In the current setup, all nodes are mixed-role (i.e., each acts as both broker and controller) in KRaft mode.
      *
-     * @return Collection of GenericContainer representing the brokers
+     * @return Collection of GenericContainer representing the cluster nodes
      */
     public Collection<GenericContainer<?>> getNodes() {
         return nodes.stream()
