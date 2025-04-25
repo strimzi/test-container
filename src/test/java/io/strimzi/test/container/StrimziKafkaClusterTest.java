@@ -7,6 +7,7 @@ package io.strimzi.test.container;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
 
@@ -149,7 +150,7 @@ public class StrimziKafkaClusterTest {
             .withInternalTopicReplicationFactor(3)
             .build();
 
-        assertThat(cluster.getBrokers().size(), CoreMatchers.is(5));
+        assertThat(cluster.getNodes().size(), CoreMatchers.is(5));
         assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(3));
     }
 
@@ -161,7 +162,7 @@ public class StrimziKafkaClusterTest {
             .withInternalTopicReplicationFactor(2)
             .build();
 
-        assertThat(cluster.getBrokers().size(), CoreMatchers.is(4));
+        assertThat(cluster.getNodes().size(), CoreMatchers.is(4));
         assertThat(cluster.isSharedNetworkEnabled(), CoreMatchers.is(true));
     }
 
@@ -177,11 +178,11 @@ public class StrimziKafkaClusterTest {
             .withAdditionalKafkaConfiguration(additionalConfigs)
             .build();
 
-        assertThat(cluster.getBrokers().size(), CoreMatchers.is(3));
-        assertThat(((StrimziKafkaContainer) cluster.getBrokers().iterator().next()).getKafkaVersion(), CoreMatchers.is("3.7.1"));
+        assertThat(cluster.getNodes().size(), CoreMatchers.is(3));
+        assertThat(((StrimziKafkaContainer) cluster.getNodes().iterator().next()).getKafkaVersion(), CoreMatchers.is("3.7.1"));
         assertThat(cluster.getAdditionalKafkaConfiguration().get("log.retention.bytes"), CoreMatchers.is("10485760"));
         assertThat(
-            ((StrimziKafkaContainer) cluster.getBrokers().iterator().next())
+            ((StrimziKafkaContainer) cluster.getNodes().iterator().next())
                 .getKafkaConfigurationMap()
                 .get("log.retention.bytes"),
             CoreMatchers.is("10485760")
@@ -363,5 +364,20 @@ public class StrimziKafkaClusterTest {
         assertThat(bootstrapServers, CoreMatchers.is(CoreMatchers.not(emptyString())));
         String[] servers = bootstrapServers.split(",");
         assertThat(servers.length, CoreMatchers.is(3));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    void testGetNodesAndBrokersReturnsGenericContainers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .build();
+
+        assertThat(cluster.getBrokers().size(), CoreMatchers.is(2));
+        assertThat(cluster.getNodes().size(), CoreMatchers.is(2));
+
+        for (GenericContainer<?> container : cluster.getNodes()) {
+            assertThat(container, CoreMatchers.instanceOf(GenericContainer.class));
+        }
     }
 }
