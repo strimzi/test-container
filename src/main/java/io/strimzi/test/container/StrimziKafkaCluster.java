@@ -4,7 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import com.groupcdg.pitest.annotations.DoNotMutate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;

@@ -186,12 +186,6 @@
             <artifactId>toxiproxy-java</artifactId>
             <version>${toxiproxy.java.version}</version>
         </dependency>
-        <!-- for mutation testing       -->
-        <dependency>
-            <groupId>com.arcmutate</groupId>
-            <artifactId>pitest-annotations</artifactId>
-            <version>${pitest-annotations.version}</version>
-        </dependency>
 
         <!-- TEST DEPENDENCY -->
         <dependency>
