@@ -4,7 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import com.groupcdg.pitest.annotations.DoNotMutate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
