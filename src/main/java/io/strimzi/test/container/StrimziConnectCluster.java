@@ -53,7 +53,7 @@ public class StrimziConnectCluster {
                     .withExposedPorts(CONNECT_PORT)
                     .withEnv("LOG_DIR", "/tmp")
                     .waitForRunning()
-                    .waitingFor(Wait.forHttp("/").forStatusCode(200));
+                    .waitingFor(Wait.forHttp("/health").forStatusCode(200));
             workers.add(worker);
         }
     }
