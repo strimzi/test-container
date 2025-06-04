@@ -5,7 +5,6 @@
 package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import com.groupcdg.pitest.annotations.DoNotMutate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
