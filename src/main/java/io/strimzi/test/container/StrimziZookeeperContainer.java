@@ -5,7 +5,6 @@
 package io.strimzi.test.container;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import com.groupcdg.pitest.annotations.DoNotMutate;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
