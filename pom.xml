@@ -131,6 +131,8 @@
         <!-- FIX VULNERABILITY VERSIONS  -->
         <commons-compress.version>1.27.1</commons-compress.version>
         <commons-codec.version>1.18.0</commons-codec.version>
+        <commons-lang3.version>3.16.0</commons-lang3.version>
+        <commons-io.version>2.16.1</commons-io.version>
         <junit4.version>4.13.2</junit4.version>
 
         <!-- properties to skip surefire tests during failsafe execution -->
@@ -261,6 +263,25 @@
             <artifactId>commons-codec</artifactId>
             <version>${commons-codec.version}</version>
         </dependency>
+        <!--
+          Required by commons-compress 1.27.0+ (ArrayFill class used at runtime).
+          Without this, file copy in Testcontainers fails with NoClassDefFoundError.
+        -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        <!--
+          Used by both commons-compress and commons-codec during stream operations.
+          Included to avoid runtime surprises in environments missing commons-io.
+        -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
+        </dependency>
+
     </dependencies>
 
     <build>
