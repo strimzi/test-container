@@ -128,9 +128,6 @@
         <pit-junit-plugin.version>1.2.1</pit-junit-plugin.version>
         <pit-plugin.version>1.18.1</pit-plugin.version>
 
-        <!-- FIX VULNERABILITY VERSIONS  -->
-        <commons-compress.version>1.27.1</commons-compress.version>
-        <commons-codec.version>1.18.0</commons-codec.version>
         <junit4.version>4.13.2</junit4.version>
 
         <!-- properties to skip surefire tests during failsafe execution -->
@@ -245,22 +242,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- overriding version of commons-compress for Test container - Vulnerability -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-compress</artifactId>
-            <version>${commons-compress.version}</version>
-        </dependency>
-        <!-- address compatibility issues that arise
-        from upgrading `commons-compress`. Version 1.26.0 of `commons-compress` relies on functionalities provided
-        by `commons-codec` 1.16.1, leading to a requirement for this specific version of `commons-codec` to avoid
-        classpath conflicts and ensure runtime compatibility.
-        -->
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>${commons-codec.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
