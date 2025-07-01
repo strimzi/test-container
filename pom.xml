@@ -8,7 +8,7 @@
     <groupId>io.strimzi</groupId>
     <artifactId>strimzi-test-container</artifactId>
     <packaging>jar</packaging>
-    <version>0.111.0-rc1</version>
+    <version>0.111.0-rc2</version>
 
     <licenses>
         <license>
