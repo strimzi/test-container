@@ -141,24 +141,40 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     @Override
-    @SuppressWarnings({"NPathComplexity", "CyclomaticComplexity"})
     @DoNotMutate
     protected void doStart() {
+        // Setup proxy container if needed
         if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
             this.proxyContainer.start();
-
             // Instantiate a ToxiproxyClient if it has not been previously provided via configuration settings.
             if (toxiproxyClient == null) {
                 toxiproxyClient = new ToxiproxyClient(this.proxyContainer.getHost(), this.proxyContainer.getControlPort());
             }
         }
 
+        // Setup image name
         if (!this.imageNameProvider.isDone()) {
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
 
+        // Setup network alias
         super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
 
+        // Setup OAuth configuration
+        setupOAuthConfiguration();
+
+        // Setup logging
+        if (this.enableBrokerContainerSlf4jLogging) {
+            this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.brokerId)));
+        }
+
+        // Start the container
+        super.setCommand("sh", "-c", runStarterScript());
+        super.doStart();
+    }
+
+    @DoNotMutate
+    private void setupOAuthConfiguration() {
         if (this.isOAuthEnabled()) {
             // Set OAuth environment variables (using properties does not propagate to System properties)
             this.addEnv("OAUTH_JWKS_ENDPOINT_URI", this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/certs");
@@ -168,13 +184,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.addEnv("OAUTH_TOKEN_ENDPOINT_URI", this.oauthUri + "/realms/" + this.realm + "/protocol/openid-connect/token");
             this.addEnv("OAUTH_USERNAME_CLAIM", this.usernameClaim);
         }
-
-        if (this.enableBrokerContainerSlf4jLogging) {
-            this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.brokerId)));
-        }
-
-        super.setCommand("sh", "-c", runStarterScript());
-        super.doStart();
     }
 
     @Override
