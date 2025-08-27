@@ -285,10 +285,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
         additionalKafkaConfiguration.put("controller.quorum.voters", quorumVoters);
     }
 
-    @SuppressWarnings({"CyclomaticComplexity", "NPathComplexity"})
     @Override
     @DoNotMutate
     public void start() {
+        // Start all Kafka containers
         Stream<KafkaContainer> startables = this.nodes.stream();
         try {
             Startables.deepStart(startables).get(60, TimeUnit.SECONDS);
@@ -301,49 +301,59 @@ public class StrimziKafkaCluster implements KafkaContainer {
             throw new RuntimeException("Timed out while starting Kafka containers", e);
         }
 
-        // Readiness check for KRaft mode
+        // Wait for quorum formation
         Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1), Duration.ofMinutes(1),
-            () -> {
-                try {
-                    for (KafkaContainer kafkaContainer : this.nodes) {
-                        Container.ExecResult result = ((StrimziKafkaContainer) kafkaContainer).execInContainer(
-                            "bash", "-c",
-                            "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
-                        );
-                        String output = result.getStdout();
+            this::checkAllBrokersReady);
+    }
 
-                        LOGGER.info("Metadata quorum status from broker {}: {}", ((StrimziKafkaContainer) kafkaContainer).getBrokerId(), output);
-
-                        if (output == null || output.isEmpty()) {
-                            return false;
-                        }
-
-                        // Check if LeaderId is present and valid
-                        final Pattern leaderIdPattern = Pattern.compile("LeaderId:\\s+(\\d+)");
-                        final Matcher leaderIdMatcher = leaderIdPattern.matcher(output);
-
-                        if (!leaderIdMatcher.find()) {
-                            return false; // LeaderId not found
-                        }
-
-                        String leaderIdStr = leaderIdMatcher.group(1);
-                        try {
-                            int leaderId = Integer.parseInt(leaderIdStr);
-                            if (leaderId < 0) {
-                                return false; // Invalid LeaderId
-                            }
-                        } catch (NumberFormatException e) {
-                            return false; // LeaderId is not a valid integer
-                        }
-
-                        // If LeaderId is present and valid, we assume the broker is ready
-                    }
-                    return true; // All brokers have a valid LeaderId
-                } catch (IOException | InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Failed to execute command in Kafka container", e);
+    @DoNotMutate
+    private boolean checkAllBrokersReady() {
+        try {
+            for (KafkaContainer kafkaContainer : this.nodes) {
+                if (!isBrokerReady((StrimziKafkaContainer) kafkaContainer)) {
+                    return false;
                 }
-            });
+            }
+            return true;
+        } catch (IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Failed to execute command in Kafka container", e);
+        }
+    }
+
+    @DoNotMutate
+    private boolean isBrokerReady(StrimziKafkaContainer kafkaContainer) throws IOException, InterruptedException {
+        Container.ExecResult result = kafkaContainer.execInContainer(
+            "bash", "-c",
+            "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
+        );
+        String output = result.getStdout();
+
+        LOGGER.info("Metadata quorum status from broker {}: {}", kafkaContainer.getBrokerId(), output);
+
+        if (output == null || output.isEmpty()) {
+            return false;
+        }
+
+        return isValidLeaderIdPresent(output);
+    }
+
+    @DoNotMutate
+    private boolean isValidLeaderIdPresent(String output) {
+        final Pattern leaderIdPattern = Pattern.compile("LeaderId:\\s+(\\d+)");
+        final Matcher leaderIdMatcher = leaderIdPattern.matcher(output);
+
+        if (!leaderIdMatcher.find()) {
+            return false;
+        }
+
+        String leaderIdStr = leaderIdMatcher.group(1);
+        try {
+            int leaderId = Integer.parseInt(leaderIdStr);
+            return leaderId >= 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     @Override
