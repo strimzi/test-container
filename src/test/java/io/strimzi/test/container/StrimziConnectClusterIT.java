@@ -106,7 +106,8 @@ public class StrimziConnectClusterIT {
 
     @Test
     public void testKafkaVersion() throws Exception {
-        String version = "3.9.0";
+        // retrieve Kafka version different from latest one (if there is previous minor).
+        String version = KafkaVersionService.getInstance().previousMinor().getVersion();
         connectCluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
                 .withGroupId("my-cluster")
                 .withKafkaCluster(kafkaCluster)
