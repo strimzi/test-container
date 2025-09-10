@@ -11,13 +11,16 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StrimziKafkaClusterTest {
 
@@ -378,6 +381,154 @@ public class StrimziKafkaClusterTest {
 
         for (GenericContainer<?> container : cluster.getNodes()) {
             assertThat(container, CoreMatchers.instanceOf(GenericContainer.class));
+        }
+    }
+
+    @Test
+    void testSeparateRolesClusterQuorumVoters() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withSeparateRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        // Should only include controllers in quorum voters
+        String expectedQuorumVoters = "0@broker-0:9094,1@broker-1:9094,2@broker-2:9094";
+        assertThat(cluster.getAdditionalKafkaConfiguration().get("controller.quorum.voters"), CoreMatchers.is(expectedQuorumVoters));
+    }
+
+    @Test
+    void testSeparateRolesClusterInternalTopicReplicationFactor() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withSeparateRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        // Should use controllers count for replication factor calculation
+        assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(3));
+    }
+
+    @Test
+    void testSeparateRolesClusterWithCustomReplicationFactor() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withSeparateRoles()
+            .withNumberOfControllers(3)
+            .withInternalTopicReplicationFactor(2)
+            .build();
+
+        assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(2));
+    }
+
+    @Test
+    void testSeparateRolesValidation() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withNumberOfControllers(0)
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("controllersNum must be greater than 0"));
+    }
+
+    @Test
+    void testSeparateRolesValidationMissingControllers() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSeparateRoles()
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("When using separate roles, you must specify the number of controllers"));
+    }
+
+    @Test
+    void testMixedRolesClusterDefault() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        assertThat(cluster.isUsingSeparateRoles(), CoreMatchers.is(false));
+        assertThat(cluster.getNodes().size(), CoreMatchers.is(3));
+        assertThat(cluster.getBrokers().size(), CoreMatchers.is(3)); // All nodes are brokers in mixed mode
+        assertThat(cluster.getControllerNodes().size(), CoreMatchers.is(3)); // All nodes are controllers in mixed mode
+    }
+
+    @Test
+    void testSeparateRolesBootstrapServersOnlyFromBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withSeparateRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        // Bootstrap servers should only come from broker nodes
+        String bootstrapServers = cluster.getBootstrapServers();
+        String networkBootstrapServers = cluster.getNetworkBootstrapServers();
+        
+        // Should have exactly 2 broker endpoints (not 3 total nodes)
+        assertThat(bootstrapServers.split(",").length, CoreMatchers.is(2));
+        assertThat(networkBootstrapServers.split(",").length, CoreMatchers.is(2));
+    }
+
+    @Test
+    void testSeparateRolesClusterConfiguration() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withSeparateRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        // Verify cluster configuration
+        assertThat(cluster.isUsingSeparateRoles(), is(true));
+        assertThat(cluster.getNodes().size(), is(5)); // 3 controllers + 2 brokers
+        assertThat(cluster.getControllerNodes().size(), is(3));
+        assertThat(cluster.getBrokers().size(), is(2));
+
+        // Verify controller nodes have CONTROLLER_ONLY role
+        for (KafkaContainer controller : cluster.getControllerNodes()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.CONTROLLER_ONLY));
+        }
+
+        // Verify broker nodes have BROKER_ONLY role
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.BROKER_ONLY));
+        }
+    }
+
+    @Test
+    void testMixedRolesClusterConfiguration() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        // Verify cluster configuration
+        assertThat(cluster.isUsingSeparateRoles(), is(false));
+        assertThat(cluster.getNodes().size(), is(3)); // 3 mixed-role nodes
+        assertThat(cluster.getControllerNodes().size(), is(3)); // All nodes are controllers in mixed mode
+        assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in mixed mode
+
+        // Verify all nodes have MIXED role
+        Collection<KafkaContainer> brokers = cluster.getBrokers();
+        for (KafkaContainer node : brokers) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.MIXED));
+        }
+    }
+
+    @Test
+    void testBuilderValidation() {
+        // Should throw exception when separate roles is enabled but no controllers specified
+        try {
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSeparateRoles()
+                .build();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("must specify the number of controllers"));
         }
     }
 }

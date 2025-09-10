@@ -152,6 +152,41 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat(result.getStdout(), CoreMatchers.containsString("dummy-plugin.jar"));
     }
 
+    @Test
+    void testSeparateRolesClusterStartsAndFunctionsProperly() throws InterruptedException, ExecutionException, TimeoutException {
+        try (StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(5)
+            .withSeparateRoles()
+            .withNumberOfControllers(3)
+            .build()) {
+
+            cluster.start();
+
+            // Verify cluster configuration
+            assertThat(cluster.isUsingSeparateRoles(), is(true));
+            assertThat(cluster.getNodes().size(), is(8)); // 3 controllers + 5 brokers
+            assertThat(cluster.getControllerNodes().size(), is(3));
+            assertThat(cluster.getBrokers().size(), is(5));
+
+            // Verify bootstrap servers are available
+            String bootstrapServers = cluster.getBootstrapServers();
+            assertThat(bootstrapServers, notNullValue());
+
+            // Should have exactly 5 broker endpoints
+            String[] servers = bootstrapServers.split(",");
+            assertThat(servers.length, is(5));
+
+            // Verify network bootstrap servers
+            String networkBootstrapServers = cluster.getNetworkBootstrapServers();
+            assertThat(networkBootstrapServers, notNullValue());
+            assertThat(networkBootstrapServers.split(",").length, is(5));
+
+            // Set systemUnderTest for the verification method
+            this.systemUnderTest = cluster;
+            verifyFunctionalityOfKafkaCluster();
+        }
+    }
+
     private void setUpKafkaKRaftCluster() {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)

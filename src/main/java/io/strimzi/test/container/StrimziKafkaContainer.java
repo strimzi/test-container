@@ -93,6 +93,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
+    private KafkaNodeRole nodeRole = KafkaNodeRole.MIXED;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -140,7 +141,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
         // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
         super.setNetwork(Network.SHARED);
-        // exposing kafka port from the container
+        // Initially expose Kafka port - will be updated in doStart() based on node role
         super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
         super.addEnv("LOG_DIR", "/tmp");
     }
@@ -160,6 +161,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Setup image name
         if (!this.imageNameProvider.isDone()) {
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
+        }
+
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+            // Controller-only nodes don't need to expose the Kafka client port
+            super.setExposedPorts(Collections.emptyList());
+        } else {
+            // Broker and mixed-role nodes expose the Kafka client port
+            super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
         }
 
         // Setup network alias
@@ -211,16 +220,24 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
-     * Fluent method, which sets a waiting strategy to wait until the broker is ready.
+     * Fluent method, which sets a waiting strategy to wait until the node is ready.
      * <p>
-     * This method waits for a log message in the broker log.
+     * This method waits for a log message in the node log. The specific message depends on the node role:
+     * - Broker and mixed-role nodes wait for "Transitioning from RECOVERY to RUNNING"
+     * - Controller-only nodes wait for "Kafka Server started"
      * You can customize the strategy using {@link #waitingFor(WaitStrategy)}.
      *
      * @return StrimziKafkaContainer instance
      */
     @DoNotMutate
     public StrimziKafkaContainer waitForRunning() {
-        super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+            // Controller-only nodes don't have the broker lifecycle, so wait for server startup
+            super.waitingFor(Wait.forLogMessage(".*Kafka Server started.*", 1));
+        } else {
+            // Broker and mixed-role nodes wait for broker lifecycle transition
+            super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
+        }
         return this;
     }
 
@@ -229,9 +246,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
         super.containerIsStarting(containerInfo, reused);
 
-        this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
-
-        LOGGER.info("Mapped port: {}", kafkaExposedPort);
+        if (this.nodeRole.isBroker()) {
+            this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
+            LOGGER.info("Mapped port: {}", kafkaExposedPort);
+        } else {
+            LOGGER.info("Controller-only node - no client port exposed");
+        }
 
         if (this.nodeId == null) {
             LOGGER.warn("Node ID is not set. Using broker ID {} as the default node ID.", this.brokerId);
@@ -293,59 +313,78 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      *          The 'advertised.listeners' configuration string.
      */
     protected String[] buildListenersConfig(final InspectContainerResponse containerInfo) {
-        final String bootstrapServers = getBootstrapServers();
-        final String bsListenerName = extractListenerName(bootstrapServers);
         final Collection<ContainerNetwork> networks = containerInfo.getNetworkSettings().getNetworks().values();
         final List<String> advertisedListenersNames = new ArrayList<>();
         final StringBuilder kafkaListeners = new StringBuilder();
         final StringBuilder advertisedListeners = new StringBuilder();
+        
+        String bsListenerName = null;
+        String bootstrapServers = null;
+        
+        // Only get bootstrap servers for broker nodes
+        if (this.nodeRole.isBroker()) {
+            bootstrapServers = getBootstrapServers();
+            bsListenerName = extractListenerName(bootstrapServers);
+        }
 
-        // add first PLAINTEXT listener
-        advertisedListeners.append(bootstrapServers);
-        kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
-        this.listenerNames.add(bsListenerName);
+        // Only add client listener for broker nodes
+        if (this.nodeRole.isBroker() && bootstrapServers != null && bsListenerName != null) {
+            // add first PLAINTEXT listener
+            advertisedListeners.append(bootstrapServers);
+            kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
+            this.listenerNames.add(bsListenerName);
+        }
 
         int listenerNumber = 1;
         int portNumber = INTER_BROKER_LISTENER_PORT;
 
-        // configure advertised listeners
-        for (ContainerNetwork network : networks) {
-            String advertisedName = "BROKER" + listenerNumber;
-            advertisedListeners.append(",")
-                .append(advertisedName)
-                .append("://")
-                .append(network.getIpAddress())
-                .append(":")
-                .append(portNumber);
-            advertisedListenersNames.add(advertisedName);
-            listenerNumber++;
-            portNumber--;
+        // Only add inter-broker listeners for nodes that act as brokers
+        if (this.nodeRole.isBroker()) {
+            // configure advertised listeners
+            for (ContainerNetwork network : networks) {
+                String advertisedName = "BROKER" + listenerNumber;
+                advertisedListeners.append(",")
+                    .append(advertisedName)
+                    .append("://")
+                    .append(network.getIpAddress())
+                    .append(":")
+                    .append(portNumber);
+                advertisedListenersNames.add(advertisedName);
+                listenerNumber++;
+                portNumber--;
+            }
         }
 
         portNumber = INTER_BROKER_LISTENER_PORT;
 
-        // configure listeners
-        for (String listener : advertisedListenersNames) {
-            kafkaListeners
-                .append(listener)
-                .append("://0.0.0.0:")
-                .append(portNumber)
-                .append(",");
-            this.listenerNames.add(listener);
-            portNumber--;
+        // Only add inter-broker listeners for nodes that act as brokers
+        if (this.nodeRole.isBroker()) {
+            // configure listeners
+            for (String listener : advertisedListenersNames) {
+                kafkaListeners
+                    .append(listener)
+                    .append("://0.0.0.0:")
+                    .append(portNumber)
+                    .append(",");
+                this.listenerNames.add(listener);
+                portNumber--;
+            }
         }
 
-        final String controllerListenerName = "CONTROLLER";
-        final int controllerPort = 9094;
-        // adding Controller listener for Kraft mode
-        kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
-        advertisedListeners.append(",")
-            .append(controllerListenerName)
-            .append("://")
-            .append(NETWORK_ALIAS_PREFIX + this.brokerId)
-            .append(":")
-            .append(controllerPort);
-        this.listenerNames.add(controllerListenerName);
+        // Only add controller listener for nodes that act as controllers
+        if (this.nodeRole.isController()) {
+            final String controllerListenerName = "CONTROLLER";
+            final int controllerPort = 9094;
+            // adding Controller listener for Kraft mode
+            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
+            advertisedListeners.append(",")
+                .append(controllerListenerName)
+                .append("://")
+                .append(NETWORK_ALIAS_PREFIX + this.brokerId)
+                .append(":")
+                .append(controllerPort);
+            this.listenerNames.add(controllerListenerName);
+        }
 
         LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
@@ -382,18 +421,56 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @param advertisedListeners         the advertised listeners configuration
      * @return the default server properties
      */
-    @SuppressWarnings({"JavaNCSS"})
     protected Properties buildDefaultServerProperties(final String listeners,
                                                     final String advertisedListeners) {
         // Default properties for server.properties
         Properties properties = new Properties();
 
         // Common settings for both KRaft and non-KRaft modes
+        // configure listeners
         properties.setProperty("listeners", listeners);
-        properties.setProperty("inter.broker.listener.name", "BROKER1");
-        properties.setProperty("broker.id", String.valueOf(this.brokerId));
-        properties.setProperty("advertised.listeners", advertisedListeners);
-        properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("PLAINTEXT"));
+
+        if (this.nodeRole.isBroker()) {
+            properties.setProperty("inter.broker.listener.name", "BROKER1");
+            properties.setProperty("advertised.listeners", advertisedListeners);
+        } else {
+            // Controller-only nodes should only have controller listeners in advertised.listeners
+            extractControllerListener(properties, advertisedListeners);
+        }
+
+        String securityProtocolMap = this.configureListenerSecurityProtocolMap("PLAINTEXT");
+        // In KRaft mode, all nodes need CONTROLLER listener in security protocol map
+        // even if they don't actually listen on controller ports (for broker-only nodes)
+        if (!this.listenerNames.contains("CONTROLLER")) {
+            securityProtocolMap = securityProtocolMap.isEmpty() ? "CONTROLLER:PLAINTEXT" : securityProtocolMap + ",CONTROLLER:PLAINTEXT";
+        }
+        properties.setProperty("listener.security.protocol.map", securityProtocolMap);
+
+        setCommonServerProperties(properties);
+        setKRaftProperties(properties);
+        configureAuthentication(properties);
+
+        return properties;
+    }
+
+    private void configureListeners(Properties properties, String listeners, String advertisedListeners) {
+
+    }
+
+    private void extractControllerListener(Properties properties, String advertisedListeners) {
+        String controllerOnlyListeners = advertisedListeners.toString();
+        if (controllerOnlyListeners.contains("CONTROLLER://")) {
+            String[] parts = controllerOnlyListeners.split(",");
+            for (String part : parts) {
+                if (part.trim().startsWith("CONTROLLER://")) {
+                    properties.setProperty("advertised.listeners", part.trim());
+                    break;
+                }
+            }
+        }
+    }
+
+    private void setCommonServerProperties(Properties properties) {
         properties.setProperty("num.network.threads", "3");
         properties.setProperty("num.io.threads", "8");
         properties.setProperty("socket.send.buffer.bytes", "102400");
@@ -407,28 +484,40 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("transaction.state.log.min.isr", "1");
         properties.setProperty("log.retention.hours", "168");
         properties.setProperty("log.retention.check.interval.ms", "300000");
+    }
 
-        // Add KRaft-specific settings
-        properties.setProperty("process.roles", "broker,controller");
-        properties.setProperty("node.id", String.valueOf(this.nodeId));  // Use dynamic node id
-        properties.setProperty("controller.quorum.voters", String.format("%d@" + NETWORK_ALIAS_PREFIX + this.nodeId + ":9094", this.nodeId));
+    private void setKRaftProperties(Properties properties) {
+        properties.setProperty("process.roles", this.nodeRole.getProcessRoles());
+        properties.setProperty("node.id", String.valueOf(this.nodeId));
+        
+        // All nodes in KRaft mode need to know about controller listener names
         properties.setProperty("controller.listener.names", "CONTROLLER");
+        
+        // For standalone containers (not part of a cluster), set default quorum voters
+        if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters")) {
+            if (this.nodeRole == KafkaNodeRole.MIXED) {
+                properties.setProperty("controller.quorum.voters", 
+                    String.format("%d@%s%d:9094", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId));
+            }
+        }
+        
+        if (this.nodeRole.isBroker()) {
+            if (this.nodeRole == KafkaNodeRole.BROKER_ONLY) {
+                properties.setProperty("broker.id", String.valueOf(this.nodeId));
+            } else {
+                properties.setProperty("broker.id", String.valueOf(this.brokerId));
+            }
+        }
+    }
 
+    private void configureAuthentication(Properties properties) {
         if (this.authenticationType != AuthenticationType.NONE) {
             switch (this.authenticationType) {
                 case OAUTH_OVER_PLAIN:
-                    if (this.isOAuthEnabled()) {
-                        configureOAuthOverPlain(properties);
-                    } else {
-                        throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
-                    }
+                    validateOAuthAndConfigure(properties, this::configureOAuthOverPlain);
                     break;
                 case OAUTH_BEARER:
-                    if (this.isOAuthEnabled()) {
-                        configureOAuthBearer(properties);
-                    } else {
-                        throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
-                    }
+                    validateOAuthAndConfigure(properties, this::configureOAuthBearer);
                     break;
                 case SCRAM_SHA_256:
                 case SCRAM_SHA_512:
@@ -437,8 +526,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     throw new IllegalStateException("Unsupported authentication type: " + this.authenticationType);
             }
         }
+    }
 
-        return properties;
+    private void validateOAuthAndConfigure(Properties properties, java.util.function.Consumer<Properties> configurer) {
+        if (this.isOAuthEnabled()) {
+            configurer.accept(properties);
+        } else {
+            throw new IllegalStateException("OAuth2 is not enabled: " + this.oauthEnabled);
+        }
     }
 
     /**
@@ -449,7 +544,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void configureOAuthOverPlain(Properties properties) {
         properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
-        properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT"));
+        
+        String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
+        // In KRaft mode, all nodes need CONTROLLER listener in security protocol map
+        if (!this.listenerNames.contains("CONTROLLER")) {
+            securityProtocolMap = securityProtocolMap.isEmpty() ? "CONTROLLER:PLAINTEXT" : securityProtocolMap + ",CONTROLLER:PLAINTEXT";
+        }
+        properties.setProperty("listener.security.protocol.map", securityProtocolMap);
+        
         properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
         properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
 
@@ -476,7 +578,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void configureOAuthBearer(Properties properties) {
         properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
-        properties.setProperty("listener.security.protocol.map", this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT"));
+        
+        String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
+        // In KRaft mode, all nodes need CONTROLLER listener in security protocol map
+        if (!this.listenerNames.contains("CONTROLLER")) {
+            securityProtocolMap = securityProtocolMap.isEmpty() ? "CONTROLLER:PLAINTEXT" : securityProtocolMap + ",CONTROLLER:PLAINTEXT";
+        }
+        properties.setProperty("listener.security.protocol.map", securityProtocolMap);
+        
         properties.setProperty("sasl.mechanism.controller.protocol", "OAUTHBEARER");
         properties.setProperty("principal.builder.class", "io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder");
 
@@ -538,6 +647,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @Override
     @DoNotMutate
     public String getBootstrapServers() {
+        // Controller-only nodes don't provide bootstrap servers
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+            throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
+        }
+        
         if (proxyContainer != null) {
             // returning the proxy host and port for indirect connection
             return String.format("PLAINTEXT://%s", getProxy().getListen());
@@ -551,6 +665,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     @DoNotMutate
     public String getNetworkBootstrapServers() {
+        // Controller-only nodes don't provide bootstrap servers
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+            throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
+        }
         return NETWORK_ALIAS_PREFIX + brokerId + ":" + INTER_BROKER_LISTENER_PORT;
     }
 
@@ -737,6 +855,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /**
+     * Fluent method to set the Kafka node role.
+     *
+     * @param nodeRole the role this node should play in the cluster
+     * @return StrimziKafkaContainer instance for method chaining
+     */
+    public StrimziKafkaContainer withNodeRole(KafkaNodeRole nodeRole) {
+        this.nodeRole = nodeRole;
+        return self();
+    }
+
+    /**
      * Configures the Kafka container to use the specified logging level for Kafka logs
      * and the {@code io.strimzi} logger.
      * <p>
@@ -867,5 +996,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     public AuthenticationType getAuthenticationType() {
         return authenticationType;
+    }
+
+    /**
+     * Gets the node role for this Kafka container.
+     *
+     * @return the node role
+     */
+    public KafkaNodeRole getNodeRole() {
+        return nodeRole;
     }
 }
