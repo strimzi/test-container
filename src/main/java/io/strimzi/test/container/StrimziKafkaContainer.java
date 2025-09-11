@@ -37,6 +37,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -93,7 +94,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
-    private KafkaNodeRole nodeRole = KafkaNodeRole.MIXED;
+    private KafkaNodeRole nodeRole = KafkaNodeRole.MIXED;   // backwards compatibility - we may by default use separate roles
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -439,11 +440,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         String securityProtocolMap = this.configureListenerSecurityProtocolMap("PLAINTEXT");
-        // In KRaft mode, all nodes need CONTROLLER listener in security protocol map
-        // even if they don't actually listen on controller ports (for broker-only nodes)
-        if (!this.listenerNames.contains("CONTROLLER")) {
-            securityProtocolMap = securityProtocolMap.isEmpty() ? "CONTROLLER:PLAINTEXT" : securityProtocolMap + ",CONTROLLER:PLAINTEXT";
-        }
+        // Ensure CONTROLLER mapping exists on ALL nodes when controller.listener.names is set
+        securityProtocolMap = ensureControllerMapping(securityProtocolMap, "PLAINTEXT");
+
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
 
         setCommonServerProperties(properties);
@@ -451,10 +450,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         configureAuthentication(properties);
 
         return properties;
-    }
-
-    private void configureListeners(Properties properties, String listeners, String advertisedListeners) {
-
     }
 
     private void extractControllerListener(Properties properties, String advertisedListeners) {
@@ -489,10 +484,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private void setKRaftProperties(Properties properties) {
         properties.setProperty("process.roles", this.nodeRole.getProcessRoles());
         properties.setProperty("node.id", String.valueOf(this.nodeId));
-        
-        // All nodes in KRaft mode need to know about controller listener names
+
+        // Required on ALL nodes (broker-only too)
         properties.setProperty("controller.listener.names", "CONTROLLER");
-        
+
         // For standalone containers (not part of a cluster), set default quorum voters
         if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters")) {
             if (this.nodeRole == KafkaNodeRole.MIXED) {
@@ -528,7 +523,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
     }
 
-    private void validateOAuthAndConfigure(Properties properties, java.util.function.Consumer<Properties> configurer) {
+    private void validateOAuthAndConfigure(Properties properties, Consumer<Properties> configurer) {
         if (this.isOAuthEnabled()) {
             configurer.accept(properties);
         } else {
@@ -546,10 +541,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
         
         String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
-        // In KRaft mode, all nodes need CONTROLLER listener in security protocol map
-        if (!this.listenerNames.contains("CONTROLLER")) {
-            securityProtocolMap = securityProtocolMap.isEmpty() ? "CONTROLLER:PLAINTEXT" : securityProtocolMap + ",CONTROLLER:PLAINTEXT";
-        }
+        securityProtocolMap = ensureControllerMapping(securityProtocolMap, "SASL_PLAINTEXT");
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
         
         properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
@@ -580,10 +572,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
         
         String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
-        // In KRaft mode, all nodes need CONTROLLER listener in security protocol map
-        if (!this.listenerNames.contains("CONTROLLER")) {
-            securityProtocolMap = securityProtocolMap.isEmpty() ? "CONTROLLER:PLAINTEXT" : securityProtocolMap + ",CONTROLLER:PLAINTEXT";
-        }
+        securityProtocolMap = ensureControllerMapping(securityProtocolMap, "SASL_PLAINTEXT");
+
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
         
         properties.setProperty("sasl.mechanism.controller.protocol", "OAUTHBEARER");
@@ -612,6 +602,22 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return this.listenerNames.stream()
             .map(listenerName -> listenerName + ":" + securityProtocol)
             .collect(Collectors.joining(","));
+    }
+
+    /**
+     * Ensures {@code CONTROLLER:<protocol>} is present in the given
+     * {@code listener.security.protocol.map}.
+     *
+     * @param securityProtocolMap current map
+     * @param controllerProtocol  protocol for CONTROLLER (e.g. PLAINTEXT, SASL_PLAINTEXT)
+     * @return securityProtocolMapWithControllerMapping string including CONTROLLER mapping
+     */
+    private String ensureControllerMapping(String securityProtocolMap, String controllerProtocol) {
+        String securityProtocolMapWithControllerMapping = (securityProtocolMap == null) ? "" : securityProtocolMap.trim();
+        if (securityProtocolMapWithControllerMapping.contains("CONTROLLER:")) {
+            return securityProtocolMapWithControllerMapping;
+        }
+        return securityProtocolMapWithControllerMapping.isEmpty() ? "CONTROLLER:" + controllerProtocol : securityProtocolMapWithControllerMapping + ",CONTROLLER:" + controllerProtocol;
     }
 
     /**
