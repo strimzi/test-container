@@ -452,10 +452,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return properties;
     }
 
-    private void extractControllerListener(Properties properties, String advertisedListeners) {
-        String controllerOnlyListeners = advertisedListeners.toString();
-        if (controllerOnlyListeners.contains("CONTROLLER://")) {
-            String[] parts = controllerOnlyListeners.split(",");
+    /* test */ void extractControllerListener(Properties properties, String advertisedListeners) {
+        if (advertisedListeners != null && advertisedListeners.contains("CONTROLLER://")) {
+            String[] parts = advertisedListeners.split(",");
             for (String part : parts) {
                 if (part.trim().startsWith("CONTROLLER://")) {
                     properties.setProperty("advertised.listeners", part.trim());
@@ -539,7 +538,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void configureOAuthOverPlain(Properties properties) {
         properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
-        
+
         String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, "SASL_PLAINTEXT");
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
