@@ -211,7 +211,22 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xi) Logging Kafka Container/Cluster Output to SLF4J
+#### xi) Run a Kafka cluster with separate controller and broker roles
+
+By default, `StrimziKafkaCluster` uses mixed-role nodes where each node acts as both controller and broker. 
+For more realistic production-like testing, you can configure the cluster to use separate dedicated controller and broker nodes:
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withSeparateRoles()
+    .withNumberOfControllers(3)
+    .build();
+
+kafkaCluster.start();
+```
+
+#### xii) Logging Kafka Container/Cluster Output to SLF4J
 
 If you want to enable logging of the Kafka container’s output to SLF4J, 
 you can set the environment variable `STRIMZI_TEST_CONTAINER_LOGGING_ENABLED` to true. 
