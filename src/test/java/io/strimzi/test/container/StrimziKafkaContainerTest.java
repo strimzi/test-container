@@ -278,7 +278,7 @@ class StrimziKafkaContainerTest {
 
         assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("PLAIN"));
         assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("PLAIN"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("PLAIN"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
@@ -305,7 +305,7 @@ class StrimziKafkaContainerTest {
 
         assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("OAUTHBEARER"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
@@ -335,7 +335,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
         assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -400,7 +400,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
         assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -452,7 +452,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
         assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));

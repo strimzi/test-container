@@ -61,11 +61,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.useSeparateRoles = builder.useSeparateRoles;
         this.enableSharedNetwork = builder.enableSharedNetwork;
         this.network = this.enableSharedNetwork ? Network.SHARED : Network.newNetwork();
-        
-        // For separate roles, use controllersNum for replication factor calculation, otherwise use brokersNum
-        int effectiveNodeCount = this.useSeparateRoles ? this.controllersNum : this.brokersNum;
-        this.internalTopicReplicationFactor = builder.internalTopicReplicationFactor == 0 ? effectiveNodeCount : builder.internalTopicReplicationFactor;
-        
+
+        // internal topics must be <= number of brokers
+        int effectiveBrokerCount = this.brokersNum;
+        this.internalTopicReplicationFactor = builder.internalTopicReplicationFactor == 0 ? effectiveBrokerCount : builder.internalTopicReplicationFactor;
+
         this.additionalKafkaConfiguration = builder.additionalKafkaConfiguration;
         this.proxyContainer = builder.proxyContainer;
         this.kafkaVersion = builder.kafkaVersion;
@@ -74,10 +74,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         validateBrokerNum(this.brokersNum);
         if (this.useSeparateRoles) {
             validateControllerNum(this.controllersNum);
-            validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.controllersNum);
-        } else {
-            validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
         }
+        validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
 
         if (this.proxyContainer != null) {
             this.proxyContainer.setNetwork(this.network);
@@ -108,7 +106,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     private void prepareMixedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
-        // multi-node set up with mixed roles (original behavior)
+        // multi-node set up with mixed roles
         this.nodes = IntStream
             .range(0, this.brokersNum)
             .mapToObj(brokerId -> {
@@ -214,7 +212,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     public static class StrimziKafkaClusterBuilder {
         private int brokersNum;
-        private int controllersNum = 0;
+        private int controllersNum;
         private boolean useSeparateRoles;
         private int internalTopicReplicationFactor;
         private Map<String, String> additionalKafkaConfiguration = new HashMap<>();
@@ -324,14 +322,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * Builds and returns a {@code StrimziKafkaCluster} instance based on the provided configurations.
          *
          * @return a new instance of {@code StrimziKafkaCluster}
-         * @throws IllegalStateException if separate roles is enabled but number of controllers is not specified
          */
         public StrimziKafkaCluster build() {
-            // Validate separate roles configuration
-            if (this.useSeparateRoles && this.controllersNum <= 0) {
-                throw new IllegalStateException("When using separate roles, you must specify the number of controllers using withNumberOfControllers()");
-            }
-            
             // Generate a single cluster ID, which will be shared by all nodes
             this.clusterId = UUID.randomUUID().toString();
 
@@ -390,7 +382,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 .mapToObj(controllerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:9094", controllerId, controllerId))
                 .collect(Collectors.joining(","));
         } else {
-            // For mixed roles, all nodes participate in the quorum (original behavior)
+            // For mixed roles, all nodes participate in the quorum
             quorumVoters = IntStream.range(0, this.brokersNum)
                 .mapToObj(brokerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:9094", brokerId, brokerId))
                 .collect(Collectors.joining(","));
@@ -423,7 +415,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @DoNotMutate
     private boolean checkAllBrokersReady() {
         try {
-            // Only check broker nodes for quorum readiness (if mixed-node then we check all nodes)
+            // check broker nodes for quorum readiness (if mixed-node then we check all nodes)
             Collection<KafkaContainer> brokersToCheck = getBrokers();
             
             for (KafkaContainer kafkaContainer : brokersToCheck) {

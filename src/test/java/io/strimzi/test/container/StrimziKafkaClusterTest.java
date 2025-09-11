@@ -434,13 +434,13 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testSeparateRolesValidationMissingControllers() {
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(2)
                 .withSeparateRoles()
                 .build()
         );
-        assertThat(exception.getMessage(), CoreMatchers.containsString("When using separate roles, you must specify the number of controllers"));
+        assertThat(exception.getMessage(), CoreMatchers.containsString("controllersNum '0' must be greater than 0"));
     }
 
     @Test
@@ -516,19 +516,6 @@ public class StrimziKafkaClusterTest {
         for (KafkaContainer node : brokers) {
             StrimziKafkaContainer container = (StrimziKafkaContainer) node;
             assertThat(container.getNodeRole(), is(KafkaNodeRole.MIXED));
-        }
-    }
-
-    @Test
-    void testBuilderValidation() {
-        // Should throw exception when separate roles is enabled but no controllers specified
-        try {
-            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(2)
-                .withSeparateRoles()
-                .build();
-        } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().contains("must specify the number of controllers"));
         }
     }
 }
