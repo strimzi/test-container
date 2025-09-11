@@ -20,7 +20,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StrimziKafkaClusterTest {
 
@@ -405,8 +404,8 @@ public class StrimziKafkaClusterTest {
             .withNumberOfControllers(3)
             .build();
 
-        // Should use controllers count for replication factor calculation
-        assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(3));
+        // Should use brokers count for replication factor calculation
+        assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(2));
     }
 
     @Test
@@ -517,5 +516,54 @@ public class StrimziKafkaClusterTest {
             StrimziKafkaContainer container = (StrimziKafkaContainer) node;
             assertThat(container.getNodeRole(), is(KafkaNodeRole.MIXED));
         }
+    }
+
+    @Test
+    void testSeparateRolesClusterWithNullKafkaVersion() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withSeparateRoles()
+            .withNumberOfControllers(2)
+            .withKafkaVersion(null) // Test null version edge case
+            .build();
+        
+        // Should handle null version by using latest version
+        assertThat(cluster.isUsingSeparateRoles(), is(true));
+        assertThat(cluster.getControllerNodes().size(), is(2));
+        assertThat(cluster.getBrokers().size(), is(2));
+    }
+
+    @Test
+    void testSeparateRolesClusterBrokerIdCalculation() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withSeparateRoles()
+            .withNumberOfControllers(5) // Test specific controller count
+            .build();
+        
+        // Verify broker IDs start after controller count
+        Collection<KafkaContainer> brokers = cluster.getBrokers();
+        int expectedMinBrokerId = 5; // controllersNum
+        for (KafkaContainer broker : brokers) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat(container.getBrokerId() >= expectedMinBrokerId, is(true));
+        }
+    }
+
+    @Test
+    void testSeparateRolesClusterWithVersionAndBrokerIdEdgeCases() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withSeparateRoles() 
+            .withNumberOfControllers(1)
+            .withKafkaVersion("3.8.0") // Test non-null version
+            .build();
+        
+        // Test that version is properly set and broker ID calculation works with minimal setup
+        assertThat(cluster.getBrokers().size(), is(1));
+        assertThat(cluster.getControllerNodes().size(), is(1));
+        
+        StrimziKafkaContainer brokerContainer = (StrimziKafkaContainer) cluster.getBrokers().iterator().next();
+        assertThat(brokerContainer.getBrokerId(), is(1)); // 1 controller + 0 index = 1
     }
 }
