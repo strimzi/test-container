@@ -384,7 +384,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesClusterQuorumVoters() {
+    void testSeparatedRolesClusterQuorumVoters() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withSeparatedRoles()
@@ -397,7 +397,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesClusterInternalTopicReplicationFactor() {
+    void testSeparatedRolesClusterInternalTopicReplicationFactor() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withSeparatedRoles()
@@ -409,7 +409,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesClusterWithCustomReplicationFactor() {
+    void testSeparatedRolesClusterWithCustomReplicationFactor() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withSeparatedRoles()
@@ -421,7 +421,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesValidation() {
+    void testSeparatedRolesValidation() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(2)
@@ -433,7 +433,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesValidationMissingControllers() {
+    void testSeparatedRolesValidationMissingControllers() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(2)
@@ -456,7 +456,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesBootstrapServersOnlyFromBrokers() {
+    void testSeparatedRolesBootstrapServersOnlyFromBrokers() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withNumberOfControllers(1)
@@ -472,7 +472,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesClusterConfiguration() {
+    void testSeparatedRolesClusterConfiguration() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withSeparatedRoles()
@@ -551,7 +551,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesClusterWithVersionAndBrokerIdEdgeCases() {
+    void testSeparatedRolesClusterWithVersionAndBrokerIdEdgeCases() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
             .withSeparatedRoles()
@@ -582,7 +582,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testGetBootstrapControllersWithCombinedRoles() {
+    void testGetBootstrapControllersWithSeparatedRoles() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withSeparatedRoles()
