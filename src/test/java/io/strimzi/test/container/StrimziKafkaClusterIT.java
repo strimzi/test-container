@@ -156,14 +156,13 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     void testCombinedRolesClusterStartsAndFunctionsProperly() throws InterruptedException, ExecutionException, TimeoutException {
         try (StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(5)
-            .withCombinedRoles()
             .withNumberOfControllers(3)
             .build()) {
 
             cluster.start();
 
             // Verify cluster configuration
-            assertThat(cluster.isUsingCombinedRoles(), is(true));
+            assertThat(cluster.isUsingSeparateRoles(), is(false));
             assertThat(cluster.getNodes().size(), is(8)); // 3 controllers + 5 brokers
             assertThat(cluster.getControllerNodes().size(), is(3));
             assertThat(cluster.getBrokers().size(), is(5));

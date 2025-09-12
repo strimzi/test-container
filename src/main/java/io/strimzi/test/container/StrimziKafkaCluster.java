@@ -46,7 +46,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final ToxiproxyContainer proxyContainer;
     private final boolean enableSharedNetwork;
     private final String kafkaVersion;
-    private final boolean useCombinedRoles;
+    private final boolean useSeparatedRoles;
 
     // not editable
     private final Network network;
@@ -59,7 +59,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
         this.brokersNum = builder.brokersNum;
         this.controllersNum = builder.controllersNum;
-        this.useCombinedRoles = builder.useCombinedRoles;
+        this.useSeparatedRoles = builder.useSeparateRoles;
         this.enableSharedNetwork = builder.enableSharedNetwork;
         this.network = this.enableSharedNetwork ? Network.SHARED : Network.newNetwork();
 
@@ -72,7 +72,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.clusterId = builder.clusterId;
 
         validateBrokerNum(this.brokersNum);
-        if (this.useCombinedRoles) {
+        if (this.isUsingSeparateRoles()) {
             validateControllerNum(this.controllersNum);
         }
         validateInternalTopicReplicationFactor(this.internalTopicReplicationFactor, this.brokersNum);
@@ -99,19 +99,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
             defaultKafkaConfigurationForMultiNode.putAll(additionalKafkaConfiguration);
         }
 
-        if (this.useCombinedRoles) {
-            prepareCombinedRolesCluster(defaultKafkaConfigurationForMultiNode, kafkaVersion);
+        if (this.useSeparatedRoles) {
+            prepareSeparateRolesCluster(defaultKafkaConfigurationForMultiNode, kafkaVersion);
         } else {
-            prepareMixedRolesCluster(defaultKafkaConfigurationForMultiNode, kafkaVersion);
+            prepareCombinedRolesCluster(defaultKafkaConfigurationForMultiNode, kafkaVersion);
         }
     }
 
-    private void prepareMixedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
-        // multi-node set up with mixed roles
+    private void prepareCombinedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
+        // multi-node set up with combined roles
         this.nodes = IntStream
             .range(0, this.brokersNum)
             .mapToObj(brokerId -> {
-                LOGGER.info("Starting mixed-role node with id {}", brokerId);
+                LOGGER.info("Starting combined-role node with id {}", brokerId);
                 // adding broker id for each kafka container
                 StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
                     .withBrokerId(brokerId)
@@ -126,14 +126,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withNodeRole(KafkaNodeRole.COMBINED)
                     .waitForRunning();
 
-                LOGGER.info("Started mixed-role node with id: {}", kafkaContainer);
+                LOGGER.info("Started combined role node with id: {}", kafkaContainer);
 
                 return kafkaContainer;
             })
             .collect(Collectors.toList());
     }
 
-    private void prepareCombinedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
+    private void prepareSeparateRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
         // Create controller nodes - they get the first set of IDs
         this.controllers = IntStream
             .range(0, this.controllersNum)
@@ -191,7 +191,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
-    private static void validateControllerNum(int controllersNum) {
+    private void validateControllerNum(int controllersNum) {
         if (controllersNum <= 0) {
             throw new IllegalArgumentException("controllersNum '" + controllersNum + "' must be greater than 0");
         }
@@ -214,7 +214,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     public static class StrimziKafkaClusterBuilder {
         private int brokersNum;
         private int controllersNum;
-        private boolean useCombinedRoles;
+        private boolean useSeparateRoles;
         private int internalTopicReplicationFactor;
         private Map<String, String> additionalKafkaConfiguration = new HashMap<>();
         private ToxiproxyContainer proxyContainer;
@@ -294,25 +294,24 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         /**
-         * Configures the cluster to use combined controller and broker nodes instead of mixed-role nodes.
+         * Configures the cluster to use separate controller and broker nodes instead of combined-role nodes.
          * When enabled, you must also specify the number of controllers using {@link #withNumberOfControllers(int)}.
          *
          * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
          */
-        public StrimziKafkaClusterBuilder withCombinedRoles() {
-            this.useCombinedRoles = true;
+        public StrimziKafkaClusterBuilder withSeparatedRoles() {
+            this.useSeparateRoles = true;
             return this;
         }
 
         /**
          * Sets the number of dedicated controller nodes when using combined roles.
-         * This method should be used in conjunction with {@link #withCombinedRoles()}.
+         * This method should be used in conjunction with {@link #withSeparatedRoles()}.
          *
          * @param controllersNum the number of dedicated controller nodes
          * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withNumberOfControllers(int controllersNum) {
-            validateControllerNum(controllersNum);
             this.controllersNum = controllersNum;
             return this;
         }
@@ -388,13 +387,13 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private void configureQuorumVoters(final Map<String, String> additionalKafkaConfiguration) {
         final String quorumVoters;
         
-        if (this.useCombinedRoles) {
+        if (this.useSeparatedRoles) {
             // For separate roles, only controllers participate in the quorum
             quorumVoters = IntStream.range(0, this.controllersNum)
                 .mapToObj(controllerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:9094", controllerId, controllerId))
                 .collect(Collectors.joining(","));
         } else {
-            // For mixed roles, all nodes participate in the quorum
+            // For combined roles, all nodes participate in the quorum
             quorumVoters = IntStream.range(0, this.brokersNum)
                 .mapToObj(brokerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:9094", brokerId, brokerId))
                 .collect(Collectors.joining(","));
@@ -500,7 +499,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * @return Collection of controller nodes
      */
     public Collection<KafkaContainer> getControllerNodes() {
-        if (this.useCombinedRoles) {
+        if (this.useSeparatedRoles) {
             return this.controllers;
         } else {
             return this.nodes;
@@ -517,7 +516,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * @return Collection of broker nodes
      */
     public Collection<KafkaContainer> getBrokers() {
-        if (this.useCombinedRoles) {
+        if (this.useSeparatedRoles) {
             return this.brokers;
         } else {
             return this.nodes;
@@ -525,11 +524,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     /**
-     * Checks if the cluster is using combined controller and broker roles.
+     * Checks if the cluster is using separate controller/broker roles.
      *
-     * @return true if using combined roles, false if using mixed roles
+     * @return true if using separate roles, false if using combined roles
      */
-    public boolean isUsingCombinedRoles() {
-        return this.useCombinedRoles;
+    public boolean isUsingSeparateRoles() {
+        return this.useSeparatedRoles;
     }
 }
