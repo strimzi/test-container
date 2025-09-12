@@ -94,7 +94,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
-    private KafkaNodeRole nodeRole = KafkaNodeRole.MIXED;   // backwards compatibility - we may by default use separate roles
+    private KafkaNodeRole nodeRole = KafkaNodeRole.COMBINED;   // backwards compatibility - we may by default use separate roles
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -489,7 +489,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // For standalone containers (not part of a cluster), set default quorum voters
         if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters")) {
-            if (this.nodeRole == KafkaNodeRole.MIXED) {
+            if (this.nodeRole == KafkaNodeRole.COMBINED) {
                 properties.setProperty("controller.quorum.voters", 
                     String.format("%d@%s%d:9094", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId));
             }
@@ -668,13 +668,43 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Get the bootstrap servers that containers on the same network should use to connect
      * @return a comma separated list of Kafka bootstrap servers
      */
-    @DoNotMutate
     public String getNetworkBootstrapServers() {
         // Controller-only nodes don't provide bootstrap servers
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
         }
         return NETWORK_ALIAS_PREFIX + brokerId + ":" + INTER_BROKER_LISTENER_PORT;
+    }
+
+    /**
+     * Retrieves the bootstrap controllers URL for admin clients that need to connect to controllers.
+     * This is required for certain admin operations in KRaft mode, such as describing the cluster
+     * or performing controller-specific operations.
+     *
+     * @return the bootstrap controllers URL
+     * @throws UnsupportedOperationException if this node doesn't have controller role
+     */
+    @Override
+    public String getBootstrapControllers() {
+        // Only controller nodes can provide controller endpoints
+        if (!this.nodeRole.isController()) {
+            throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or mixed-role nodes for controller connections.");
+        }
+        
+        return String.format("CONTROLLER://%s:%d", getHost(), 9094);
+    }
+
+    /**
+     * Get the bootstrap controllers that containers on the same network should use to connect to controllers
+     * @return a comma separated list of Kafka controller endpoints
+     * @throws UnsupportedOperationException if this node doesn't have controller role
+     */
+    public String getNetworkBootstrapControllers() {
+        // Only controller nodes can provide controller endpoints
+        if (!this.nodeRole.isController()) {
+            throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or mixed-role nodes for controller connections.");
+        }
+        return NETWORK_ALIAS_PREFIX + brokerId + ":9094";
     }
 
     /**

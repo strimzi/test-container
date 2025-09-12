@@ -21,4 +21,15 @@ public interface KafkaContainer extends Startable {
      * @return bootstrap servers
      */
     String getBootstrapServers();
+
+    /**
+     * Get the Kafka controller bootstrap servers for admin operations that require controller access.
+     * This is particularly useful in KRaft mode for operations like cluster metadata queries.
+     *
+     * @return controller bootstrap servers
+     * @throws UnsupportedOperationException if the implementation doesn't support controller endpoints
+     */
+    default String getBootstrapControllers() {
+        throw new UnsupportedOperationException("Controller endpoints are not supported by this implementation");
+    }
 }

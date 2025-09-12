@@ -9,10 +9,10 @@ package io.strimzi.test.container;
  */
 enum KafkaNodeRole {
     /**
-     * Mixed-role node that acts as both broker and controller.
+     * Combined node that acts as both broker and controller.
      * This is the default behavior and maintains backward compatibility.
      */
-    MIXED("broker,controller"),
+    COMBINED("broker,controller"),
 
     /**
      * Controller-only node that participates in the metadata quorum
@@ -47,7 +47,7 @@ enum KafkaNodeRole {
      * @return true if the node can act as a controller, false otherwise
      */
     public boolean isController() {
-        return this == MIXED || this == CONTROLLER;
+        return this == COMBINED || this == CONTROLLER;
     }
 
     /**
@@ -56,6 +56,6 @@ enum KafkaNodeRole {
      * @return true if the node can act as a broker, false otherwise
      */
     public boolean isBroker() {
-        return this == MIXED || this == BROKER;
+        return this == COMBINED || this == BROKER;
     }
 }

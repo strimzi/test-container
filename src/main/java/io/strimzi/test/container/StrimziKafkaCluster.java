@@ -123,7 +123,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withNodeId(brokerId)
                     // pass shared `cluster.id` to each broker
                     .withClusterId(this.clusterId)
-                    .withNodeRole(KafkaNodeRole.MIXED)
+                    .withNodeRole(KafkaNodeRole.COMBINED)
                     .waitForRunning();
 
                 LOGGER.info("Started mixed-role node with id: {}", kafkaContainer);
@@ -365,10 +365,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * Get the bootstrap controllers that can be used for controller operations
      * @return a comma separated list of Kafka controller endpoints
      */
-    @DoNotMutate
+    @Override
     public String getBootstrapControllers() {
         return getControllerNodes().stream()
-                .map(controller -> ((StrimziKafkaContainer) controller).getBootstrapServers())
+                .map(KafkaContainer::getBootstrapControllers)
                 .collect(Collectors.joining(","));
     }
 
