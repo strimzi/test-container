@@ -606,7 +606,7 @@ class StrimziKafkaContainerTest {
     void testWithNodeRoleReturnsSelf() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
 
-        StrimziKafkaContainer result = kafkaContainer.withNodeRole(KafkaNodeRole.CONTROLLER_ONLY);
+        StrimziKafkaContainer result = kafkaContainer.withNodeRole(KafkaNodeRole.CONTROLLER);
 
         assertSame(kafkaContainer, result, "withNodeRole() should return the same instance for method chaining.");
     }
@@ -621,23 +621,23 @@ class StrimziKafkaContainerTest {
     @Test
     void testSetControllerOnlyRole() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.CONTROLLER_ONLY);
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
 
-        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.CONTROLLER_ONLY));
+        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
     }
 
     @Test
     void testSetBrokerOnlyRole() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.BROKER_ONLY);
+            .withNodeRole(KafkaNodeRole.BROKER);
 
-        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.BROKER_ONLY));
+        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.BROKER));
     }
 
     @Test
     void testControllerOnlyNodeThrowsExceptionForBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.CONTROLLER_ONLY);
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
 
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class,
@@ -650,7 +650,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testControllerOnlyNodeThrowsExceptionForNetworkBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.CONTROLLER_ONLY);
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
 
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class,
@@ -663,7 +663,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testBrokerOnlyNodeAllowsBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.BROKER_ONLY)
+            .withNodeRole(KafkaNodeRole.BROKER)
             .withBrokerId(1);
 
         // Should not throw exception
@@ -685,13 +685,13 @@ class StrimziKafkaContainerTest {
     @Test
     void testSeparateRolesNodeRoleConfiguration() {
         StrimziKafkaContainer controllerNode = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.CONTROLLER_ONLY)
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
             .withBrokerId(0)
             .withNodeId(0)
             .withClusterId("test-cluster");
 
         StrimziKafkaContainer brokerNode = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.BROKER_ONLY)
+            .withNodeRole(KafkaNodeRole.BROKER)
             .withBrokerId(0)
             .withNodeId(1)
             .withClusterId("test-cluster");
@@ -703,8 +703,8 @@ class StrimziKafkaContainerTest {
             .withClusterId("test-cluster");
 
         // Verify node roles are set correctly
-        assertThat(controllerNode.getNodeRole(), is(KafkaNodeRole.CONTROLLER_ONLY));
-        assertThat(brokerNode.getNodeRole(), is(KafkaNodeRole.BROKER_ONLY));
+        assertThat(controllerNode.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+        assertThat(brokerNode.getNodeRole(), is(KafkaNodeRole.BROKER));
         assertThat(mixedNode.getNodeRole(), is(KafkaNodeRole.MIXED));
     }
 

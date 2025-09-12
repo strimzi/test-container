@@ -18,12 +18,12 @@ public class KafkaNodeRoleTest {
 
     @Test
     void testControllerOnlyProcessRoles() {
-        assertThat(KafkaNodeRole.CONTROLLER_ONLY.getProcessRoles(), is("controller"));
+        assertThat(KafkaNodeRole.CONTROLLER.getProcessRoles(), is("controller"));
     }
 
     @Test
     void testBrokerOnlyProcessRoles() {
-        assertThat(KafkaNodeRole.BROKER_ONLY.getProcessRoles(), is("broker"));
+        assertThat(KafkaNodeRole.BROKER.getProcessRoles(), is("broker"));
     }
 
     @Test
@@ -33,12 +33,12 @@ public class KafkaNodeRoleTest {
 
     @Test
     void testControllerOnlyIsController() {
-        assertThat(KafkaNodeRole.CONTROLLER_ONLY.isController(), is(true));
+        assertThat(KafkaNodeRole.CONTROLLER.isController(), is(true));
     }
 
     @Test
     void testBrokerOnlyIsController() {
-        assertThat(KafkaNodeRole.BROKER_ONLY.isController(), is(false));
+        assertThat(KafkaNodeRole.BROKER.isController(), is(false));
     }
 
     @Test
@@ -48,11 +48,11 @@ public class KafkaNodeRoleTest {
 
     @Test
     void testControllerOnlyIsBroker() {
-        assertThat(KafkaNodeRole.CONTROLLER_ONLY.isBroker(), is(false));
+        assertThat(KafkaNodeRole.CONTROLLER.isBroker(), is(false));
     }
 
     @Test
     void testBrokerOnlyIsBroker() {
-        assertThat(KafkaNodeRole.BROKER_ONLY.isBroker(), is(true));
+        assertThat(KafkaNodeRole.BROKER.isBroker(), is(true));
     }
 }

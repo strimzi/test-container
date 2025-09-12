@@ -18,13 +18,13 @@ enum KafkaNodeRole {
      * Controller-only node that participates in the metadata quorum
      * but does not handle client requests or store topic data.
      */
-    CONTROLLER_ONLY("controller"),
+    CONTROLLER("controller"),
 
     /**
      * Broker-only node that handles client requests and stores topic data
      * but does not participate in the metadata quorum.
      */
-    BROKER_ONLY("broker");
+    BROKER("broker");
 
     private final String processRoles;
 
@@ -47,7 +47,7 @@ enum KafkaNodeRole {
      * @return true if the node can act as a controller, false otherwise
      */
     public boolean isController() {
-        return this == MIXED || this == CONTROLLER_ONLY;
+        return this == MIXED || this == CONTROLLER;
     }
 
     /**
@@ -56,6 +56,6 @@ enum KafkaNodeRole {
      * @return true if the node can act as a broker, false otherwise
      */
     public boolean isBroker() {
-        return this == MIXED || this == BROKER_ONLY;
+        return this == MIXED || this == BROKER;
     }
 }
