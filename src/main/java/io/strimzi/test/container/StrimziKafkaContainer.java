@@ -164,7 +164,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
 
-        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             // Controller-only nodes don't need to expose the Kafka client port
             super.setExposedPorts(Collections.emptyList());
         } else {
@@ -232,7 +232,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     @DoNotMutate
     public StrimziKafkaContainer waitForRunning() {
-        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             // Controller-only nodes don't have the broker lifecycle, so wait for server startup
             super.waitingFor(Wait.forLogMessage(".*Kafka Server started.*", 1));
         } else {
@@ -496,7 +496,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
         
         if (this.nodeRole.isBroker()) {
-            if (this.nodeRole == KafkaNodeRole.BROKER_ONLY) {
+            if (this.nodeRole == KafkaNodeRole.BROKER) {
                 properties.setProperty("broker.id", String.valueOf(this.nodeId));
             } else {
                 properties.setProperty("broker.id", String.valueOf(this.brokerId));
@@ -653,7 +653,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @DoNotMutate
     public String getBootstrapServers() {
         // Controller-only nodes don't provide bootstrap servers
-        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
         }
         
@@ -671,7 +671,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @DoNotMutate
     public String getNetworkBootstrapServers() {
         // Controller-only nodes don't provide bootstrap servers
-        if (this.nodeRole == KafkaNodeRole.CONTROLLER_ONLY) {
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
         }
         return NETWORK_ALIAS_PREFIX + brokerId + ":" + INTER_BROKER_LISTENER_PORT;
