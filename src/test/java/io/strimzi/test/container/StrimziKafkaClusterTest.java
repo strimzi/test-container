@@ -514,7 +514,7 @@ public class StrimziKafkaClusterTest {
         Collection<KafkaContainer> brokers = cluster.getBrokers();
         for (KafkaContainer node : brokers) {
             StrimziKafkaContainer container = (StrimziKafkaContainer) node;
-            assertThat(container.getNodeRole(), is(KafkaNodeRole.MIXED));
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.COMBINED));
         }
     }
 
@@ -565,5 +565,51 @@ public class StrimziKafkaClusterTest {
         
         StrimziKafkaContainer brokerContainer = (StrimziKafkaContainer) cluster.getBrokers().iterator().next();
         assertThat(brokerContainer.getBrokerId(), is(1)); // 1 controller + 0 index = 1
+    }
+
+    @Test
+    void testGetBootstrapControllersWithMixedRoles() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        String bootstrapControllers = cluster.getBootstrapControllers();
+        assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
+        
+        String[] controllers = bootstrapControllers.split(",");
+        assertThat(controllers.length, is(3));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithCombinedRoles() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withCombinedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        String bootstrapControllers = cluster.getBootstrapControllers();
+        assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
+        
+        String[] controllers = bootstrapControllers.split(",");
+        assertThat(controllers.length, is(3));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithSingleController() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withCombinedRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        String bootstrapControllers = cluster.getBootstrapControllers();
+        assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
+        
+        String[] controllers = bootstrapControllers.split(",");
+        assertThat(controllers.length, is(1));
     }
 }

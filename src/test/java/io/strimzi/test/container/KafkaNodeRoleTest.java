@@ -13,7 +13,7 @@ public class KafkaNodeRoleTest {
 
     @Test
     void testMixedRoleProcessRoles() {
-        assertThat(KafkaNodeRole.MIXED.getProcessRoles(), is("broker,controller"));
+        assertThat(KafkaNodeRole.COMBINED.getProcessRoles(), is("broker,controller"));
     }
 
     @Test
@@ -28,7 +28,7 @@ public class KafkaNodeRoleTest {
 
     @Test
     void testMixedRoleIsController() {
-        assertThat(KafkaNodeRole.MIXED.isController(), is(true));
+        assertThat(KafkaNodeRole.COMBINED.isController(), is(true));
     }
 
     @Test
@@ -43,7 +43,7 @@ public class KafkaNodeRoleTest {
 
     @Test
     void testMixedRoleIsBroker() {
-        assertThat(KafkaNodeRole.MIXED.isBroker(), is(true));
+        assertThat(KafkaNodeRole.COMBINED.isBroker(), is(true));
     }
 
     @Test

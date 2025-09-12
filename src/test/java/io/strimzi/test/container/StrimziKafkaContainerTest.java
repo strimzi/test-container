@@ -615,7 +615,7 @@ class StrimziKafkaContainerTest {
     void testDefaultNodeRole() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
 
-        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.MIXED));
+        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.COMBINED));
     }
 
     @Test
@@ -674,7 +674,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testMixedNodeAllowsBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.MIXED)
+            .withNodeRole(KafkaNodeRole.COMBINED)
             .withBrokerId(1);
 
         // Should not throw exception
@@ -697,7 +697,7 @@ class StrimziKafkaContainerTest {
             .withClusterId("test-cluster");
 
         StrimziKafkaContainer mixedNode = new StrimziKafkaContainer()
-            .withNodeRole(KafkaNodeRole.MIXED)
+            .withNodeRole(KafkaNodeRole.COMBINED)
             .withBrokerId(0)
             .withNodeId(2)
             .withClusterId("test-cluster");
@@ -705,7 +705,7 @@ class StrimziKafkaContainerTest {
         // Verify node roles are set correctly
         assertThat(controllerNode.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
         assertThat(brokerNode.getNodeRole(), is(KafkaNodeRole.BROKER));
-        assertThat(mixedNode.getNodeRole(), is(KafkaNodeRole.MIXED));
+        assertThat(mixedNode.getNodeRole(), is(KafkaNodeRole.COMBINED));
     }
 
     @Test
@@ -791,7 +791,7 @@ class StrimziKafkaContainerTest {
         Map<String, String> kafkaConfig = Map.of("controller.quorum.voters", "1@custom:9094");
         StrimziKafkaContainer container = new StrimziKafkaContainer()
             .withKafkaConfigurationMap(kafkaConfig)
-            .withNodeRole(KafkaNodeRole.MIXED)
+            .withNodeRole(KafkaNodeRole.COMBINED)
             .withNodeId(1)
             .withBrokerId(1);
         container.listenerNames.add("PLAINTEXT");
@@ -808,5 +808,73 @@ class StrimziKafkaContainerTest {
         // Test that the override happens during overrideProperties
         String finalProperties = container.overrideProperties(defaultProps, kafkaConfig);
         assertThat(finalProperties, containsString("controller.quorum.voters=1@custom\\:9094"));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithControllerOnlyNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1);
+
+        String bootstrapControllers = kafkaContainer.getBootstrapControllers();
+        assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
+        assertThat(bootstrapControllers, containsString(":9094"));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithCombinedNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(1);
+
+        String bootstrapControllers = kafkaContainer.getBootstrapControllers();
+        assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
+        assertThat(bootstrapControllers, containsString(":9094"));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithBrokerOnlyNodeThrowsException() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER);
+
+        UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            kafkaContainer::getBootstrapControllers
+        );
+
+        assertThat(exception.getMessage(), containsString("Broker-only nodes do not provide controller endpoints"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithControllerOnlyNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1);
+
+        String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, is("broker-1:9094"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithCombinedNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(2);
+
+        String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, is("broker-2:9094"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithBrokerOnlyNodeThrowsException() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER);
+
+        UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            kafkaContainer::getNetworkBootstrapControllers
+        );
+
+        assertThat(exception.getMessage(), containsString("Broker-only nodes do not provide controller endpoints"));
     }
 }
