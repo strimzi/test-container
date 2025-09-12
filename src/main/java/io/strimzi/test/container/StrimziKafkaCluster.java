@@ -493,8 +493,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     /**
      * Returns the controller nodes.
-     * For mixed-role clusters, this returns all nodes.
-     * For combined-role clusters, this returns only the controller-only nodes.
+     * For combined-role clusters, this returns all nodes.
+     * For separated-role clusters, this returns only the controller-only nodes.
      *
      * @return Collection of controller nodes
      */
@@ -508,8 +508,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     /**
      * Returns the broker nodes.
-     * For mixed-role clusters, this returns all nodes.
-     * For combined-role clusters, this returns only the broker-only nodes.
+     * For combined-role clusters, this returns all nodes.
+     * For separated-role clusters, this returns only the broker-only nodes.
      *
      * Keep the method name getBrokers() to preserve backwards compatibility.
      *
