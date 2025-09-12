@@ -387,7 +387,7 @@ public class StrimziKafkaClusterTest {
     void testCombinedRolesClusterQuorumVoters() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(3)
             .build();
 
@@ -400,7 +400,7 @@ public class StrimziKafkaClusterTest {
     void testCombinedRolesClusterInternalTopicReplicationFactor() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(3)
             .build();
 
@@ -412,7 +412,7 @@ public class StrimziKafkaClusterTest {
     void testCombinedRolesClusterWithCustomReplicationFactor() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(3)
             .withInternalTopicReplicationFactor(2)
             .build();
@@ -426,6 +426,7 @@ public class StrimziKafkaClusterTest {
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(2)
                 .withNumberOfControllers(0)
+                .withSeparatedRoles()
                 .build()
         );
         assertThat(exception.getMessage(), CoreMatchers.containsString("controllersNum '0' must be greater than 0"));
@@ -436,7 +437,7 @@ public class StrimziKafkaClusterTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(2)
-                .withCombinedRoles()
+                .withSeparatedRoles()
                 .build()
         );
         assertThat(exception.getMessage(), CoreMatchers.containsString("controllersNum '0' must be greater than 0"));
@@ -448,7 +449,7 @@ public class StrimziKafkaClusterTest {
             .withNumberOfBrokers(3)
             .build();
 
-        assertThat(cluster.isUsingCombinedRoles(), is(false));
+        assertThat(cluster.isUsingSeparateRoles(), is(false));
         assertThat(cluster.getNodes().size(), is(3));
         assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in mixed mode
         assertThat(cluster.getControllerNodes().size(), is(3)); // All nodes are controllers in mixed mode
@@ -458,7 +459,6 @@ public class StrimziKafkaClusterTest {
     void testCombinedRolesBootstrapServersOnlyFromBrokers() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
             .withNumberOfControllers(1)
             .build();
 
@@ -475,12 +475,12 @@ public class StrimziKafkaClusterTest {
     void testCombinedRolesClusterConfiguration() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(3)
             .build();
 
         // Verify cluster configuration
-        assertThat(cluster.isUsingCombinedRoles(), is(true));
+        assertThat(cluster.isUsingSeparateRoles(), is(true));
         assertThat(cluster.getNodes().size(), is(5)); // 3 controllers + 2 brokers
         assertThat(cluster.getControllerNodes().size(), is(3));
         assertThat(cluster.getBrokers().size(), is(2));
@@ -505,7 +505,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify cluster configuration
-        assertThat(cluster.isUsingCombinedRoles(), is(false));
+        assertThat(cluster.isUsingSeparateRoles(), is(false));
         assertThat(cluster.getNodes().size(), is(3)); // 3 mixed-role nodes
         assertThat(cluster.getControllerNodes().size(), is(3)); // All nodes are controllers in mixed mode
         assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in mixed mode
@@ -519,25 +519,25 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testCombinedRolesClusterWithNullKafkaVersion() {
+    void testSeparatedRolesClusterWithNullKafkaVersion() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(2)
             .withKafkaVersion(null) // Test null version edge case
             .build();
         
         // Should handle null version by using latest version
-        assertThat(cluster.isUsingCombinedRoles(), is(true));
+        assertThat(cluster.isUsingSeparateRoles(), is(true));
         assertThat(cluster.getControllerNodes().size(), is(2));
         assertThat(cluster.getBrokers().size(), is(2));
     }
 
     @Test
-    void testCombinedRolesClusterBrokerIdCalculation() {
+    void testSeparateRolesClusterBrokerIdCalculation() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(5) // Test specific controller count
             .build();
         
@@ -554,7 +554,7 @@ public class StrimziKafkaClusterTest {
     void testCombinedRolesClusterWithVersionAndBrokerIdEdgeCases() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
-            .withCombinedRoles() 
+            .withSeparatedRoles()
             .withNumberOfControllers(1)
             .withKafkaVersion("3.8.0") // Test non-null version
             .build();
@@ -585,7 +585,7 @@ public class StrimziKafkaClusterTest {
     void testGetBootstrapControllersWithCombinedRoles() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(3)
             .build();
 
@@ -601,7 +601,7 @@ public class StrimziKafkaClusterTest {
     void testGetBootstrapControllersWithSingleController() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
-            .withCombinedRoles()
+            .withSeparatedRoles()
             .withNumberOfControllers(1)
             .build();
 
