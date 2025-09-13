@@ -384,7 +384,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testSeparatedRolesClusterQuorumVoters() {
+    void testCombinedRolesClusterQuorumVoters() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
             .withSeparatedRoles()

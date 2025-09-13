@@ -26,6 +26,7 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -71,6 +72,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Default Kafka port
      */
     public static final int KAFKA_PORT = 9092;
+
+    /**
+     * Default Kafka controller port
+     */
+    public static final int CONTROLLER_PORT = 9094;
 
     /**
      * Prefix for network aliases.
@@ -165,11 +171,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
-            // Controller-only nodes don't need to expose the Kafka client port
-            super.setExposedPorts(Collections.emptyList());
-        } else {
-            // Broker and mixed-role nodes expose the Kafka client port
+            // Controller-only nodes expose the controller
+            super.setExposedPorts(Collections.singletonList(CONTROLLER_PORT));
+        } else if (this.nodeRole == KafkaNodeRole.BROKER) {
+            // Broker-only nodes expose the Kafka client port
             super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
+        } else {
+            // Combined-role nodes expose both client and controller ports
+            super.setExposedPorts(Arrays.asList(KAFKA_PORT, CONTROLLER_PORT));
         }
 
         // Setup network alias
@@ -375,15 +384,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Only add controller listener for nodes that act as controllers
         if (this.nodeRole.isController()) {
             final String controllerListenerName = "CONTROLLER";
-            final int controllerPort = 9094;
             // adding Controller listener for Kraft mode
-            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(controllerPort);
+            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
             advertisedListeners.append(",")
                 .append(controllerListenerName)
                 .append("://")
                 .append(NETWORK_ALIAS_PREFIX + this.brokerId)
                 .append(":")
-                .append(controllerPort);
+                .append(StrimziKafkaContainer.CONTROLLER_PORT);
             this.listenerNames.add(controllerListenerName);
         }
 
@@ -491,7 +499,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters")) {
             if (this.nodeRole == KafkaNodeRole.COMBINED) {
                 properties.setProperty("controller.quorum.voters", 
-                    String.format("%d@%s%d:9094", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId));
+                    String.format("%d@%s%d:%d", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId, StrimziKafkaContainer.CONTROLLER_PORT));
             }
         }
         
@@ -691,7 +699,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or mixed-role nodes for controller connections.");
         }
         
-        return String.format("CONTROLLER://%s:%d", getHost(), 9094);
+        return String.format("CONTROLLER://%s:%d", getHost(), StrimziKafkaContainer.CONTROLLER_PORT);
     }
 
     /**
@@ -704,7 +712,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         if (!this.nodeRole.isController()) {
             throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or mixed-role nodes for controller connections.");
         }
-        return NETWORK_ALIAS_PREFIX + brokerId + ":9094";
+        return NETWORK_ALIAS_PREFIX + brokerId + ":" + StrimziKafkaContainer.CONTROLLER_PORT;
     }
 
     /**

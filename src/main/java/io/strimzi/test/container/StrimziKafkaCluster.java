@@ -390,12 +390,12 @@ public class StrimziKafkaCluster implements KafkaContainer {
         if (this.useSeparatedRoles) {
             // For separate roles, only controllers participate in the quorum
             quorumVoters = IntStream.range(0, this.controllersNum)
-                .mapToObj(controllerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:9094", controllerId, controllerId))
+                .mapToObj(controllerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:" + StrimziKafkaContainer.CONTROLLER_PORT, controllerId, controllerId))
                 .collect(Collectors.joining(","));
         } else {
             // For combined roles, all nodes participate in the quorum
             quorumVoters = IntStream.range(0, this.brokersNum)
-                .mapToObj(brokerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:9094", brokerId, brokerId))
+                .mapToObj(brokerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:" + StrimziKafkaContainer.CONTROLLER_PORT, brokerId, brokerId))
                 .collect(Collectors.joining(","));
         }
 
