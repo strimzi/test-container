@@ -51,6 +51,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private Collection<KafkaContainer> nodes;
     private final String clusterId;
 
+    @SuppressWarnings("deprecation")
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
         this.brokersNum = builder.brokersNum;
         this.enableSharedNetwork = builder.enableSharedNetwork;
@@ -71,6 +72,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         prepareKafkaCluster(this.additionalKafkaConfiguration, this.kafkaVersion);
     }
 
+    @SuppressWarnings("deprecation")
     private void prepareKafkaCluster(final Map<String, String> additionalKafkaConfiguration, final String kafkaVersion) {
         final Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
         defaultKafkaConfigurationForMultiNode.put("offsets.topic.replication.factor", String.valueOf(internalTopicReplicationFactor));
@@ -250,6 +252,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * Get the bootstrap servers that containers on the same network should use to connect
      * @return a comma separated list of Kafka bootstrap servers
      */
+    @SuppressWarnings("deprecation")
     @DoNotMutate
     public String getNetworkBootstrapServers() {
         return nodes.stream()
@@ -276,6 +279,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         return this.additionalKafkaConfiguration;
     }
 
+    @SuppressWarnings("deprecation")
     private void configureQuorumVoters(final Map<String, String> additionalKafkaConfiguration) {
         // Construct controller.quorum.voters based on network aliases (broker-1, broker-2, etc.)
         final String quorumVoters = IntStream.range(0, this.brokersNum)
@@ -306,6 +310,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             this::checkAllBrokersReady);
     }
 
+    @SuppressWarnings("deprecation")
     @DoNotMutate
     private boolean checkAllBrokersReady() {
         try {
@@ -321,6 +326,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @DoNotMutate
     private boolean isBrokerReady(StrimziKafkaContainer kafkaContainer) throws IOException, InterruptedException {
         Container.ExecResult result = kafkaContainer.execInContainer(
