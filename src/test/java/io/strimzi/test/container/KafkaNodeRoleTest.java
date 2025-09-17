@@ -12,7 +12,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class KafkaNodeRoleTest {
 
     @Test
-    void testMixedRoleProcessRoles() {
+    void testCombinedRoleProcessRoles() {
         assertThat(KafkaNodeRole.COMBINED.getProcessRoles(), is("broker,controller"));
     }
 
@@ -27,7 +27,7 @@ public class KafkaNodeRoleTest {
     }
 
     @Test
-    void testMixedRoleIsController() {
+    void testCombinedRoleIsController() {
         assertThat(KafkaNodeRole.COMBINED.isController(), is(true));
     }
 
@@ -42,7 +42,7 @@ public class KafkaNodeRoleTest {
     }
 
     @Test
-    void testMixedRoleIsBroker() {
+    void testCombinedRoleIsBroker() {
         assertThat(KafkaNodeRole.COMBINED.isBroker(), is(true));
     }
 

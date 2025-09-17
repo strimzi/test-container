@@ -672,7 +672,7 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testMixedNodeAllowsBootstrapServers() {
+    void testcombinedNodeAllowsBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
             .withBrokerId(1);
@@ -683,7 +683,7 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testSeparateRolesNodeRoleConfiguration() {
+    void testDedicatedRolesNodeRoleConfiguration() {
         StrimziKafkaContainer controllerNode = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
             .withBrokerId(0)
@@ -696,7 +696,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withClusterId("test-cluster");
 
-        StrimziKafkaContainer mixedNode = new StrimziKafkaContainer()
+        StrimziKafkaContainer combinedNode = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
             .withBrokerId(0)
             .withNodeId(2)
@@ -705,7 +705,7 @@ class StrimziKafkaContainerTest {
         // Verify node roles are set correctly
         assertThat(controllerNode.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
         assertThat(brokerNode.getNodeRole(), is(KafkaNodeRole.BROKER));
-        assertThat(mixedNode.getNodeRole(), is(KafkaNodeRole.COMBINED));
+        assertThat(combinedNode.getNodeRole(), is(KafkaNodeRole.COMBINED));
     }
 
     @Test

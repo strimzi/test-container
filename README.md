@@ -24,7 +24,7 @@ The most important classes are described here:
   Additional configuration for Kafka brokers can be injected through methods such as withKafkaConfigurationMap.
   This container is a good fit for integration testing, but for more comprehensive testing, we suggest using StrimziKafkaCluster.
 
-- `StrimziKafkaCluster` is a multi-node instance of Kafka nodes (i.e, mixed-roles) and  using the latest image from quay.io/strimzi-test-container/test-container with the given version.
+- `StrimziKafkaCluster` is a multi-node instance of Kafka nodes (i.e, combined-roles) and  using the latest image from quay.io/strimzi-test-container/test-container with the given version.
   It's a perfect fit for integration or system testing. 
   Additional configuration for Kafka brokers can be passed using the builder pattern.
 
@@ -213,7 +213,7 @@ kafkaCluster.start();
 
 #### xi) Run a Kafka cluster with separate controller and broker roles
 
-By default, `StrimziKafkaCluster` uses mixed-role nodes where each node acts as both controller and broker. 
+By default, `StrimziKafkaCluster` uses combined-role nodes where each node acts as both controller and broker. 
 For more realistic production-like testing, you can configure the cluster to use separate dedicated controller and broker nodes:
 
 ```java

@@ -100,7 +100,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
     private MountableFile serverPropertiesFile;
-    private KafkaNodeRole nodeRole = KafkaNodeRole.COMBINED;   // backwards compatibility - we may by default use separate roles
+    private KafkaNodeRole nodeRole = KafkaNodeRole.COMBINED;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -233,7 +233,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Fluent method, which sets a waiting strategy to wait until the node is ready.
      * <p>
      * This method waits for a log message in the node log. The specific message depends on the node role:
-     * - Broker and mixed-role nodes wait for "Transitioning from RECOVERY to RUNNING"
+     * - Broker and combined-role nodes wait for "Transitioning from RECOVERY to RUNNING"
      * - Controller-only nodes wait for "Kafka Server started"
      * You can customize the strategy using {@link #waitingFor(WaitStrategy)}.
      *
@@ -245,7 +245,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // Controller-only nodes don't have the broker lifecycle, so wait for server startup
             super.waitingFor(Wait.forLogMessage(".*Kafka Server started.*", 1));
         } else {
-            // Broker and mixed-role nodes wait for broker lifecycle transition
+            // Broker and combined-role nodes wait for broker lifecycle transition
             super.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
         }
         return this;
@@ -338,7 +338,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         // Only add client listener for broker nodes
-        if (this.nodeRole.isBroker() && bootstrapServers != null && bsListenerName != null) {
+        if (this.nodeRole.isBroker() && bsListenerName != null) {
             // add first PLAINTEXT listener
             advertisedListeners.append(bootstrapServers);
             kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
@@ -662,7 +662,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public String getBootstrapServers() {
         // Controller-only nodes don't provide bootstrap servers
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
-            throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
+            throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or combined-role nodes for client connections.");
         }
         
         if (proxyContainer != null) {
@@ -679,7 +679,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public String getNetworkBootstrapServers() {
         // Controller-only nodes don't provide bootstrap servers
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
-            throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or mixed-role nodes for client connections.");
+            throw new UnsupportedOperationException("Controller-only nodes do not provide bootstrap servers. Use broker or combined-role nodes for client connections.");
         }
         return NETWORK_ALIAS_PREFIX + brokerId + ":" + INTER_BROKER_LISTENER_PORT;
     }
@@ -696,7 +696,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public String getBootstrapControllers() {
         // Only controller nodes can provide controller endpoints
         if (!this.nodeRole.isController()) {
-            throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or mixed-role nodes for controller connections.");
+            throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or combined-role nodes for controller connections.");
         }
         
         return String.format("CONTROLLER://%s:%d", getHost(), StrimziKafkaContainer.CONTROLLER_PORT);
@@ -710,7 +710,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public String getNetworkBootstrapControllers() {
         // Only controller nodes can provide controller endpoints
         if (!this.nodeRole.isController()) {
-            throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or mixed-role nodes for controller connections.");
+            throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or combined-role nodes for controller connections.");
         }
         return NETWORK_ALIAS_PREFIX + brokerId + ":" + StrimziKafkaContainer.CONTROLLER_PORT;
     }

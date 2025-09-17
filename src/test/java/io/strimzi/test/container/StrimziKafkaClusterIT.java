@@ -153,19 +153,19 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     @Test
-    void testSeparatedRolesClusterStartsAndFunctionsProperly() throws InterruptedException, ExecutionException, TimeoutException {
+    void testDedicatedRolesClusterStartsAndFunctionsProperly() throws InterruptedException, ExecutionException, TimeoutException {
         try (StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(5)
-            .withSeparatedRoles()
+            .withDedicatedRoles()
             .withNumberOfControllers(3)
             .build()) {
 
             cluster.start();
 
             // Verify cluster configuration
-            assertThat(cluster.isUsingSeparateRoles(), is(true));
+            assertThat(cluster.isUsingDedicatedRoles(), is(true));
             assertThat(cluster.getNodes().size(), is(8)); // 3 controllers + 5 brokers
-            assertThat(cluster.getControllerNodes().size(), is(3));
+            assertThat(cluster.getControllers().size(), is(3));
             assertThat(cluster.getBrokers().size(), is(5));
 
             // Verify bootstrap servers are available
