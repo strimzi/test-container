@@ -106,6 +106,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void prepareCombinedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
         // multi-node set up with combined roles
         this.nodes = IntStream
@@ -133,6 +134,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .collect(Collectors.toList());
     }
 
+    @SuppressWarnings("deprecation")
     private void prepareDedicatedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
         // Create controller nodes - they get the first set of IDs
         this.controllers = IntStream
