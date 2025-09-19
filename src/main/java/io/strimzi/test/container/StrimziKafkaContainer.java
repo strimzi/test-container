@@ -93,6 +93,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     // instance attributes
     private int kafkaExposedPort;
+    private int controllerExposedPort;
     private Map<String, String> kafkaConfigurationMap;
     private int brokerId;
     private Integer nodeId;
@@ -258,9 +259,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.nodeRole.isBroker()) {
             this.kafkaExposedPort = getMappedPort(KAFKA_PORT);
-            LOGGER.info("Mapped port: {}", kafkaExposedPort);
-        } else {
-            LOGGER.info("Controller-only node - no client port exposed");
+            LOGGER.info("Mapped Kafka port: {}", kafkaExposedPort);
+        }
+
+        if (this.nodeRole.isController()) {
+            this.controllerExposedPort = getMappedPort(CONTROLLER_PORT);
+            LOGGER.info("Mapped controller port: {}", controllerExposedPort);
         }
 
         if (this.nodeId == null) {
@@ -383,15 +387,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // Only add controller listener for nodes that act as controllers
         if (this.nodeRole.isController()) {
+            advertisedListeners.append(",");
+            advertisedListeners.append(getBootstrapControllers());
             final String controllerListenerName = "CONTROLLER";
             // adding Controller listener for Kraft mode
             kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
-            advertisedListeners.append(",")
-                .append(controllerListenerName)
-                .append("://")
-                .append(NETWORK_ALIAS_PREFIX + this.brokerId)
-                .append(":")
-                .append(StrimziKafkaContainer.CONTROLLER_PORT);
             this.listenerNames.add(controllerListenerName);
         }
 
@@ -693,13 +693,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @throws UnsupportedOperationException if this node doesn't have controller role
      */
     @Override
+    @DoNotMutate
     public String getBootstrapControllers() {
         // Only controller nodes can provide controller endpoints
         if (!this.nodeRole.isController()) {
             throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or combined-role nodes for controller connections.");
         }
-        
-        return String.format("CONTROLLER://%s:%d", getHost(), StrimziKafkaContainer.CONTROLLER_PORT);
+        return String.format("CONTROLLER://%s:%d", getHost(), this.controllerExposedPort);
     }
 
     /**

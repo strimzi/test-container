@@ -8,6 +8,8 @@ import eu.rekawek.toxiproxy.Proxy;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.FeatureMetadata;
+import org.apache.kafka.clients.admin.FinalizedVersionRange;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -264,6 +266,55 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
                     return true;
                 });
+        }
+    }
+
+    @Test
+    void testExternalClientCanConnectDirectlyToControllersWhenUsingDedicatedRoles() throws ExecutionException, InterruptedException, TimeoutException {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        this.systemUnderTest.start();
+
+        String bootstrapControllers = this.systemUnderTest.getBootstrapControllers();
+        LOGGER.info("Bootstrap controllers: {}", bootstrapControllers);
+
+        try (AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+            AdminClientConfig.BOOTSTRAP_CONTROLLERS_CONFIG, bootstrapControllers,
+            AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000,
+            AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 30000))) {
+
+            Collection<Node> nodes = adminClient.describeCluster().nodes().get(30, TimeUnit.SECONDS);
+            assertThat(nodes, notNullValue());
+
+            Node controller = adminClient.describeCluster().controller().get(30, TimeUnit.SECONDS);
+            assertThat(controller, notNullValue());
+            LOGGER.info("Controller ID: {}", controller.id());
+
+            FeatureMetadata features = adminClient.describeFeatures().featureMetadata().get(30, TimeUnit.SECONDS);
+            assertThat(features, notNullValue());
+
+            LOGGER.info("All finalized features: {}", features.finalizedFeatures());
+
+            String[] expectedFeatures = {
+                "group.version",
+                "transaction.version",
+                "eligible.leader.replicas.version",
+                "metadata.version"
+            };
+
+            for (String featureName : expectedFeatures) {
+                if (features.finalizedFeatures().containsKey(featureName)) {
+                    FinalizedVersionRange versionRange = features.finalizedFeatures().get(featureName);
+                    assertThat(versionRange, notNullValue());
+                    LOGGER.info("{}: {}", featureName, versionRange);
+                } else {
+                    LOGGER.warn("Expected feature '{}' not found in finalized features", featureName);
+                }
+            }
         }
     }
 

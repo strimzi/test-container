@@ -818,7 +818,6 @@ class StrimziKafkaContainerTest {
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
         assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
-        assertThat(bootstrapControllers, containsString(":9094"));
     }
 
     @Test
@@ -829,7 +828,6 @@ class StrimziKafkaContainerTest {
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
         assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
-        assertThat(bootstrapControllers, containsString(":9094"));
     }
 
     @Test
