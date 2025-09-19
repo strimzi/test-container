@@ -214,12 +214,12 @@ kafkaCluster.start();
 #### xi) Run a Kafka cluster with separate controller and broker roles
 
 By default, `StrimziKafkaCluster` uses combined-role nodes where each node acts as both controller and broker. 
-For more realistic production-like testing, you can configure the cluster to use separate dedicated controller and broker nodes:
+For more realistic production-like testing, you can configure the cluster to use dedicated controller and broker nodes:
 
 ```java
 StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
     .withNumberOfBrokers(3)
-    .withSeparateRoles()
+    .withDedicatedRoles()
     .withNumberOfControllers(3)
     .build();
 
