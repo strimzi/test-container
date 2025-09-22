@@ -278,7 +278,7 @@ class StrimziKafkaContainerTest {
 
         assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("PLAIN"));
         assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("PLAIN"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("PLAIN"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
@@ -305,7 +305,7 @@ class StrimziKafkaContainerTest {
 
         assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("OAUTHBEARER"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
@@ -335,7 +335,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
         assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -400,7 +400,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
         assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is(kafkaContainer.configureListenerSecurityProtocolMap("SASL_PLAINTEXT")));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -452,7 +452,7 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
         assertThat(properties.getProperty("broker.id"), is("1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is(kafkaContainer.configureListenerSecurityProtocolMap("SASL_PLAINTEXT")));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -600,5 +600,279 @@ class StrimziKafkaContainerTest {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
 
         assertThat(kafkaContainer.getClusterId(), nullValue());
+    }
+
+    @Test
+    void testWithNodeRoleReturnsSelf() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
+
+        StrimziKafkaContainer result = kafkaContainer.withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        assertSame(kafkaContainer, result, "withNodeRole() should return the same instance for method chaining.");
+    }
+
+    @Test
+    void testDefaultNodeRole() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
+
+        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.COMBINED));
+    }
+
+    @Test
+    void testSetControllerOnlyRole() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+    }
+
+    @Test
+    void testSetBrokerOnlyRole() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER);
+
+        assertThat(kafkaContainer.getNodeRole(), is(KafkaNodeRole.BROKER));
+    }
+
+    @Test
+    void testControllerOnlyNodeThrowsExceptionForBootstrapServers() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            kafkaContainer::getBootstrapServers
+        );
+
+        assertThat(exception.getMessage(), containsString("Controller-only nodes do not provide bootstrap servers"));
+    }
+
+    @Test
+    void testControllerOnlyNodeThrowsExceptionForNetworkBootstrapServers() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            kafkaContainer::getNetworkBootstrapServers
+        );
+
+        assertThat(exception.getMessage(), containsString("Controller-only nodes do not provide bootstrap servers"));
+    }
+
+    @Test
+    void testBrokerOnlyNodeAllowsBootstrapServers() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .withBrokerId(1);
+
+        // Should not throw exception
+        String bootstrapServers = kafkaContainer.getBootstrapServers();
+        assertThat(bootstrapServers, is(notNullValue()));
+    }
+
+    @Test
+    void testcombinedNodeAllowsBootstrapServers() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(1);
+
+        // Should not throw exception
+        String bootstrapServers = kafkaContainer.getBootstrapServers();
+        assertThat(bootstrapServers, is(notNullValue()));
+    }
+
+    @Test
+    void testDedicatedRolesNodeRoleConfiguration() {
+        StrimziKafkaContainer controllerNode = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(0)
+            .withNodeId(0)
+            .withClusterId("test-cluster");
+
+        StrimziKafkaContainer brokerNode = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .withBrokerId(0)
+            .withNodeId(1)
+            .withClusterId("test-cluster");
+
+        StrimziKafkaContainer combinedNode = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(0)
+            .withNodeId(2)
+            .withClusterId("test-cluster");
+
+        // Verify node roles are set correctly
+        assertThat(controllerNode.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+        assertThat(brokerNode.getNodeRole(), is(KafkaNodeRole.BROKER));
+        assertThat(combinedNode.getNodeRole(), is(KafkaNodeRole.COMBINED));
+    }
+
+    @Test
+    void testExtractControllerListenerSingleController() {
+        Properties props = new Properties();
+        String adv = "CONTROLLER://broker-1:9094";
+        kafkaContainer.extractControllerListener(props, adv);
+
+        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+    }
+
+    @Test
+    void testExtractControllerListenerMultipleListenersPicksController() {
+        Properties props = new Properties();
+        String adv = "PLAINTEXT://localhost:9092,CONTROLLER://broker-1:9094,SASL_PLAINTEXT://localhost:9093";
+
+        kafkaContainer.extractControllerListener(props, adv);
+
+        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+    }
+
+    @Test
+    void testExtractControllerListenerNoControllerNoChange() {
+        Properties props = new Properties();
+        props.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
+        String adv = "PLAINTEXT://localhost:9092,SASL_PLAINTEXT://localhost:9093";
+
+        kafkaContainer.extractControllerListener(props, adv);
+
+        assertThat(props.getProperty("advertised.listeners"), is("PLAINTEXT://localhost:9092"));
+    }
+
+    @Test
+    void testExtractControllerListenerTrimsWhitespace() {
+        Properties props = new Properties();
+        String adv = "PLAINTEXT://localhost:9092,   CONTROLLER://broker-1:9094   ,SASL_PLAINTEXT://localhost:9093";
+
+        kafkaContainer.extractControllerListener(props, adv);
+
+        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+    }
+
+    @Test
+    void testExtractControllerListenerMultipleControllersPicksFirst() {
+        Properties props = new Properties();
+        String adv = "CONTROLLER://broker-1:9094,CONTROLLER://broker-2:9094";
+
+        kafkaContainer.extractControllerListener(props, adv);
+
+        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+    }
+
+    @Test
+    void testExtractControllerListenerEmptyInputNoChange() {
+        Properties props = new Properties();
+        kafkaContainer.extractControllerListener(props, "");
+
+        assertThat(props.getProperty("advertised.listeners"), nullValue());
+    }
+
+    @Test
+    void testWithPortReturnsThis() {
+        StrimziKafkaContainer result = kafkaContainer.withPort(9092);
+        assertSame(kafkaContainer, result);
+    }
+
+    @Test
+    void testWithProxyContainerSetsNetworkAliases() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        kafkaContainer.withProxyContainer(proxyContainer);
+        
+        assertThat(proxyContainer.getNetworkAliases(), hasItem("toxiproxy"));
+    }
+
+    @Test
+    void testWithProxyContainerWithNull() {
+        StrimziKafkaContainer result = kafkaContainer.withProxyContainer(null);
+        assertSame(kafkaContainer, result);
+    }
+
+    @Test
+    void testSetKRaftPropertiesWithExistingControllerQuorumVoters() {
+        Map<String, String> kafkaConfig = Map.of("controller.quorum.voters", "1@custom:9094");
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withKafkaConfigurationMap(kafkaConfig)
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withNodeId(1)
+            .withBrokerId(1);
+        container.listenerNames.add("PLAINTEXT");
+        
+        Properties defaultProps = container.buildDefaultServerProperties(
+            "PLAINTEXT://0.0.0.0:9092", 
+            "PLAINTEXT://localhost:9092"
+        );
+        
+        // The buildDefaultServerProperties should skip setting default quorum voters when already configured
+        // This tests the conditional: if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters"))
+        assertThat(defaultProps.getProperty("controller.quorum.voters"), nullValue());
+        
+        // Test that the override happens during overrideProperties
+        String finalProperties = container.overrideProperties(defaultProps, kafkaConfig);
+        assertThat(finalProperties, containsString("controller.quorum.voters=1@custom\\:9094"));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithControllerOnlyNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1);
+
+        String bootstrapControllers = kafkaContainer.getBootstrapControllers();
+        assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithCombinedNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(1);
+
+        String bootstrapControllers = kafkaContainer.getBootstrapControllers();
+        assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithBrokerOnlyNodeThrowsException() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER);
+
+        UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            kafkaContainer::getBootstrapControllers
+        );
+
+        assertThat(exception.getMessage(), containsString("Broker-only nodes do not provide controller endpoints"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllerWithControllersOnlyNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1);
+
+        String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, is("broker-1:9094"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithCombinedNode() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(2);
+
+        String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, is("broker-2:9094"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithBrokerOnlyNodeThrowsException() {
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER);
+
+        UnsupportedOperationException exception = assertThrows(
+            UnsupportedOperationException.class,
+            kafkaContainer::getNetworkBootstrapControllers
+        );
+
+        assertThat(exception.getMessage(), containsString("Broker-only nodes do not provide controller endpoints"));
     }
 }

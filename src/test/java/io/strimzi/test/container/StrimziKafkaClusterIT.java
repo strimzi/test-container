@@ -50,8 +50,10 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.matchesPattern;
 
 @SuppressWarnings({"ClassFanOutComplexity", "ClassDataAbstractionCoupling"})
 public class StrimziKafkaClusterIT extends AbstractIT {
@@ -152,6 +154,41 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat(result.getStdout(), CoreMatchers.containsString("dummy-plugin.jar"));
     }
 
+    @Test
+    void testDedicatedRolesClusterStartsAndFunctionsProperly() throws InterruptedException, ExecutionException, TimeoutException {
+        try (StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(5)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build()) {
+
+            cluster.start();
+
+            // Verify cluster configuration
+            assertThat(cluster.isUsingDedicatedRoles(), is(true));
+            assertThat(cluster.getNodes().size(), is(8)); // 3 controllers + 5 brokers
+            assertThat(cluster.getControllers().size(), is(3));
+            assertThat(cluster.getBrokers().size(), is(5));
+
+            // Verify bootstrap servers are available
+            String bootstrapServers = cluster.getBootstrapServers();
+            assertThat(bootstrapServers, notNullValue());
+
+            // Should have exactly 5 broker endpoints
+            String[] servers = bootstrapServers.split(",");
+            assertThat(servers.length, is(5));
+
+            // Verify network bootstrap servers
+            String networkBootstrapServers = cluster.getNetworkBootstrapServers();
+            assertThat(networkBootstrapServers, notNullValue());
+            assertThat(networkBootstrapServers.split(",").length, is(5));
+
+            // Set systemUnderTest for the verification method
+            this.systemUnderTest = cluster;
+            verifyFunctionalityOfKafkaCluster();
+        }
+    }
+
     private void setUpKafkaKRaftCluster() {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
@@ -229,6 +266,56 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
                     return true;
                 });
+        }
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWhenUsingDedicatedRoles() {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        this.systemUnderTest.start();
+
+        String networkBootstrapControllers = systemUnderTest.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, notNullValue());
+        assertThat(networkBootstrapControllers, not(""));
+
+        String[] controllers = networkBootstrapControllers.split(",");
+        assertThat(controllers.length, is(3));
+
+        for (String controller : controllers) {
+            assertThat(controller, matchesPattern("broker-[0-9]+:9094"));
+        }
+    }
+
+    @Test
+    void testExternalClientCanConnectDirectlyToControllersWhenUsingDedicatedRoles() throws ExecutionException, InterruptedException, TimeoutException {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        this.systemUnderTest.start();
+
+        String bootstrapControllers = this.systemUnderTest.getBootstrapControllers();
+        LOGGER.info("Bootstrap controllers: {}", bootstrapControllers);
+
+        try (AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+            AdminClientConfig.BOOTSTRAP_CONTROLLERS_CONFIG, bootstrapControllers,
+            AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000,
+            AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 30000))) {
+
+            Collection<Node> nodes = adminClient.describeCluster().nodes().get(30, TimeUnit.SECONDS);
+            assertThat(nodes, notNullValue());
+
+            Node controller = adminClient.describeCluster().controller().get(30, TimeUnit.SECONDS);
+            assertThat(controller, notNullValue());
+            LOGGER.info("Controller ID: {}", controller.id());
+
         }
     }
 

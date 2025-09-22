@@ -14,6 +14,7 @@ import org.testcontainers.containers.ToxiproxyContainer;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -104,7 +105,7 @@ public class StrimziKafkaClusterTest {
 
         assertThat(cluster.getNetwork(), CoreMatchers.notNullValue());
         assertThat(proxyContainer.getNetwork(), CoreMatchers.notNullValue());
-        assertThat(cluster.getNetwork().getId(), CoreMatchers.is(proxyContainer.getNetwork().getId()));
+        assertThat(cluster.getNetwork().getId(), is(proxyContainer.getNetwork().getId()));
     }
 
     @Test
@@ -150,8 +151,8 @@ public class StrimziKafkaClusterTest {
             .withInternalTopicReplicationFactor(3)
             .build();
 
-        assertThat(cluster.getNodes().size(), CoreMatchers.is(5));
-        assertThat(cluster.getInternalTopicReplicationFactor(), CoreMatchers.is(3));
+        assertThat(cluster.getNodes().size(), is(5));
+        assertThat(cluster.getInternalTopicReplicationFactor(), is(3));
     }
 
     @Test
@@ -162,8 +163,8 @@ public class StrimziKafkaClusterTest {
             .withInternalTopicReplicationFactor(2)
             .build();
 
-        assertThat(cluster.getNodes().size(), CoreMatchers.is(4));
-        assertThat(cluster.isSharedNetworkEnabled(), CoreMatchers.is(true));
+        assertThat(cluster.getNodes().size(), is(4));
+        assertThat(cluster.isSharedNetworkEnabled(), is(true));
     }
 
     @Test
@@ -178,14 +179,14 @@ public class StrimziKafkaClusterTest {
             .withAdditionalKafkaConfiguration(additionalConfigs)
             .build();
 
-        assertThat(cluster.getNodes().size(), CoreMatchers.is(3));
-        assertThat(((StrimziKafkaContainer) cluster.getNodes().iterator().next()).getKafkaVersion(), CoreMatchers.is("3.7.1"));
-        assertThat(cluster.getAdditionalKafkaConfiguration().get("log.retention.bytes"), CoreMatchers.is("10485760"));
+        assertThat(cluster.getNodes().size(), is(3));
+        assertThat(((StrimziKafkaContainer) cluster.getNodes().iterator().next()).getKafkaVersion(), is("3.7.1"));
+        assertThat(cluster.getAdditionalKafkaConfiguration().get("log.retention.bytes"), is("10485760"));
         assertThat(
             ((StrimziKafkaContainer) cluster.getNodes().iterator().next())
                 .getKafkaConfigurationMap()
                 .get("log.retention.bytes"),
-            CoreMatchers.is("10485760")
+            is("10485760")
         );
     }
 
@@ -197,16 +198,16 @@ public class StrimziKafkaClusterTest {
             .withSharedNetwork()
             .build();
 
-        assertThat(sharedNetworkCluster.isSharedNetworkEnabled(), CoreMatchers.is(true));
-        assertThat(sharedNetworkCluster.getNetwork(), CoreMatchers.is(Network.SHARED));
+        assertThat(sharedNetworkCluster.isSharedNetworkEnabled(), is(true));
+        assertThat(sharedNetworkCluster.getNetwork(), is(Network.SHARED));
 
         // Cluster with shared network disabled
         StrimziKafkaCluster isolatedNetworkCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
             .build();
 
-        assertThat(isolatedNetworkCluster.isSharedNetworkEnabled(), CoreMatchers.is(false));
-        assertThat(isolatedNetworkCluster.getNetwork(), CoreMatchers.is(CoreMatchers.not(Network.SHARED)));
+        assertThat(isolatedNetworkCluster.isSharedNetworkEnabled(), is(false));
+        assertThat(isolatedNetworkCluster.getNetwork(), is(CoreMatchers.not(Network.SHARED)));
     }
 
     @Test
@@ -283,7 +284,7 @@ public class StrimziKafkaClusterTest {
         Map<String, String> expectedConfig = new HashMap<>(additionalConfig);
         expectedConfig.put("controller.quorum.voters", "0@broker-0:9094,1@broker-1:9094,2@broker-2:9094");
 
-        assertThat(cluster.getAdditionalKafkaConfiguration(), CoreMatchers.is(expectedConfig));
+        assertThat(cluster.getAdditionalKafkaConfiguration(), is(expectedConfig));
     }
 
     @Test
@@ -293,9 +294,9 @@ public class StrimziKafkaClusterTest {
             .build();
 
         String quorumVoters = cluster.getAdditionalKafkaConfiguration().get("controller.quorum.voters");
-        assertThat(quorumVoters, CoreMatchers.is(CoreMatchers.notNullValue()));
-        assertThat(quorumVoters, CoreMatchers.is(CoreMatchers.not(CoreMatchers.nullValue())));
-        assertThat(quorumVoters, CoreMatchers.is("0@broker-0:9094,1@broker-1:9094,2@broker-2:9094"));
+        assertThat(quorumVoters, is(CoreMatchers.notNullValue()));
+        assertThat(quorumVoters, is(CoreMatchers.not(CoreMatchers.nullValue())));
+        assertThat(quorumVoters, is("0@broker-0:9094,1@broker-1:9094,2@broker-2:9094"));
     }
 
     @Test
@@ -360,10 +361,10 @@ public class StrimziKafkaClusterTest {
             .build();
 
         String bootstrapServers = cluster.getBootstrapServers();
-        assertThat(bootstrapServers, CoreMatchers.is(CoreMatchers.notNullValue()));
-        assertThat(bootstrapServers, CoreMatchers.is(CoreMatchers.not(emptyString())));
+        assertThat(bootstrapServers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapServers, is(CoreMatchers.not(emptyString())));
         String[] servers = bootstrapServers.split(",");
-        assertThat(servers.length, CoreMatchers.is(3));
+        assertThat(servers.length, is(3));
     }
 
     @SuppressWarnings("deprecation")
@@ -373,11 +374,239 @@ public class StrimziKafkaClusterTest {
             .withNumberOfBrokers(2)
             .build();
 
-        assertThat(cluster.getBrokers().size(), CoreMatchers.is(2));
-        assertThat(cluster.getNodes().size(), CoreMatchers.is(2));
+        assertThat(cluster.getBrokers().size(), is(2));
+        assertThat(cluster.getNodes().size(), is(2));
 
         for (GenericContainer<?> container : cluster.getNodes()) {
             assertThat(container, CoreMatchers.instanceOf(GenericContainer.class));
         }
+    }
+
+    @Test
+    void testCombinedRolesClusterQuorumVoters() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        // Should only include controllers in quorum voters
+        String expectedQuorumVoters = "0@broker-0:9094,1@broker-1:9094,2@broker-2:9094";
+        assertThat(cluster.getAdditionalKafkaConfiguration().get("controller.quorum.voters"), is(expectedQuorumVoters));
+    }
+
+    @Test
+    void testDedicatedRolesClusterInternalTopicReplicationFactor() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        // Should use brokers count for replication factor calculation
+        assertThat(cluster.getInternalTopicReplicationFactor(), is(2));
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithCustomReplicationFactor() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .withInternalTopicReplicationFactor(2)
+            .build();
+
+        assertThat(cluster.getInternalTopicReplicationFactor(), is(2));
+    }
+
+    @Test
+    void testDedicatedRolesValidation() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withNumberOfControllers(0)
+                .withDedicatedRoles()
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("controllersNum '0' must be greater than 0"));
+    }
+
+    @Test
+    void testDedicatedRolesValidationMissingControllers() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withDedicatedRoles()
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("controllersNum '0' must be greater than 0"));
+    }
+
+    @Test
+    void testCombinedRolesClusterDefault() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        assertThat(cluster.isUsingDedicatedRoles(), is(false));
+        assertThat(cluster.getNodes().size(), is(3));
+        assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in combined mode
+        assertThat(cluster.getControllers().size(), is(3)); // All nodes are controllers in combined mode
+    }
+
+    @Test
+    void testDedicatedRolesBootstrapServersOnlyFromBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withNumberOfControllers(1)
+            .build();
+
+        // Bootstrap servers should only come from broker nodes
+        String bootstrapServers = cluster.getBootstrapServers();
+        String networkBootstrapServers = cluster.getNetworkBootstrapServers();
+        
+        // Should have exactly 2 broker endpoints (not 3 total nodes)
+        assertThat(bootstrapServers.split(",").length, is(2));
+        assertThat(networkBootstrapServers.split(",").length, is(2));
+    }
+
+    @Test
+    void testDedicatedRolesClusterConfiguration() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        // Verify cluster configuration
+        assertThat(cluster.isUsingDedicatedRoles(), is(true));
+        assertThat(cluster.getNodes().size(), is(5)); // 3 controllers + 2 brokers
+        assertThat(cluster.getControllers().size(), is(3));
+        assertThat(cluster.getBrokers().size(), is(2));
+
+        // Verify controller nodes have CONTROLLER role
+        for (KafkaContainer controller : cluster.getControllers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+        }
+
+        // Verify broker nodes have BROKER role
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.BROKER));
+        }
+    }
+
+    @Test
+    void testCombinedRolesClusterConfiguration() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        // Verify cluster configuration
+        assertThat(cluster.isUsingDedicatedRoles(), is(false));
+        assertThat(cluster.getNodes().size(), is(3)); // 3 combined-role nodes
+        assertThat(cluster.getControllers().size(), is(3)); // All nodes are controllers in combined mode
+        assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in combined mode
+
+        // Verify all nodes have combined role
+        for (KafkaContainer node : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            assertThat(container.getNodeRole(), is(KafkaNodeRole.COMBINED));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithNullKafkaVersion() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withKafkaVersion(null) // Test null version edge case
+            .build();
+        
+        // Should handle null version by using latest version
+        assertThat(cluster.isUsingDedicatedRoles(), is(true));
+        assertThat(cluster.getControllers().size(), is(2));
+        assertThat(cluster.getBrokers().size(), is(2));
+    }
+
+    @Test
+    void testDedicatedRolesClusterBrokerIdCalculation() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withDedicatedRoles()
+            .withNumberOfControllers(5) // Test specific controller count
+            .build();
+        
+        // Verify broker IDs start after controller count
+        int expectedMinBrokerId = 5; // controllersNum
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat(container.getBrokerId() >= expectedMinBrokerId, is(true));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithVersionAndBrokerIdEdgeCases() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .withKafkaVersion("3.8.0") // Test non-null version
+            .build();
+        
+        // Test that version is properly set and broker ID calculation works with minimal setup
+        assertThat(cluster.getBrokers().size(), is(1));
+        assertThat(cluster.getControllers().size(), is(1));
+        
+        StrimziKafkaContainer brokerContainer = (StrimziKafkaContainer) cluster.getBrokers().iterator().next();
+        assertThat(brokerContainer.getBrokerId(), is(1)); // 1 controller + 0 index = 1
+    }
+
+    @Test
+    void testGetBootstrapControllersWithCombinedRoles() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        String bootstrapControllers = cluster.getBootstrapControllers();
+        assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
+        
+        String[] controllers = bootstrapControllers.split(",");
+        assertThat(controllers.length, is(3));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithDedicatedRoles() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        String bootstrapControllers = cluster.getBootstrapControllers();
+        assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
+        
+        String[] controllers = bootstrapControllers.split(",");
+        assertThat(controllers.length, is(3));
+    }
+
+    @Test
+    void testGetBootstrapControllersWithSingleController() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        String bootstrapControllers = cluster.getBootstrapControllers();
+        assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
+        assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
+        
+        String[] controllers = bootstrapControllers.split(",");
+        assertThat(controllers.length, is(1));
     }
 }
