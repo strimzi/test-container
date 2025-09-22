@@ -11,7 +11,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -444,7 +443,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testcombinedRolesClusterDefault() {
+    void testCombinedRolesClusterDefault() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
             .build();
@@ -499,7 +498,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testcombinedRolesClusterConfiguration() {
+    void testCombinedRolesClusterConfiguration() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
             .build();
@@ -511,8 +510,7 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in combined mode
 
         // Verify all nodes have combined role
-        Collection<KafkaContainer> brokers = cluster.getBrokers();
-        for (KafkaContainer node : brokers) {
+        for (KafkaContainer node : cluster.getBrokers()) {
             StrimziKafkaContainer container = (StrimziKafkaContainer) node;
             assertThat(container.getNodeRole(), is(KafkaNodeRole.COMBINED));
         }
@@ -542,9 +540,8 @@ public class StrimziKafkaClusterTest {
             .build();
         
         // Verify broker IDs start after controller count
-        Collection<KafkaContainer> brokers = cluster.getBrokers();
         int expectedMinBrokerId = 5; // controllersNum
-        for (KafkaContainer broker : brokers) {
+        for (KafkaContainer broker : cluster.getBrokers()) {
             StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
             assertThat(container.getBrokerId() >= expectedMinBrokerId, is(true));
         }
@@ -568,7 +565,7 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testGetBootstrapControllersWithcombinedRoles() {
+    void testGetBootstrapControllersWithCombinedRoles() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
             .build();

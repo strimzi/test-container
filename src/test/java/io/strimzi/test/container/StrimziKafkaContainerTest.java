@@ -844,7 +844,7 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testGetNetworkBootstrapControllersWithControllerOnlyNode() {
+    void testGetNetworkBootstrapControllerWithControllersOnlyNode() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
             .withBrokerId(1);

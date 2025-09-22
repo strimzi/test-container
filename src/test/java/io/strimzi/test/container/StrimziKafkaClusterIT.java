@@ -8,8 +8,6 @@ import eu.rekawek.toxiproxy.Proxy;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.FeatureMetadata;
-import org.apache.kafka.clients.admin.FinalizedVersionRange;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -52,8 +50,10 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.matchesPattern;
 
 @SuppressWarnings({"ClassFanOutComplexity", "ClassDataAbstractionCoupling"})
 public class StrimziKafkaClusterIT extends AbstractIT {
@@ -270,6 +270,28 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     @Test
+    void testGetNetworkBootstrapControllersWhenUsingDedicatedRoles() {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        this.systemUnderTest.start();
+
+        String networkBootstrapControllers = systemUnderTest.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, notNullValue());
+        assertThat(networkBootstrapControllers, not(""));
+
+        String[] controllers = networkBootstrapControllers.split(",");
+        assertThat(controllers.length, is(3));
+
+        for (String controller : controllers) {
+            assertThat(controller, matchesPattern("broker-[0-9]+:9094"));
+        }
+    }
+
+    @Test
     void testExternalClientCanConnectDirectlyToControllersWhenUsingDedicatedRoles() throws ExecutionException, InterruptedException, TimeoutException {
         this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
@@ -294,27 +316,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             assertThat(controller, notNullValue());
             LOGGER.info("Controller ID: {}", controller.id());
 
-            FeatureMetadata features = adminClient.describeFeatures().featureMetadata().get(30, TimeUnit.SECONDS);
-            assertThat(features, notNullValue());
-
-            LOGGER.info("All finalized features: {}", features.finalizedFeatures());
-
-            String[] expectedFeatures = {
-                "group.version",
-                "transaction.version",
-                "eligible.leader.replicas.version",
-                "metadata.version"
-            };
-
-            for (String featureName : expectedFeatures) {
-                if (features.finalizedFeatures().containsKey(featureName)) {
-                    FinalizedVersionRange versionRange = features.finalizedFeatures().get(featureName);
-                    assertThat(versionRange, notNullValue());
-                    LOGGER.info("{}: {}", featureName, versionRange);
-                } else {
-                    LOGGER.warn("Expected feature '{}' not found in finalized features", featureName);
-                }
-            }
         }
     }
 

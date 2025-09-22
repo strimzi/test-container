@@ -373,6 +373,18 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 .collect(Collectors.joining(","));
     }
 
+    /**
+     * Get the bootstrap controllers that containers on the same network should use to connect to controllers
+     * @return a comma separated list of Kafka controller endpoints
+     */
+    @SuppressWarnings("deprecation")
+    @DoNotMutate
+    public String getNetworkBootstrapControllers() {
+        return getControllers().stream()
+                .map(controller -> ((StrimziKafkaContainer) controller).getNetworkBootstrapControllers())
+                .collect(Collectors.joining(","));
+    }
+
     /* test */ int getInternalTopicReplicationFactor() {
         return this.internalTopicReplicationFactor;
     }
