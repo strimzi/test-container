@@ -23,6 +23,9 @@ import org.testcontainers.utility.MountableFile;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -124,6 +127,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     private AuthenticationType authenticationType = AuthenticationType.NONE;
 
+    // Log collection attributes
+    private String logFilePath;
+
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
      */
@@ -214,10 +220,75 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     @Override
     @DoNotMutate
     public void stop() {
+        // Collect logs if log collection is enabled
+        if (this.logFilePath != null) {
+            collectLogs();
+        }
+
         if (proxyContainer != null && proxyContainer.isRunning()) {
             proxyContainer.stop();
         }
         super.stop();
+    }
+
+    @DoNotMutate
+    private void collectLogs() {
+        try {
+            // Determine the final log file path at runtime
+            String finalLogPath = this.logFilePath;
+
+            if (this.logFilePath.endsWith("/")) {
+                String fileName;
+                switch (this.nodeRole) {
+                    case CONTROLLER:
+                        fileName = "kafka-controller-" + this.nodeId + ".log";
+                        break;
+                    case BROKER:
+                        fileName = "kafka-broker-" + this.brokerId + ".log";
+                        break;
+                    case COMBINED:
+                    default:
+                        fileName = "kafka-container-" + this.brokerId + ".log";
+                        break;
+                }
+                finalLogPath = this.logFilePath + fileName;
+            }
+
+            LOGGER.info("Collecting logs to file: {}", finalLogPath);
+            final String logs = getLogs();
+            final Path logPath = Paths.get(finalLogPath);
+
+            // Create directories if they don't exist
+            if (logPath.getParent() != null) {
+                Files.createDirectories(logPath.getParent());
+            }
+
+            writeDataToFile(finalLogPath, logs);
+
+            LOGGER.info("Successfully collected logs to: {}", logPath.toAbsolutePath());
+        } catch (IOException e) {
+            LOGGER.error("Failed to collect logs to file: {}", this.logFilePath, e);
+            throw new RuntimeException("Failed to collect logs to file: " + this.logFilePath, e);
+        }
+    }
+
+    /**
+     * Method that writes data to file (on path, specified by {@param fullFilePath}.
+     *
+     * @param fullFilePath full path to file
+     * @param data         data which should be written to file
+     */
+    @DoNotMutate
+    private void writeDataToFile(String fullFilePath, String data) {
+        if (data != null && !data.isEmpty()) {
+            try {
+                Files.writeString(Paths.get(fullFilePath), data, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                    String.format("Failed to write to the %s file due to: %s", fullFilePath, e.getMessage())
+                );
+            }
+        }
     }
 
     /**
@@ -954,6 +1025,38 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             "/opt/kafka/config/log4j2.yaml"
         );
 
+        return self();
+    }
+
+    /**
+     * Fluent method to enable log collection with a default log file path.
+     * The actual filename is determined at runtime when logs are collected.
+     *
+     * @return StrimziKafkaContainer instance for method chaining
+     */
+    public StrimziKafkaContainer withLogCollection() {
+        this.logFilePath = "target/strimzi-test-container-logs/";
+        return self();
+    }
+
+    /**
+     * Fluent method to enable log collection for all containers in the cluster with a custom log file path.
+     *
+     * If the path ends with "/", role-based filenames are automatically appended at runtime for each container:
+     *      Controller-only: "kafka-controller-{nodeId}.log"
+     *      Broker-only: "kafka-broker-{brokerId}.log"
+     *      Combined: "kafka-container-{brokerId}.log"
+     * otherwise,  the path doesn't end with "/", it's used as the exact filename base for all containers
+     *
+     * @param logFilePath the base path where container logs will be saved. Use "/" suffix for automatic role-based naming.
+     * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+     */
+    public StrimziKafkaContainer withLogFilePath(final String logFilePath) {
+        if (logFilePath != null && !logFilePath.trim().isEmpty()) {
+            this.logFilePath = logFilePath.trim();
+        } else {
+            throw new IllegalArgumentException("Log file path cannot be null or empty.");
+        }
         return self();
     }
 

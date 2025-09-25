@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -316,6 +317,138 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             assertThat(controller, notNullValue());
             LOGGER.info("Controller ID: {}", controller.id());
 
+        }
+    }
+
+    @Test
+    void testLogCollectionWithDedicatedRoles() throws IOException {
+        // Expected log files for dedicated roles cluster
+        String controller0LogPath = "target/strimzi-test-container-logs/kafka-controller-0.log";
+        String controller1LogPath = "target/strimzi-test-container-logs/kafka-controller-1.log";
+        String controller2LogPath = "target/strimzi-test-container-logs/kafka-controller-2.log";
+        String brokerLogPath = "target/strimzi-test-container-logs/kafka-broker-3.log";
+
+        Path controller0Path = Paths.get(controller0LogPath);
+        Path controller1Path = Paths.get(controller1LogPath);
+        Path controller2Path = Paths.get(controller2LogPath);
+        Path brokerPath = Paths.get(brokerLogPath);
+
+        // Clean up any existing log files
+        Files.deleteIfExists(controller0Path);
+        Files.deleteIfExists(controller1Path);
+        Files.deleteIfExists(controller2Path);
+        Files.deleteIfExists(brokerPath);
+
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .withLogCollection()
+            .build();
+
+        this.systemUnderTest.start();
+
+        // Verify cluster is running
+        assertThat(this.systemUnderTest.getBootstrapServers(), notNullValue());
+        assertThat(this.systemUnderTest.getBootstrapControllers(), notNullValue());
+
+        this.systemUnderTest.stop();
+
+        // Verify log files were created for dedicated roles
+        assertThat("Controller log file should exist", Files.exists(controller0Path), is(true));
+        assertThat("Controller log file should exist", Files.exists(controller1Path), is(true));
+        assertThat("Controller log file should exist", Files.exists(controller2Path), is(true));
+        assertThat("Broker log file should exist", Files.exists(brokerPath), is(true));
+
+        // Verify log files contain expected content
+        String controller0Content = Files.readString(controller0Path);
+        String controller1Content = Files.readString(controller1Path);
+        String controller2Content = Files.readString(controller2Path);
+        String brokerContent = Files.readString(brokerPath);
+
+        assertThat(controller0Content, CoreMatchers.containsString("Kafka Server started"));
+        assertThat(controller1Content, CoreMatchers.containsString("Kafka Server started"));
+        assertThat(controller2Content, CoreMatchers.containsString("Kafka Server started"));
+        assertThat(brokerContent, CoreMatchers.containsString("Kafka Server started"));
+
+        // Clean up
+        Files.deleteIfExists(controller0Path);
+        Files.deleteIfExists(controller1Path);
+        Files.deleteIfExists(controller2Path);
+        Files.deleteIfExists(brokerPath);
+    }
+
+    @Test
+    void testLogCollectionWithCombinedRoles() throws IOException {
+        // Expected log files for combined roles cluster
+        String combinedLogPath1 = "target/strimzi-test-container-logs/kafka-container-0.log";
+        String combinedLogPath2 = "target/strimzi-test-container-logs/kafka-container-1.log";
+
+        Path combinedPath1 = Paths.get(combinedLogPath1);
+        Path combinedPath2 = Paths.get(combinedLogPath2);
+
+        // Clean up any existing log files
+        Files.deleteIfExists(combinedPath1);
+        Files.deleteIfExists(combinedPath2);
+
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withLogCollection()
+            .build();
+
+        this.systemUnderTest.start();
+
+        // Verify cluster is running
+        assertThat(this.systemUnderTest.getBootstrapServers(), notNullValue());
+
+        this.systemUnderTest.stop();
+
+        // Verify log files were created for combined roles
+        assertThat("Combined role log file 1 should exist", Files.exists(combinedPath1), is(true));
+        assertThat("Combined role log file 2 should exist", Files.exists(combinedPath2), is(true));
+
+        // Verify log files contain expected content
+        String logContent1 = Files.readString(combinedPath1);
+        String logContent2 = Files.readString(combinedPath2);
+
+        assertThat(logContent1, CoreMatchers.containsString("ControllerServer id=0"));
+        assertThat(logContent2, CoreMatchers.containsString("ControllerServer id=1"));
+
+        Files.deleteIfExists(combinedPath1);
+        Files.deleteIfExists(combinedPath2);
+    }
+
+    @Test
+    void testLogCollectionWithCustomPath() throws IOException {
+        // Custom log path for cluster
+        String customLogPath = "test-cluster-logs/kafka-container-0.log";
+        Path logPath = Paths.get(customLogPath);
+
+        // Clean up any existing log file
+        Files.deleteIfExists(logPath);
+
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withLogFilePath("test-cluster-logs/")
+            .build();
+
+        this.systemUnderTest.start();
+
+        // Verify cluster is running
+        assertThat(this.systemUnderTest.getBootstrapServers(), notNullValue());
+
+        this.systemUnderTest.stop();
+
+        // Verify log file was created at custom path
+        assertThat("Custom cluster log file should exist", Files.exists(logPath), is(true));
+
+        // Verify log file contains expected content
+        String logContent = Files.readString(logPath);
+        assertThat(logContent, CoreMatchers.containsString("ControllerServer id=0"));
+
+        Files.deleteIfExists(logPath);
+        if (logPath.getParent() != null) {
+            Files.deleteIfExists(logPath.getParent());
         }
     }
 

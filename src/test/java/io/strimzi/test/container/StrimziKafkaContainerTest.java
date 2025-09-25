@@ -27,6 +27,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -874,5 +875,46 @@ class StrimziKafkaContainerTest {
         );
 
         assertThat(exception.getMessage(), containsString("Broker-only nodes do not provide controller endpoints"));
+    }
+
+    @Test
+    void testWithLogCollection() {
+        StrimziKafkaContainer result = kafkaContainer.withLogCollection();
+        assertSame(kafkaContainer, result, "withLogCollection() should return the same instance for method chaining.");
+    }
+
+    @Test
+    void testWithLogFilePathValid() {
+        StrimziKafkaContainer result = kafkaContainer.withLogFilePath("target/test-logs/");
+        assertSame(kafkaContainer, result, "withLogFilePath() should return the same instance for method chaining.");
+    }
+
+    @Test
+    void testWithLogFilePathNullThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            kafkaContainer.withLogFilePath(null)
+        );
+        assertThat(exception.getMessage(), containsString("Log file path cannot be null or empty"));
+    }
+
+    @Test
+    void testWithLogFilePathEmptyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            kafkaContainer.withLogFilePath("")
+        );
+        assertThat(exception.getMessage(), containsString("Log file path cannot be null or empty"));
+    }
+
+    @Test
+    void testWithLogFilePathWhitespaceOnlyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            kafkaContainer.withLogFilePath("   ")
+        );
+        assertThat(exception.getMessage(), containsString("Log file path cannot be null or empty"));
+    }
+
+    @Test
+    void testWithLogFilePathTrimsWhitespace() {
+        assertDoesNotThrow(() -> kafkaContainer.withLogFilePath("  target/test-logs/  "));
     }
 }

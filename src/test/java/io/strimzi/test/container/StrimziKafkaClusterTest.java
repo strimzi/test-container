@@ -605,8 +605,71 @@ public class StrimziKafkaClusterTest {
         String bootstrapControllers = cluster.getBootstrapControllers();
         assertThat(bootstrapControllers, is(CoreMatchers.notNullValue()));
         assertThat(bootstrapControllers, is(CoreMatchers.not(emptyString())));
-        
+
         String[] controllers = bootstrapControllers.split(",");
         assertThat(controllers.length, is(1));
+    }
+
+    @Test
+    void testWithLogCollection() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withLogCollection()
+            .build();
+
+        assertThat(cluster, is(CoreMatchers.notNullValue()));
+    }
+
+    @Test
+    void testWithLogFilePathValid() {
+        assertDoesNotThrow(() ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withLogFilePath("target/test-logs/")
+                .build()
+        );
+    }
+
+    @Test
+    void testWithLogFilePathNullThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withLogFilePath(null)
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("Log file path cannot be null or empty"));
+    }
+
+    @Test
+    void testWithLogFilePathEmptyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withLogFilePath("")
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("Log file path cannot be null or empty"));
+    }
+
+    @Test
+    void testWithLogFilePathWhitespaceOnlyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withLogFilePath("   ")
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("Log file path cannot be null or empty"));
+    }
+
+    @Test
+    void testWithLogFilePathTrimsWhitespace() {
+        assertDoesNotThrow(() ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withLogFilePath("  target/test-logs/  ")
+                .build()
+        );
     }
 }

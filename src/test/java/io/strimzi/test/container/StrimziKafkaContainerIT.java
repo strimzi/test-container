@@ -23,6 +23,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.containers.ContainerLaunchException;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -171,6 +175,69 @@ public class StrimziKafkaContainerIT extends AbstractIT {
             assertThat(records.records(topic).get(1).value(), equalTo("2"));
             assertThat(records.records(topic).get(2).value(), equalTo("3"));
         }
+    }
+
+    @Test
+    void testLogCollectionWithDefaultPath() throws IOException {
+        String expectedLogFilePath = "target/strimzi-test-container-logs/kafka-container-1.log";
+        Path logPath = Paths.get(expectedLogFilePath);
+
+        // Clean up any existing log file
+        Files.deleteIfExists(logPath);
+
+        systemUnderTest = new StrimziKafkaContainer()
+            .withBrokerId(1)
+            .withLogCollection()
+            .waitForRunning();
+
+        systemUnderTest.start();
+
+        // Verify the container is running and has logs
+        assertThat(systemUnderTest.getLogs(), containsString("ControllerServer id=1"));
+
+        systemUnderTest.stop();
+
+        // Verify log file was created
+        assertThat("Log file should exist", Files.exists(logPath), is(true));
+
+        // Verify log file contains expected content
+        String logContent = Files.readString(logPath);
+        assertThat(logContent, containsString("ControllerServer id=1"));
+
+        // Clean up
+        Files.deleteIfExists(logPath);
+    }
+
+
+    @Test
+    void testLogCollectionWithCustomPath() throws IOException {
+        String customLogPath = "test-logs/custom-kafka.log";
+        Path logPath = Paths.get(customLogPath);
+
+        // Clean up any existing log file
+        Files.deleteIfExists(logPath);
+
+        systemUnderTest = new StrimziKafkaContainer()
+            .withBrokerId(1)
+            .withLogFilePath(customLogPath)
+            .waitForRunning();
+
+        systemUnderTest.start();
+
+        // Verify the container is running and has logs
+        assertThat(systemUnderTest.getLogs(), containsString("ControllerServer id=1"));
+
+        systemUnderTest.stop();
+
+        // Verify log file was created at custom path
+        assertThat("Custom log file should exist", Files.exists(logPath), is(true));
+
+        // Verify log file contains expected content
+        String logContent = Files.readString(logPath);
+        assertThat(logContent, containsString("ControllerServer id=1"));
+
+        // Clean up
+        Files.deleteIfExists(logPath);
     }
 
     @AfterEach
