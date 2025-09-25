@@ -44,8 +44,7 @@ import java.util.stream.Collectors;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
- * given version. There are two options for how to use it. The first one is using an embedded zookeeper which will run
- * inside Kafka container.
+ * given version. This container runs Kafka in KRaft mode (without ZooKeeper) and is suitable for basic
  * integration testing but for more hardcore testing we suggest using {@link StrimziKafkaCluster}.
  * <br><br>
  * Optionally, you can configure a {@code proxyContainer} to simulate network conditions (i.e. connection cut, latency).
@@ -147,7 +146,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         super(imageName);
         this.imageNameProvider = imageName;
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
-        // instances and by default each container has its own network, which results in `Unable to resolve address: zookeeper:2181`
+        // instances and by default each container has its own network.
         super.setNetwork(Network.SHARED);
         // Initially expose Kafka port - will be updated in doStart() based on node role
         super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
