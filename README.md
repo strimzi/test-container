@@ -104,7 +104,7 @@ strimziKafkaContainer.start();
 ```
 
 Note that configuration properties `listeners`, `advertised.listeners`, `listener.security.protocol.map`, 
-`inter.broker.listener.name`, `controller.listener.names`, `zookeeper.connect` will be overridden during container startup.
+`inter.broker.listener.name`, `controller.listener.names` will be overridden during container startup.
 Properties configured through `withKafkaConfigurationMap` will also precede those configured in `server.properties` file.
 
 #### v) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
