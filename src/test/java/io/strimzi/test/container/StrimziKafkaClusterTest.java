@@ -672,4 +672,19 @@ public class StrimziKafkaClusterTest {
                 .build()
         );
     }
+
+    @Test
+    void testDedicatedRolesClusterWithLogFilePath() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withLogFilePath("target/dedicated-roles-logs/")
+            .build();
+
+        assertThat(cluster.isUsingDedicatedRoles(), is(true));
+        assertThat(cluster.getControllers().size(), is(2));
+        assertThat(cluster.getBrokers().size(), is(2));
+        assertThat(cluster.getNodes().size(), is(4));
+    }
 }
