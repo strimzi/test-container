@@ -625,7 +625,7 @@ public class StrimziKafkaClusterTest {
         assertDoesNotThrow(() ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(3)
-                .withLogFilePath("target/test-logs/")
+                .withLogCollection("target/test-logs/")
                 .build()
         );
     }
@@ -635,7 +635,7 @@ public class StrimziKafkaClusterTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(3)
-                .withLogFilePath(null)
+                .withLogCollection(null)
                 .build()
         );
         assertThat(exception.getMessage(), CoreMatchers.containsString("Log file path cannot be null or empty"));
@@ -646,7 +646,7 @@ public class StrimziKafkaClusterTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(3)
-                .withLogFilePath("")
+                .withLogCollection("")
                 .build()
         );
         assertThat(exception.getMessage(), CoreMatchers.containsString("Log file path cannot be null or empty"));
@@ -657,7 +657,7 @@ public class StrimziKafkaClusterTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(3)
-                .withLogFilePath("   ")
+                .withLogCollection("   ")
                 .build()
         );
         assertThat(exception.getMessage(), CoreMatchers.containsString("Log file path cannot be null or empty"));
@@ -668,7 +668,7 @@ public class StrimziKafkaClusterTest {
         assertDoesNotThrow(() ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(3)
-                .withLogFilePath("  target/test-logs/  ")
+                .withLogCollection("  target/test-logs/  ")
                 .build()
         );
     }
@@ -679,7 +679,7 @@ public class StrimziKafkaClusterTest {
             .withNumberOfBrokers(2)
             .withDedicatedRoles()
             .withNumberOfControllers(2)
-            .withLogFilePath("target/dedicated-roles-logs/")
+            .withLogCollection("target/dedicated-roles-logs/")
             .build();
 
         assertThat(cluster.isUsingDedicatedRoles(), is(true));

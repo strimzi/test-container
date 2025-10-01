@@ -429,7 +429,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
-            .withLogFilePath("test-cluster-logs/")
+            .withLogCollection("test-cluster-logs/")
             .build();
 
         this.systemUnderTest.start();

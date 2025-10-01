@@ -1051,7 +1051,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @param logFilePath the base path where container logs will be saved. Use "/" suffix for automatic role-based naming.
      * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
      */
-    public StrimziKafkaContainer withLogFilePath(final String logFilePath) {
+    public StrimziKafkaContainer withLogCollection(final String logFilePath) {
         if (logFilePath != null && !logFilePath.trim().isEmpty()) {
             this.logFilePath = logFilePath.trim();
         } else {

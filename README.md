@@ -248,7 +248,7 @@ kafkaCluster.stop();  // Logs are automatically saved when container stops
 ```java
 StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
     .withNumberOfBrokers(3)
-    .withLogFilePath("/path/to/my/logs/")  // Custom directory with trailing slash
+    .withLogCollection("/path/to/my/logs/")  // Custom directory with trailing slash
     .build();
 
 kafkaCluster.start();
@@ -287,7 +287,7 @@ For combined-role clusters, each node gets a generic container log:
 ```java
 StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
     .withNumberOfBrokers(3)
-    .withLogFilePath("my-test-logs/")
+    .withLogCollection("my-test-logs/")
     .build();
 
 kafkaCluster.start();

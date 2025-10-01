@@ -130,7 +130,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .waitForRunning();
 
                 if (this.logFilePath != null) {
-                    kafkaContainer.withLogFilePath(this.logFilePath);
+                    kafkaContainer.withLogCollection(this.logFilePath);
                 }
 
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
@@ -158,7 +158,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .waitForRunning();
 
                 if (this.logFilePath != null) {
-                    controllerContainer.withLogFilePath(this.logFilePath);
+                    controllerContainer.withLogCollection(this.logFilePath);
                 }
 
                 LOGGER.info("Started controller-only node with id: {}", controllerContainer);
@@ -187,7 +187,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .waitForRunning();
 
                 if (this.logFilePath != null) {
-                    brokerContainer.withLogFilePath(this.logFilePath);
+                    brokerContainer.withLogCollection(this.logFilePath);
                 }
 
                 LOGGER.info("Started broker-only node with id: {}", brokerContainer);
@@ -356,7 +356,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * @param logFilePath the base path where container logs will be saved. Use "/" suffix for automatic role-based naming.
          * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
          */
-        public StrimziKafkaClusterBuilder withLogFilePath(final String logFilePath) {
+        public StrimziKafkaClusterBuilder withLogCollection(final String logFilePath) {
             if (logFilePath != null && !logFilePath.trim().isEmpty()) {
                 this.logFilePath = logFilePath.trim();
             } else {

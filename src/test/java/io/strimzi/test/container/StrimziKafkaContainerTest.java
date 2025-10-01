@@ -885,14 +885,14 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testWithLogFilePathValid() {
-        StrimziKafkaContainer result = kafkaContainer.withLogFilePath("target/test-logs/");
+        StrimziKafkaContainer result = kafkaContainer.withLogCollection("target/test-logs/");
         assertSame(kafkaContainer, result, "withLogFilePath() should return the same instance for method chaining.");
     }
 
     @Test
     void testWithLogFilePathNullThrowsException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-            kafkaContainer.withLogFilePath(null)
+            kafkaContainer.withLogCollection(null)
         );
         assertThat(exception.getMessage(), containsString("Log file path cannot be null or empty"));
     }
@@ -900,7 +900,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testWithLogFilePathEmptyThrowsException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-            kafkaContainer.withLogFilePath("")
+            kafkaContainer.withLogCollection("")
         );
         assertThat(exception.getMessage(), containsString("Log file path cannot be null or empty"));
     }
@@ -908,13 +908,13 @@ class StrimziKafkaContainerTest {
     @Test
     void testWithLogFilePathWhitespaceOnlyThrowsException() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-            kafkaContainer.withLogFilePath("   ")
+            kafkaContainer.withLogCollection("   ")
         );
         assertThat(exception.getMessage(), containsString("Log file path cannot be null or empty"));
     }
 
     @Test
     void testWithLogFilePathTrimsWhitespace() {
-        assertDoesNotThrow(() -> kafkaContainer.withLogFilePath("  target/test-logs/  "));
+        assertDoesNotThrow(() -> kafkaContainer.withLogCollection("  target/test-logs/  "));
     }
 }

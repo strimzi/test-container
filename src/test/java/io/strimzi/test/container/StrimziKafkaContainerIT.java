@@ -219,7 +219,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
         systemUnderTest = new StrimziKafkaContainer()
             .withBrokerId(1)
-            .withLogFilePath(customLogPath)
+            .withLogCollection(customLogPath)
             .waitForRunning();
 
         systemUnderTest.start();
