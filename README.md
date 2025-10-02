@@ -226,7 +226,86 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xii) Logging Kafka Container/Cluster Output to SLF4J
+#### xii) Log Collection for StrimziKafkaCluster
+
+StrimziKafkaCluster supports automatic log collection from all Kafka containers. This is useful for debugging, monitoring, and analyzing the cluster behavior during tests.
+
+##### Basic log collection with default path
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withLogCollection()  // Saves logs to target/strimzi-test-container-logs/
+    .build();
+
+kafkaCluster.start();
+// ... run your tests
+kafkaCluster.stop();  // Logs are automatically saved when container stops
+```
+
+##### Custom log file path
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withLogCollection("/path/to/my/logs/")  // Custom directory with trailing slash
+    .build();
+
+kafkaCluster.start();
+// ... run your tests
+kafkaCluster.stop();
+```
+
+##### Log collection with dedicated controller/broker roles
+
+When using dedicated roles, logs are automatically organized by node type:
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(2)
+    .withDedicatedRoles()
+    .withNumberOfControllers(3)
+    .withLogCollection()
+    .build();
+
+kafkaCluster.start();
+// ... run your tests
+kafkaCluster.stop();
+
+// Files created:
+// - target/strimzi-test-container-logs/kafka-controller-0.log
+// - target/strimzi-test-container-logs/kafka-controller-1.log
+// - target/strimzi-test-container-logs/kafka-controller-2.log
+// - target/strimzi-test-container-logs/kafka-broker-3.log
+// - target/strimzi-test-container-logs/kafka-broker-4.log
+```
+
+##### Log collection with combined roles (default)
+
+For combined-role clusters, each node gets a generic container log:
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withLogCollection("my-test-logs/")
+    .build();
+
+kafkaCluster.start();
+// ... run your tests
+kafkaCluster.stop();
+
+// Files created:
+// - my-test-logs/kafka-container-0.log
+// - my-test-logs/kafka-container-1.log
+// - my-test-logs/kafka-container-2.log
+```
+
+> [!NOTE]
+Log collection happens automatically when containers are stopped. 
+If a path ends with "/", role-based filenames are automatically appended. 
+Without the trailing slash, the exact path is used as the filename base.
+
+#### xiii) Logging Kafka Container/Cluster Output to SLF4J
 
 If you want to enable logging of the Kafka container’s output to SLF4J, 
 you can set the environment variable `STRIMZI_TEST_CONTAINER_LOGGING_ENABLED` to true. 

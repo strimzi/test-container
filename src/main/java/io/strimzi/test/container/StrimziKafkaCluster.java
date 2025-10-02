@@ -47,6 +47,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final boolean enableSharedNetwork;
     private final String kafkaVersion;
     private final boolean useDedicatedRoles;
+    private final String logFilePath;
 
     // not editable
     private final Network network;
@@ -70,6 +71,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.proxyContainer = builder.proxyContainer;
         this.kafkaVersion = builder.kafkaVersion;
         this.clusterId = builder.clusterId;
+        this.logFilePath = builder.logFilePath;
 
         validateBrokerNum(this.brokersNum);
         if (this.isUsingDedicatedRoles()) {
@@ -127,6 +129,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withNodeRole(KafkaNodeRole.COMBINED)
                     .waitForRunning();
 
+                if (this.logFilePath != null) {
+                    kafkaContainer.withLogCollection(this.logFilePath);
+                }
+
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
 
                 return kafkaContainer;
@@ -150,6 +156,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withClusterId(this.clusterId)
                     .withNodeRole(KafkaNodeRole.CONTROLLER)
                     .waitForRunning();
+
+                if (this.logFilePath != null) {
+                    controllerContainer.withLogCollection(this.logFilePath);
+                }
 
                 LOGGER.info("Started controller-only node with id: {}", controllerContainer);
                 return controllerContainer;
@@ -175,6 +185,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withClusterId(this.clusterId)
                     .withNodeRole(KafkaNodeRole.BROKER)
                     .waitForRunning();
+
+                if (this.logFilePath != null) {
+                    brokerContainer.withLogCollection(this.logFilePath);
+                }
 
                 LOGGER.info("Started broker-only node with id: {}", brokerContainer);
                 return brokerContainer;
@@ -223,6 +237,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private boolean enableSharedNetwork;
         private String kafkaVersion;
         private String clusterId;
+        private String logFilePath;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -315,6 +330,38 @@ public class StrimziKafkaCluster implements KafkaContainer {
          */
         public StrimziKafkaClusterBuilder withNumberOfControllers(int controllersNum) {
             this.controllersNum = controllersNum;
+            return this;
+        }
+
+        /**
+         * Fluent method to enable log collection with a default log file path.
+         * The actual filename is determined at runtime when logs are collected.
+         *
+         * @return StrimziKafkaContainer instance for method chaining
+         */
+        public StrimziKafkaClusterBuilder withLogCollection() {
+            this.logFilePath = "target/strimzi-test-container-logs/";
+            return this;
+        }
+
+        /**
+         * Fluent method to enable log collection for all containers in the cluster with a custom log file path.
+         *
+         * If the path ends with "/", role-based filenames are automatically appended at runtime for each container:
+         *      Controller-only: "kafka-controller-{nodeId}.log"
+         *      Broker-only: "kafka-broker-{brokerId}.log"
+         *      Combined: "kafka-container-{brokerId}.log"
+         * otherwise,  the path doesn't end with "/", it's used as the exact filename base for all containers
+         *
+         * @param logFilePath the base path where container logs will be saved. Use "/" suffix for automatic role-based naming.
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withLogCollection(final String logFilePath) {
+            if (logFilePath != null && !logFilePath.trim().isEmpty()) {
+                this.logFilePath = logFilePath.trim();
+            } else {
+                throw new IllegalArgumentException("Log file path cannot be null or empty.");
+            }
             return this;
         }
 
