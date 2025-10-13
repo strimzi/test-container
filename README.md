@@ -19,7 +19,6 @@ Since the Docker image is a simple encapsulation of Kafka binaries, you can spin
 Therefore, it is a suitable candidate for the unit or integration testing. If you need something more complex, there is a multi-node Kafka cluster implementation with only infrastructure limitations.
 The most important classes are described here:
 - `StrimziKafkaContainer` is a single-node instance of Kafka using the image from quay.io/strimzi-test-container/test-container with the given version.
-  You can use in KRaft mode [KIP-500](https://github.com/apache/kafka/blob/trunk/config/kraft/README.md), which allows running Apache Kafka without Apache ZooKeeper.
 
   Additional configuration for Kafka brokers can be injected through methods such as withKafkaConfigurationMap.
   This container is a good fit for integration testing, but for more comprehensive testing, we suggest using StrimziKafkaCluster.

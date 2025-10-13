@@ -29,10 +29,8 @@ import java.nio.file.Paths;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -47,8 +45,7 @@ import java.util.stream.Collectors;
 
 /**
  * StrimziKafkaContainer is a single-node instance of Kafka using the image from quay.io/strimzi/kafka with the
- * given version. This container runs Kafka in KRaft mode (without ZooKeeper) and is suitable for basic
- * integration testing but for more hardcore testing we suggest using {@link StrimziKafkaCluster}.
+ * given version.
  * <br><br>
  * Optionally, you can configure a {@code proxyContainer} to simulate network conditions (i.e. connection cut, latency).
  * This class uses {@code getBootstrapServers()} to build the {@code KAFKA_ADVERTISED_LISTENERS} configuration.
@@ -155,7 +152,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // instances and by default each container has its own network.
         super.setNetwork(Network.SHARED);
         // Initially expose Kafka port - will be updated in doStart() based on node role
-        super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
+        super.setExposedPorts(List.of(KAFKA_PORT));
         super.addEnv("LOG_DIR", "/tmp");
     }
 
@@ -178,13 +175,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             // Controller-only nodes expose the controller
-            super.setExposedPorts(Collections.singletonList(CONTROLLER_PORT));
+            super.setExposedPorts(List.of(CONTROLLER_PORT));
         } else if (this.nodeRole == KafkaNodeRole.BROKER) {
             // Broker-only nodes expose the Kafka client port
-            super.setExposedPorts(Collections.singletonList(KAFKA_PORT));
+            super.setExposedPorts(List.of(KAFKA_PORT));
         } else {
             // Combined-role nodes expose both client and controller ports
-            super.setExposedPorts(Arrays.asList(KAFKA_PORT, CONTROLLER_PORT));
+            super.setExposedPorts(List.of(KAFKA_PORT, CONTROLLER_PORT));
         }
 
         // Setup network alias
@@ -890,7 +887,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     public StrimziKafkaContainer withProxyContainer(final ToxiproxyContainer proxyContainer) {
         if (proxyContainer != null) {
             this.proxyContainer = proxyContainer;
-            proxyContainer.setNetworkAliases(Collections.singletonList("toxiproxy"));
+            proxyContainer.setNetworkAliases(List.of("toxiproxy"));
         }
         return self();
     }

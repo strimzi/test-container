@@ -15,7 +15,6 @@ import org.testcontainers.utility.MountableFile;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -237,7 +236,7 @@ class StrimziKafkaContainerTest {
         defaultProperties.setProperty("key1", "value1");
         defaultProperties.setProperty("key2", "value2");
 
-        String result = kafkaContainer.overrideProperties(defaultProperties, Collections.emptyMap());
+        String result = kafkaContainer.overrideProperties(defaultProperties, Map.of());
 
         assertThat("Result should contain key1=value1", result, containsString("key1=value1"));
         assertThat("Result should contain key2=value2", result, containsString("key2=value2"));
@@ -356,9 +355,6 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("node.id"), is("1"));
         assertThat(properties.getProperty("controller.quorum.voters"), is("1@broker-1:9094"));
         assertThat(properties.getProperty("controller.listener.names"), is("CONTROLLER"));
-
-        // zookeeper.connect should not be set
-        assertThat("zookeeper.connect should not be set when useKraft is true", properties.getProperty("zookeeper.connect"), nullValue());
     }
 
     @Test

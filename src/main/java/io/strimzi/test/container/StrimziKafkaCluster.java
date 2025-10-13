@@ -30,8 +30,7 @@ import java.util.stream.Stream;
 
 /**
  * A multi-node instance of Kafka using the latest image from quay.io/strimzi/kafka with the given version.
- * It perfectly fits for integration/system testing. The additional configuration for Kafka brokers can be passed to the constructor.
- * <br><br>
+ * It perfectly fits for integration/system testing.
  */
 public class StrimziKafkaCluster implements KafkaContainer {
 
@@ -56,7 +55,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private Collection<KafkaContainer> brokers;
     private final String clusterId;
 
-    @SuppressWarnings("deprecation")
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
         this.brokersNum = builder.brokersNum;
         this.controllersNum = builder.controllersNum;
@@ -86,7 +84,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         prepareKafkaCluster(this.additionalKafkaConfiguration, this.kafkaVersion);
     }
 
-    @SuppressWarnings("deprecation")
     private void prepareKafkaCluster(final Map<String, String> additionalKafkaConfiguration, final String kafkaVersion) {
         final Map<String, String> defaultKafkaConfigurationForMultiNode = new HashMap<>();
         defaultKafkaConfigurationForMultiNode.put("offsets.topic.replication.factor", String.valueOf(internalTopicReplicationFactor));

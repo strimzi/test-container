@@ -12,14 +12,10 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.provider.Arguments;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AbstractIT {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIT.class);
 
     /**
      * Provides {@code parameters} for each {@link org.junit.jupiter.params.ParameterizedTest}.

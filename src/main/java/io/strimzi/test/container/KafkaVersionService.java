@@ -221,13 +221,15 @@ class KafkaVersionService {
      * On a later date it might return 2.7.3.
      * It is allowed to cross major version boundaries.
      * E.g. the previous minor release to 3.0.0 might be 2.8.2
+     * <pre>
      * ============================================================
      * | (prev prev minor) ---  (previous minor) ---  (current) |
-     *                                                     |
-     *                                                     *
-     * |    2.8.1   &lt;---&gt;     2.8.2  &lt;---&gt;   3.0.0  |
+     *                                                          |
+     * |      2.8.1       &lt;---&gt;        2.8.2    &lt;---&gt;   3.0.0   |
      * ============================================================
+     * </pre>
      * Assuming that test container images `kafka_versions.yaml` has the following content:
+     * <pre>
      * {
      *   "version": 1,
      *   "kafkaVersions": {
@@ -236,6 +238,7 @@ class KafkaVersionService {
      *     "3.0.0": "test-container:latest-kafka-3.0.0"
      *   }
      * }
+     * </pre>
      * @return LogicalKafkaVersion the previous minor release
      */
     public KafkaVersion previousMinor() {
