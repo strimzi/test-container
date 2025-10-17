@@ -1,7 +1,7 @@
 {
   "kafkaVersions": {
-    "4.0.0": "quay.io/strimzi-test-container/test-container:latest-kafka-4.0.0",
-    "4.0.1": "quay.io/strimzi-test-container/test-container:latest-kafka-4.0.1",
-    "4.1.0": "quay.io/strimzi-test-container/test-container:latest-kafka-4.1.0"
+    "4.0.0": "quay.io/strimzi-test-container/test-container:0.113.0-rc1-kafka-4.0.0",
+    "4.0.1": "quay.io/strimzi-test-container/test-container:0.113.0-rc1-kafka-4.0.1",
+    "4.1.0": "quay.io/strimzi-test-container/test-container:0.113.0-rc1-kafka-4.1.0"
   }
 }
