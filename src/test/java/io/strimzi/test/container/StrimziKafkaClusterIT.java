@@ -449,6 +449,102 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         }
     }
 
+    @Test
+    void testDetermineExposedPortsWithCombinedRole() {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .build();
+
+        this.systemUnderTest.start();
+
+        StrimziKafkaContainer container = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        List<Integer> exposedPorts = container.getExposedPorts();
+
+        assertThat("Combined role should expose KAFKA_PORT", exposedPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
+        assertThat("Combined role should expose CONTROLLER_PORT", exposedPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
+        assertThat(container.getNodeRole(), is(KafkaNodeRole.COMBINED));
+    }
+
+    @Test
+    void testDetermineExposedPortsWithDedicatedBrokerRoleAndControllerRole() {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        this.systemUnderTest.start();
+
+        StrimziKafkaContainer broker = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        List<Integer> brokerPorts = broker.getExposedPorts();
+
+        assertThat("Broker should expose KAFKA_PORT", brokerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
+        assertThat("Broker should not expose CONTROLLER_PORT", brokerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
+        assertThat(broker.getNodeRole(), is(KafkaNodeRole.BROKER));
+
+        StrimziKafkaContainer controller = (StrimziKafkaContainer) systemUnderTest.getControllers().iterator().next();
+        List<Integer> controllerPorts = controller.getExposedPorts();
+
+        assertThat("Controller should expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
+        assertThat("Controller should not expose KAFKA_PORT", controllerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(false));
+        assertThat(controller.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+    }
+
+    @Test
+    void testDetermineExposedPortsWithAdditionalPortsAndCombinedRoles() {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .build();
+
+        for (GenericContainer<?> broker : this.systemUnderTest.getNodes()) {
+            broker.withExposedPorts(8080, 8081);
+        }
+
+        this.systemUnderTest.start();
+
+        StrimziKafkaContainer container = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        List<Integer> exposedPorts = container.getExposedPorts();
+
+        assertThat("Should expose KAFKA_PORT", exposedPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
+        assertThat("Should expose CONTROLLER_PORT", exposedPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
+        assertThat("Should expose custom port 8080", exposedPorts.contains(8080), is(true));
+        assertThat("Should expose custom port 8081", exposedPorts.contains(8081), is(true));
+    }
+
+    @Test
+    void testDetermineExposedPortsWithAdditionalPortsAndDedicatedRoles() {
+        this.systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .build();
+
+        for (GenericContainer<?> broker : this.systemUnderTest.getNodes()) {
+            broker.withExposedPorts(8080, 8081);
+        }
+
+        this.systemUnderTest.start();
+
+
+        StrimziKafkaContainer broker = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        List<Integer> brokerPorts = broker.getExposedPorts();
+
+        assertThat("Broker should expose KAFKA_PORT", brokerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
+        assertThat("Broker should not expose CONTROLLER_PORT", brokerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
+        assertThat("Should expose custom port 8080", brokerPorts.contains(8080), is(true));
+        assertThat("Should expose custom port 8081", brokerPorts.contains(8081), is(true));
+        assertThat(broker.getNodeRole(), is(KafkaNodeRole.BROKER));
+
+        StrimziKafkaContainer controller = (StrimziKafkaContainer) systemUnderTest.getControllers().iterator().next();
+        List<Integer> controllerPorts = controller.getExposedPorts();
+
+        assertThat("Controller should expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
+        assertThat("Controller should not expose KAFKA_PORT", controllerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(false));
+        assertThat("Should expose custom port 8080", controllerPorts.contains(8080), is(true));
+        assertThat("Should expose custom port 8081", controllerPorts.contains(8081), is(true));
+        assertThat(controller.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+    }
+
     @AfterEach
     void afterEach() {
         if (this.systemUnderTest != null) {
