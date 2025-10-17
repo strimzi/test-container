@@ -5,11 +5,17 @@
 package io.strimzi.test.container;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
@@ -17,9 +23,8 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -104,43 +109,41 @@ public class StrimziKafkaOauthIT extends AbstractIT {
                 .waitForRunning();
             this.systemUnderTest.start();
 
-            final Properties producerProps = new Properties();
-            // Additional producer properties
-            producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-            producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-
-            producerProps.put("bootstrap.servers", this.systemUnderTest.getBootstrapServers());
-            producerProps.put("security.protocol", "SASL_PLAINTEXT");
-            producerProps.put("sasl.mechanism", "PLAIN");
-            producerProps.put("sasl.jaas.config",
-                "org.apache.kafka.common.security.plain.PlainLoginModule required " +
-                    "username=\"kafka-producer-client\" " +
-                    "password=\"kafka-producer-client-secret\";"
+            final Map<String, Object> producerConfigs = Map.of(
+                // Additional producer properties
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName(),
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName(),
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, this.systemUnderTest.getBootstrapServers(),
+                CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT",
+                SaslConfigs.SASL_MECHANISM, "PLAIN",
+                SaslConfigs.SASL_JAAS_CONFIG,
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                        "username=\"kafka-producer-client\" " +
+                        "password=\"kafka-producer-client-secret\";"
             );
 
-            final KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps);
+            final KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfigs);
 
             final ProducerRecord<String, String> producerRecord = new ProducerRecord<>("superapp_topic", "key", "value");
             producer.send(producerRecord);
             producer.close();
 
-            final Properties consumerProps = new Properties();
-            consumerProps.put("bootstrap.servers", this.systemUnderTest.getBootstrapServers());
-            consumerProps.put("security.protocol", "SASL_PLAINTEXT");
-            consumerProps.put("sasl.mechanism", "PLAIN");
-            consumerProps.put("sasl.jaas.config",
-                "org.apache.kafka.common.security.plain.PlainLoginModule required " +
-                    "username=\"kafka-consumer-client\" " +
-                    "password=\"kafka-consumer-client-secret\";"
-            );
+            final Map<String, Object> consumerConfigs = Map.of(
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.systemUnderTest.getBootstrapServers(),
+                CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT",
+                SaslConfigs.SASL_MECHANISM, "PLAIN",
+                SaslConfigs.SASL_JAAS_CONFIG,
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                        "username=\"kafka-consumer-client\" " +
+                        "password=\"kafka-consumer-client-secret\";",
 
-            consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-            consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-            consumerProps.put("group.id", "my-group");
-            consumerProps.put("auto.offset.reset", "earliest");
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName(),
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName(),
+                ConsumerConfig.GROUP_ID_CONFIG, "my-group",
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-            final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps);
-            consumer.subscribe(Collections.singletonList("superapp_topic"));
+            final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerConfigs);
+            consumer.subscribe(List.of("superapp_topic"));
 
             final ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(10));
 

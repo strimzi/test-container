@@ -367,7 +367,6 @@ public class StrimziKafkaClusterTest {
         assertThat(servers.length, is(3));
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     void testGetNodesAndBrokersReturnsGenericContainers() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()

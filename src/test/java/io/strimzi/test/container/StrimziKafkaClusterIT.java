@@ -13,7 +13,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -28,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.ToxiproxyContainer;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -40,9 +38,8 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -198,7 +195,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     private void verifyReadinessOfKRaftCluster() throws InterruptedException, ExecutionException {
-        try (Admin adminClient = AdminClient.create(ImmutableMap.of(
+        try (Admin adminClient = AdminClient.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()))) {
             // Check broker availability
             Collection<Node> brokers = adminClient.describeCluster().nodes().get();
@@ -216,10 +213,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
     private void verifyFunctionalityOfKafkaCluster() throws ExecutionException, InterruptedException, TimeoutException {
         // using try-with-resources for AdminClient, KafkaProducer and KafkaConsumer (implicit closing connection)
-        try (final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+        try (final AdminClient adminClient = AdminClient.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
              KafkaProducer<String, String> producer = new KafkaProducer<>(
-                 ImmutableMap.of(
+                 Map.of(
                      ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
                      ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString()
                  ),
@@ -227,10 +224,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                  new StringSerializer()
              );
              KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
-                 ImmutableMap.of(
+                 Map.of(
                      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
                      ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
-                     ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,  OffsetResetStrategy.EARLIEST.name().toLowerCase(Locale.ROOT)
+                     ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"
                  ),
                  new StringDeserializer(),
                  new StringDeserializer()
@@ -240,10 +237,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             final String recordKey = "strimzi";
             final String recordValue = "the-best-project-in-the-world";
 
-            final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, NUMBER_OF_REPLICAS, (short) NUMBER_OF_REPLICAS));
+            final Collection<NewTopic> topics = List.of(new NewTopic(topicName, NUMBER_OF_REPLICAS, (short) NUMBER_OF_REPLICAS));
             adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
 
-            consumer.subscribe(Collections.singletonList(topicName));
+            consumer.subscribe(List.of(topicName));
 
             producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
 
@@ -305,7 +302,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         String bootstrapControllers = this.systemUnderTest.getBootstrapControllers();
         LOGGER.info("Bootstrap controllers: {}", bootstrapControllers);
 
-        try (AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+        try (AdminClient adminClient = AdminClient.create(Map.of(
             AdminClientConfig.BOOTSTRAP_CONTROLLERS_CONFIG, bootstrapControllers,
             AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000,
             AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 30000))) {

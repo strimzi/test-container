@@ -4,12 +4,14 @@
  */
 package io.strimzi.test.container;
 
-import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -21,18 +23,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.testcontainers.containers.ContainerLaunchException;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -116,13 +116,12 @@ public class StrimziKafkaContainerIT extends AbstractIT {
                 .withNodeId(1)
                 .withBrokerId(2)
                 .waitForRunning();
-        ContainerLaunchException exception = assertThrows(ContainerLaunchException.class,
+        Throwable cause = assertThrows(ContainerLaunchException.class,
             () -> systemUnderTest.start());
-        Throwable cause = exception;
         while (cause.getCause() != null) {
             cause = cause.getCause();
         }
-        assertEquals(cause.getClass(), IllegalStateException.class);
+        assertEquals(IllegalStateException.class, cause.getClass());
         assertThat(cause.getMessage(), containsString("`broker.id` and `node.id` must have the same value!"));
     }
 
@@ -149,26 +148,26 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     private void verify() throws InterruptedException, ExecutionException, TimeoutException {
         final String topicName = "topic";
 
-        Properties producerProperties = new Properties();
-        producerProperties.put("bootstrap.servers", systemUnderTest.getBootstrapServers());
+        Map<String, Object> producerConfigs = Map.of(
+            ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers());
 
-        Properties consumerProperties = new Properties();
-        consumerProperties.put("bootstrap.servers", systemUnderTest.getBootstrapServers());
-        consumerProperties.put("group.id", "my-group");
-        consumerProperties.put("auto.offset.reset", "earliest");
+        Map<String, Object> consumerConfigs = Map.of(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
+            ConsumerConfig.GROUP_ID_CONFIG, "my-group",
+            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        // using try-with-resources for KafkaProducer, KafkaConsumer and AdminClient (implicit closing connection)
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties, new StringSerializer(), new StringSerializer());
-             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties, new StringDeserializer(), new StringDeserializer());
-             final AdminClient adminClient = AdminClient.create(ImmutableMap.of(
+        // using try-with-resources for KafkaProducer, KafkaConsumer and Admin (implicit closing connection)
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfigs, new StringSerializer(), new StringSerializer());
+             KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerConfigs, new StringDeserializer(), new StringDeserializer());
+             final Admin admin = Admin.create(Map.of(
                  AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()))) {
-            final Collection<NewTopic> topics = Collections.singletonList(new NewTopic(topicName, 1, (short) 1));
-            adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
+            final List<NewTopic> topics = List.of(new NewTopic(topicName, 1, (short) 1));
+            admin.createTopics(topics).all().get(30, TimeUnit.SECONDS);
             producer.send(new ProducerRecord<>(topicName, "some-key", "1")).get();
             producer.send(new ProducerRecord<>(topicName, "some-key", "2")).get();
             producer.send(new ProducerRecord<>(topicName, "some-key", "3")).get();
             TopicPartition topic = new TopicPartition(topicName, 0);
-            consumer.assign(Collections.singleton(topic));
+            consumer.assign(Set.of(topic));
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(10000));
             assertThat(records.count(), equalTo(3));
             assertThat(records.records(topic).get(0).value(), equalTo("1"));
