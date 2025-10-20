@@ -151,8 +151,6 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // we need this shared network in case we deploy StrimziKafkaCluster which consist of `StrimziKafkaContainer`
         // instances and by default each container has its own network.
         super.setNetwork(Network.SHARED);
-        // Initially expose Kafka port - will be updated in doStart() based on node role
-        super.setExposedPorts(List.of(KAFKA_PORT));
         super.addEnv("LOG_DIR", "/tmp");
     }
 
@@ -173,16 +171,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
         }
 
-        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
-            // Controller-only nodes expose the controller
-            super.setExposedPorts(List.of(CONTROLLER_PORT));
-        } else if (this.nodeRole == KafkaNodeRole.BROKER) {
-            // Broker-only nodes expose the Kafka client port
-            super.setExposedPorts(List.of(KAFKA_PORT));
-        } else {
-            // Combined-role nodes expose both client and controller ports
-            super.setExposedPorts(List.of(KAFKA_PORT, CONTROLLER_PORT));
-        }
+        // Determine and set exposed ports based on node role and user configuration
+        super.setExposedPorts(determineExposedPorts());
 
         // Setup network alias
         super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
@@ -198,6 +188,26 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Start the container
         super.setCommand("sh", "-c", runStarterScript());
         super.doStart();
+    }
+
+    @DoNotMutate
+    private List<Integer> determineExposedPorts() {
+        // Determine default ports based on node role
+        List<Integer> portsToExpose = new ArrayList<>();
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
+            // Controller-only nodes expose the controller
+            portsToExpose.add(CONTROLLER_PORT);
+        } else if (this.nodeRole == KafkaNodeRole.BROKER) {
+            // Broker-only nodes expose the Kafka client port
+            portsToExpose.add(KAFKA_PORT);
+        } else {
+            // Combined-role nodes expose both client and controller ports
+            portsToExpose.add(KAFKA_PORT);
+            portsToExpose.add(CONTROLLER_PORT);
+        }
+        // Add any additional exposed ports
+        portsToExpose.addAll(super.getExposedPorts());
+        return portsToExpose;
     }
 
     @DoNotMutate
@@ -569,13 +579,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     String.format("%d@%s%d:%d", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId, StrimziKafkaContainer.CONTROLLER_PORT));
             }
         }
-        
+        //  In KRaft mode => broker.id should always equal node.id
         if (this.nodeRole.isBroker()) {
-            if (this.nodeRole == KafkaNodeRole.BROKER) {
-                properties.setProperty("broker.id", String.valueOf(this.nodeId));
-            } else {
-                properties.setProperty("broker.id", String.valueOf(this.brokerId));
-            }
+            properties.setProperty("broker.id", String.valueOf(this.nodeId));
         }
     }
 

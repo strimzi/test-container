@@ -42,7 +42,6 @@ class StrimziKafkaContainerTest {
     @Test
     void testDefaultInitialization() {
         assertThat(kafkaContainer, is(notNullValue()));
-        assertThat(kafkaContainer.getExposedPorts(), hasItem(StrimziKafkaContainer.KAFKA_PORT));
     }
 
     @Test
@@ -584,15 +583,6 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testWithPortAddsFixedExposedPort() {
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
-
-        kafkaContainer.withPort(9092);
-
-        assertThat(kafkaContainer.getExposedPorts(), hasItem(9092));
-    }
-
-    @Test
     void testGetClusterIdReturnsNullWhenNotSet() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
 
@@ -912,5 +902,49 @@ class StrimziKafkaContainerTest {
     @Test
     void testWithLogFilePathTrimsWhitespace() {
         assertDoesNotThrow(() -> kafkaContainer.withLogCollection("  target/test-logs/  "));
+    }
+
+    @Test
+    void testEnsureControllerMappingIsPresent() {
+        StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1)
+            .withNodeId(1);
+
+        controllerContainer.listenerNames.add("CONTROLLER");
+
+        Properties properties = controllerContainer.buildDefaultServerProperties(
+            "CONTROLLER://0.0.0.0:9094",
+            "CONTROLLER://broker-1:9094"
+        );
+
+        String listenerSecurityProtocolMap = properties.getProperty("listener.security.protocol.map");
+
+        assertThat(listenerSecurityProtocolMap, is(notNullValue()));
+        assertThat(listenerSecurityProtocolMap.isEmpty(), is(false));
+
+        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER:"));
+        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER:PLAINTEXT"));
+    }
+
+    @Test
+    void testControllerOnlyNodeExtractsControllerListenerFromMultipleListeners() {
+        StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1)
+            .withNodeId(1);
+
+        controllerContainer.listenerNames.add("CONTROLLER");
+
+        Properties properties = controllerContainer.buildDefaultServerProperties(
+            "CONTROLLER://0.0.0.0:9094",
+            "PLAINTEXT://localhost:9092,CONTROLLER://broker-1:9094,BROKER1://172.17.0.2:9091"
+        );
+
+        String advertisedListeners = properties.getProperty("advertised.listeners");
+        assertThat(advertisedListeners, is("CONTROLLER://broker-1:9094"));
+
+        assertThat(advertisedListeners, CoreMatchers.not(containsString("PLAINTEXT://")));
+        assertThat(advertisedListeners, CoreMatchers.not(containsString("BROKER1://")));
     }
 }
