@@ -579,13 +579,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     String.format("%d@%s%d:%d", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId, StrimziKafkaContainer.CONTROLLER_PORT));
             }
         }
-        
+        //  In KRaft mode => broker.id should always equal node.id
         if (this.nodeRole.isBroker()) {
-            if (this.nodeRole == KafkaNodeRole.BROKER) {
-                properties.setProperty("broker.id", String.valueOf(this.nodeId));
-            } else {
-                properties.setProperty("broker.id", String.valueOf(this.brokerId));
-            }
+            properties.setProperty("broker.id", String.valueOf(this.nodeId));
         }
     }
 
