@@ -525,7 +525,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         this.systemUnderTest.start();
 
-
         StrimziKafkaContainer broker = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
         List<Integer> brokerPorts = broker.getExposedPorts();
 
