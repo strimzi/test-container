@@ -51,13 +51,8 @@ import java.util.stream.Collectors;
  * This class uses {@code getBootstrapServers()} to build the {@code KAFKA_ADVERTISED_LISTENERS} configuration.
  * When {@code proxyContainer} is configured, the bootstrap URL returned by {@code getBootstrapServers()} contains the proxy host and port.
  * For this reason, Kafka clients will always pass through the proxy, even after refreshing cluster metadata.
- *
- * @deprecated This class is deprecated and will be removed from the public API in version 0.114.0.
- *             Users should migrate to using {@link StrimziKafkaCluster} instead, which provides better
- *             multi-node support and more comprehensive cluster management capabilities.
  */
-@Deprecated
-public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> implements KafkaContainer {
+class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> implements KafkaContainer {
 
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainer.class);
