@@ -4,6 +4,7 @@
  */
 package io.strimzi.test.container;
 
+import eu.rekawek.toxiproxy.Proxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -79,6 +80,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
         if (this.proxyContainer != null) {
             this.proxyContainer.setNetwork(this.network);
+            configureProxyContainerPorts();
         }
 
         prepareKafkaCluster(this.additionalKafkaConfiguration, this.kafkaVersion);
@@ -146,6 +148,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withBrokerId(controllerId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
                     .withNetwork(this.network)
+                    .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
                     .withNodeId(controllerId)
                     .withClusterId(this.clusterId)
@@ -213,6 +216,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
             throw new IllegalArgumentException(
                 "internalTopicReplicationFactor '" + internalTopicReplicationFactor +
                     "' must be between 1 and " + brokersNum);
+        }
+    }
+
+    @DoNotMutate
+    private void configureProxyContainerPorts() {
+        if (this.useDedicatedRoles) {
+            for (int i = 0; i < this.controllersNum + this.brokersNum; i++) {
+                this.proxyContainer.addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + i);
+            }
+        } else {
+            for (int i = 0; i < this.brokersNum; i++) {
+                this.proxyContainer.addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + i);
+            }
         }
     }
 
@@ -541,6 +557,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
     protected Network getNetwork() {
         return network;
     }
+    /* test */ ToxiproxyContainer getToxiproxyContainer() {
+        return proxyContainer;
+    }
 
     /**
      * Returns the controller nodes.
@@ -581,5 +600,31 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     public boolean isUsingDedicatedRoles() {
         return this.useDedicatedRoles;
+    }
+
+    /**
+     * Retrieves the Proxy instance for a specific broker by its broker ID.
+     * This method is useful for simulating network conditions such as latency, bandwidth limitations,
+     * or connection failures in integration tests.
+     *
+     * @param brokerId the ID of the broker for which to retrieve the proxy
+     * @return the Proxy instance for the specified broker
+     * @throws IllegalArgumentException if the broker ID is not found in the cluster
+     * @throws IllegalStateException if the proxy container has not been configured for the cluster
+     */
+    @DoNotMutate
+    public Proxy getProxyForBroker(int brokerId) {
+        if (this.proxyContainer == null) {
+            throw new IllegalStateException("Proxy container has not been configured for this cluster");
+        }
+
+        for (final KafkaContainer broker : getBrokers()) {
+            final StrimziKafkaContainer kafkaBroker = (StrimziKafkaContainer) broker;
+            if (kafkaBroker.getBrokerId() == brokerId) {
+                return kafkaBroker.getProxy();
+            }
+        }
+
+        throw new IllegalArgumentException("Broker with ID " + brokerId + " not found in cluster");
     }
 }
