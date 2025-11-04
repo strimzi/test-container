@@ -105,7 +105,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void prepareCombinedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
         // multi-node set up with combined roles
         this.nodes = IntStream
@@ -137,7 +136,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .collect(Collectors.toList());
     }
 
-    @SuppressWarnings("deprecation")
     private void prepareDedicatedRolesCluster(final Map<String, String> kafkaConfiguration, final String kafkaVersion) {
         // Create controller nodes - they get the first set of IDs
         this.controllers = IntStream
@@ -391,7 +389,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * Get the bootstrap servers that containers on the same network should use to connect
      * @return a comma separated list of Kafka bootstrap servers
      */
-    @SuppressWarnings("deprecation")
     @DoNotMutate
     public String getNetworkBootstrapServers() {
         return getBrokers().stream()
@@ -421,7 +418,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * Get the bootstrap controllers that containers on the same network should use to connect to controllers
      * @return a comma separated list of Kafka controller endpoints
      */
-    @SuppressWarnings("deprecation")
     @DoNotMutate
     public String getNetworkBootstrapControllers() {
         return getControllers().stream()
@@ -441,7 +437,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         return this.additionalKafkaConfiguration;
     }
 
-    @SuppressWarnings("deprecation")
     private void configureQuorumVoters(final Map<String, String> additionalKafkaConfiguration) {
         final String quorumVoters;
         
@@ -481,7 +476,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
             this::checkAllBrokersReady);
     }
 
-    @SuppressWarnings("deprecation")
     @DoNotMutate
     private boolean checkAllBrokersReady() {
         try {
@@ -500,7 +494,6 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @DoNotMutate
     private boolean isBrokerReady(StrimziKafkaContainer kafkaContainer) throws IOException, InterruptedException {
         Container.ExecResult result = kafkaContainer.execInContainer(
