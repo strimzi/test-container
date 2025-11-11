@@ -174,22 +174,25 @@ strimziKafkaContainer.start();
 
 #### ix) (Optional) Specify a proxy container
 
-The proxy container allows to create a TCP proxy between test code and Kafka broker.
+The proxy container allows to create a TCP proxy between test code and Kafka nodes.
 
-Every Kafka broker request will pass through the proxy where you can simulate network conditions (i.e. connection cut, latency).
+Every Kafka broker request will pass through the proxy where you can simulate network conditions (i.e. connection cut, latency, bandwidth limitations).
 
 ```java
 ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
         DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
             .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
+StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+        .withNumberOfBrokers(3)
         .withProxyContainer(proxyContainer)
-        .waitForRunning();
+        .build();
 
-systemUnderTest.start();
+cluster.start();
 
-strimziKafkaContainer.getProxy().setConnectionCut(true);
+// Simulate network issues for a specific node (e.g., node with id = 0)
+Proxy proxy = cluster.getProxyForNode(0);
+proxy.setConnectionCut(true);
 ```
 
 #### x) Run a multi-node Kafka cluster

@@ -15,6 +15,7 @@ import org.testcontainers.utility.MountableFile;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -946,5 +947,54 @@ class StrimziKafkaContainerTest {
 
         assertThat(advertisedListeners, CoreMatchers.not(containsString("PLAINTEXT://")));
         assertThat(advertisedListeners, CoreMatchers.not(containsString("BROKER1://")));
+    }
+
+    @Test
+    void testDetermineExposedPortsForControllerRole() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1);
+
+        List<Integer> exposedPorts = container.determineExposedPorts();
+
+        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.CONTROLLER_PORT));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(false));
+    }
+
+    @Test
+    void testDetermineExposedPortsForBrokerRole() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .withBrokerId(1);
+
+        List<Integer> exposedPorts = container.determineExposedPorts();
+
+        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.KAFKA_PORT));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
+    }
+
+    @Test
+    void testDetermineExposedPortsForCombinedRole() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(1);
+
+        List<Integer> exposedPorts = container.determineExposedPorts();
+
+        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.KAFKA_PORT));
+        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.CONTROLLER_PORT));
+    }
+
+    @Test
+    void testDetermineExposedPortsIncludesAdditionalPorts() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .withBrokerId(1)
+            .withExposedPorts(8080);
+
+        List<Integer> exposedPorts = container.determineExposedPorts();
+
+        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.KAFKA_PORT));
+        assertThat(exposedPorts, hasItem(8080));
     }
 }
