@@ -174,7 +174,7 @@ strimziKafkaContainer.start();
 
 #### ix) (Optional) Specify a proxy container
 
-The proxy container allows to create a TCP proxy between test code and Kafka brokers.
+The proxy container allows to create a TCP proxy between test code and Kafka nodes.
 
 Every Kafka broker request will pass through the proxy where you can simulate network conditions (i.e. connection cut, latency, bandwidth limitations).
 
