@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.ToxiproxyContainer;
+import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -584,7 +584,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             // Add network latency (1000ms) to one of the brokers
             final int brokerId = 0;
-            Proxy proxy = systemUnderTest.getProxyForBroker(brokerId);
+            Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
             assertThat(proxy, notNullValue());
 
             proxy.toxics()
@@ -647,7 +647,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             // Apply bandwidth limitation to all brokers in the cluster
             for (int brokerId = 0; brokerId < NUMBER_OF_REPLICAS; brokerId++) {
-                final Proxy proxy = systemUnderTest.getProxyForBroker(brokerId);
+                final Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
 
                 // Limit bandwidth to 5 KB/s in both directions (very slow network)
                 proxy.toxics()
@@ -669,7 +669,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             // Remove bandwidth limitations from all brokers
             for (int brokerId = 0; brokerId < NUMBER_OF_REPLICAS; brokerId++) {
-                final Proxy proxy = systemUnderTest.getProxyForBroker(brokerId);
+                final Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
                 proxy.toxics().get("limit-bandwidth-down").remove();
                 proxy.toxics().get("limit-bandwidth-up").remove();
             }

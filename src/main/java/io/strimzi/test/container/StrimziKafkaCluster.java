@@ -603,28 +603,27 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     /**
-     * Retrieves the Proxy instance for a specific broker by its broker ID.
-     * This method is useful for simulating network conditions such as latency, bandwidth limitations,
-     * or connection failures in integration tests.
+     * Retrieves the Proxy instance for a specific node by its node ID.
+     * This is a private helper method that works for both brokers and controllers.
      *
-     * @param brokerId the ID of the broker for which to retrieve the proxy
-     * @return the Proxy instance for the specified broker
-     * @throws IllegalArgumentException if the broker ID is not found in the cluster
+     * @param nodeId the ID of the node for which to retrieve the proxy
+     * @return the Proxy instance for the specified node
+     * @throws IllegalArgumentException if the node ID is not found in the cluster
      * @throws IllegalStateException if the proxy container has not been configured for the cluster
      */
     @DoNotMutate
-    public Proxy getProxyForBroker(int brokerId) {
+    public Proxy getProxyForNode(int nodeId) {
         if (this.proxyContainer == null) {
             throw new IllegalStateException("Proxy container has not been configured for this cluster");
         }
 
-        for (final KafkaContainer broker : getBrokers()) {
-            final StrimziKafkaContainer kafkaBroker = (StrimziKafkaContainer) broker;
-            if (kafkaBroker.getBrokerId() == brokerId) {
-                return kafkaBroker.getProxy();
+        for (final KafkaContainer node : this.nodes) {
+            final StrimziKafkaContainer kafkaNode = (StrimziKafkaContainer) node;
+            if (kafkaNode.getBrokerId() == nodeId) {
+                return kafkaNode.getProxy();
             }
         }
 
-        throw new IllegalArgumentException("Broker with ID " + brokerId + " not found in cluster");
+        throw new IllegalArgumentException("Node with ID " + nodeId + " not found in cluster");
     }
 }
