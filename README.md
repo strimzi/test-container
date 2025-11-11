@@ -190,8 +190,8 @@ StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder
 
 cluster.start();
 
-// Simulate network issues for a specific broker (e.g., broker with id = 0)
-Proxy proxy = cluster.getProxyForBroker(0);
+// Simulate network issues for a specific node (e.g., node with id = 0)
+Proxy proxy = cluster.getProxyForNode(0);
 proxy.setConnectionCut(true);
 ```
 
