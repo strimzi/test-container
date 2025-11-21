@@ -4,6 +4,7 @@
  */
 package io.strimzi.test.container;
 
+import eu.rekawek.toxiproxy.Proxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -79,6 +80,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
         if (this.proxyContainer != null) {
             this.proxyContainer.setNetwork(this.network);
+            configureProxyContainerPorts();
         }
 
         prepareKafkaCluster(this.additionalKafkaConfiguration, this.kafkaVersion);
@@ -146,6 +148,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withBrokerId(controllerId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
                     .withNetwork(this.network)
+                    .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
                     .withNodeId(controllerId)
                     .withClusterId(this.clusterId)
@@ -213,6 +216,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
             throw new IllegalArgumentException(
                 "internalTopicReplicationFactor '" + internalTopicReplicationFactor +
                     "' must be between 1 and " + brokersNum);
+        }
+    }
+
+    @DoNotMutate
+    private void configureProxyContainerPorts() {
+        if (this.useDedicatedRoles) {
+            for (int i = 0; i < this.controllersNum + this.brokersNum; i++) {
+                this.proxyContainer.addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + i);
+            }
+        } else {
+            for (int i = 0; i < this.brokersNum; i++) {
+                this.proxyContainer.addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + i);
+            }
         }
     }
 
@@ -458,6 +474,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @Override
     @DoNotMutate
     public void start() {
+        // Start proxy container first if configured
+        if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
+            this.proxyContainer.start();
+        }
+
         // Start all Kafka containers
         Stream<KafkaContainer> startables = this.nodes.stream();
         try {
@@ -541,6 +562,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
     protected Network getNetwork() {
         return network;
     }
+    /* test */ ToxiproxyContainer getToxiproxyContainer() {
+        return proxyContainer;
+    }
 
     /**
      * Returns the controller nodes.
@@ -581,5 +605,30 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     public boolean isUsingDedicatedRoles() {
         return this.useDedicatedRoles;
+    }
+
+    /**
+     * Retrieves the Proxy instance for a specific node by its node ID.
+     * Works for both brokers and controllers.
+     *
+     * @param nodeId the ID of the node for which to retrieve the proxy
+     * @return the Proxy instance for the specified node
+     * @throws IllegalArgumentException if the node ID is not found in the cluster
+     * @throws IllegalStateException if the proxy container has not been configured for the cluster
+     */
+    @DoNotMutate
+    public Proxy getProxyForNode(int nodeId) {
+        if (this.proxyContainer == null) {
+            throw new IllegalStateException("Proxy container has not been configured for this cluster");
+        }
+
+        for (final KafkaContainer node : this.nodes) {
+            final StrimziKafkaContainer kafkaNode = (StrimziKafkaContainer) node;
+            if (kafkaNode.getBrokerId() == nodeId) {
+                return kafkaNode.getProxy();
+            }
+        }
+
+        throw new IllegalArgumentException("Node with ID " + nodeId + " not found in cluster");
     }
 }

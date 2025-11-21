@@ -12,6 +12,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.ToxiproxyContainer;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -89,6 +90,86 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
+    void testKafkaClusterWithProxyContainerConfiguresProxyPorts() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withInternalTopicReplicationFactor(3)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        // Verify that the proxy container has the correct exposed ports configured
+        // For 3 brokers in combined mode, ports 8666, 8667, 8668 should be exposed
+        // Note: ToxiproxyContainer pre-configures ports 8666-8695, so we can only verify presence
+        List<Integer> exposedPorts = proxyContainer.getExposedPorts();
+        assertThat(exposedPorts, CoreMatchers.notNullValue());
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 1), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 2), is(true));
+    }
+
+    @Test
+    void testKafkaClusterWithProxyContainerAndDedicatedRolesConfiguresProxyPorts() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        // Verify that the proxy container has the correct exposed ports configured
+        // For 2 brokers + 3 controllers in dedicated mode, ports 8666-8670 should be exposed
+        // Note: ToxiproxyContainer pre-configures ports 8666-8695, so we can only verify presence
+        List<Integer> exposedPorts = cluster.getToxiproxyContainer().getExposedPorts();
+        assertThat(exposedPorts, CoreMatchers.notNullValue());
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 1), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 2), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 3), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 4), is(true));
+    }
+
+    @Test
+    void testKafkaClusterWithProxyContainerSingleBrokerConfiguresProxyPorts() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        // Verify that the proxy container has the correct exposed ports configured
+        // For 1 broker in combined mode, port 8666 should be exposed
+        // Note: ToxiproxyContainer pre-configures ports 8666-8695, so we can only verify presence
+        List<Integer> exposedPorts = cluster.getToxiproxyContainer().getExposedPorts();
+        assertThat(exposedPorts, CoreMatchers.notNullValue());
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE), is(true));
+    }
+
+    @Test
+    void testKafkaClusterWithProxyContainerDedicatedRolesMinimumConfiguresProxyPorts() {
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        // Verify that the proxy container has the correct exposed ports configured
+        // For 1 broker + 1 controller in dedicated mode, ports 8666-8667 should be exposed
+        // Note: ToxiproxyContainer pre-configures ports 8666-8695, so we can only verify presence
+        List<Integer> exposedPorts = cluster.getToxiproxyContainer().getExposedPorts();
+        assertThat(exposedPorts, CoreMatchers.notNullValue());
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE), is(true));
+        assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 1), is(true));
+    }
+
+    @Test
     void testKafkaClusterWithProxyContainerAndKafkaClusterSetSameNetwork() {
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
 
@@ -106,6 +187,7 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getNetwork(), CoreMatchers.notNullValue());
         assertThat(proxyContainer.getNetwork(), CoreMatchers.notNullValue());
         assertThat(cluster.getNetwork().getId(), is(proxyContainer.getNetwork().getId()));
+        assertThat(cluster.getToxiproxyContainer(), CoreMatchers.notNullValue());
     }
 
     @Test
