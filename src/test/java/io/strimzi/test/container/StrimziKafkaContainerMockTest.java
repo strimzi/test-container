@@ -384,6 +384,10 @@ public class StrimziKafkaContainerMockTest {
 
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
             @Override
+            void initializeProxy() {
+            }
+
+            @Override
             public synchronized Proxy getProxy() {
                 // Mock the proxy to avoid actual container interaction
                 return Mockito.mock(Proxy.class);
@@ -402,6 +406,10 @@ public class StrimziKafkaContainerMockTest {
         ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
 
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+            }
+
             @Override
             public synchronized Proxy getProxy() {
                 // Mock the proxy to avoid actual container interaction
@@ -422,6 +430,10 @@ public class StrimziKafkaContainerMockTest {
 
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
             @Override
+            void initializeProxy() {
+            }
+
+            @Override
             public synchronized Proxy getProxy() {
                 // Mock the proxy to avoid actual container interaction
                 return Mockito.mock(Proxy.class);
@@ -440,6 +452,10 @@ public class StrimziKafkaContainerMockTest {
         ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
 
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+            }
+
             @Override
             public synchronized Proxy getProxy() {
                 // Mock the proxy to avoid actual container interaction

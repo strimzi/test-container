@@ -474,6 +474,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @Override
     @DoNotMutate
     public void start() {
+        // Start proxy container first if configured
+        if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
+            this.proxyContainer.start();
+        }
+
         // Start all Kafka containers
         Stream<KafkaContainer> startables = this.nodes.stream();
         try {
@@ -604,7 +609,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     /**
      * Retrieves the Proxy instance for a specific node by its node ID.
-     * This is a private helper method that works for both brokers and controllers.
+     * Works for both brokers and controllers.
      *
      * @param nodeId the ID of the node for which to retrieve the proxy
      * @return the Proxy instance for the specified node

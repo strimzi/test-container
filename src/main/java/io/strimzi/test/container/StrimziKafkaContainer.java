@@ -162,22 +162,6 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
     @Override
     @DoNotMutate
     protected void doStart() {
-        // Setup proxy container if needed
-        if (this.proxyContainer != null && !this.proxyContainer.isRunning()) {
-            // Synchronize to avoid race conditions when multiple brokers try to start the proxy
-            synchronized (this.proxyContainer) {
-                // Double-check after acquiring lock
-                if (!this.proxyContainer.isRunning()) {
-                    this.proxyContainer.start();
-                }
-            }
-        }
-
-        // Initialize Toxiproxy client after ensuring container is running
-        if (this.proxyContainer != null && toxiproxyClient == null) {
-            toxiproxyClient = new ToxiproxyClient(this.proxyContainer.getHost(), this.proxyContainer.getControlPort());
-        }
-
         // Setup image name
         if (!this.imageNameProvider.isDone()) {
             this.imageNameProvider.complete(KafkaVersionService.strimziTestContainerImageName(this.kafkaVersion));
@@ -750,7 +734,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         }
         
         if (proxyContainer != null) {
-            this.getProxy();
+            initializeProxy();
             // Return the host-accessible proxy address
             final int mappedPort = proxyContainer.getMappedPort(TOXIPROXY_PORT_BASE + this.brokerId);
             return String.format("PLAINTEXT://%s:%d", proxyContainer.getHost(), mappedPort);
@@ -769,7 +753,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         }
 
         if (proxyContainer != null) {
-            this.getProxy();
+            initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
             final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
             return String.format("PLAINTEXT://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
@@ -794,7 +778,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         }
 
         if (proxyContainer != null) {
-            this.getProxy();
+            initializeProxy();
             // Return the host-accessible proxy address
             final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
             final int mappedPort = proxyContainer.getMappedPort(listenPort);
@@ -815,7 +799,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         }
 
         if (proxyContainer != null) {
-            this.getProxy();
+            initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
             final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
             return String.format("CONTROLLER://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
@@ -1100,17 +1084,16 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
     }
 
     /**
-     * Retrieves a synchronized Proxy instance for this Kafka broker.
+     * Initialize the Proxy instance for this Kafka broker.
      *
-     * This method ensures that only one instance of Proxy is created per broker. If the proxy has not been
-     * initialized, it attempts to create one using the Toxiproxy client. If the Toxiproxy client is not initialized,
+     * This method performs lazy initialization of the proxy. If the proxy has not been
+     * initialized, it creates one using the Toxiproxy client. If the Toxiproxy client is not initialized,
      * it is created using the host and control port of the proxy container.
      *
-     * @return                          Proxy instance for this Kafka broker.
      * @throws IllegalStateException    if the proxy container has not been configured.
      * @throws RuntimeException         if an IOException occurs during the creation of the Proxy.
      */
-    public synchronized Proxy getProxy() {
+    /* test */ synchronized void initializeProxy() {
         if (this.proxyContainer == null) {
             throw new IllegalStateException("The proxy container has not been configured");
         }
@@ -1128,6 +1111,15 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    /**
+     * Retrieves the Proxy instance for this Kafka broker.
+     *
+     * @return Proxy instance for this Kafka broker.
+     */
+    public Proxy getProxy() {
+        initializeProxy();
         return this.proxy;
     }
 
