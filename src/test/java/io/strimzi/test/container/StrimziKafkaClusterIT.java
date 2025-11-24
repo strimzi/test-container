@@ -5,6 +5,7 @@
 package io.strimzi.test.container;
 
 import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.model.ToxicDirection;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -58,6 +59,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaClusterIT.class);
     private static final int NUMBER_OF_REPLICAS = 3;
+    private static final String TOXIPROXY_IMAGE = "ghcr.io/shopify/toxiproxy:2.11.0";
 
     private StrimziKafkaCluster systemUnderTest;
 
@@ -100,7 +102,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     @Test
     void testStartClusterWithProxyContainer() {
         ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
-                DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.11.0")
+                DockerImageName.parse(TOXIPROXY_IMAGE)
                         .asCompatibleSubstituteFor("shopify/toxiproxy"));
 
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
@@ -542,6 +544,147 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat("Should expose custom port 8080", controllerPorts.contains(8080), is(true));
         assertThat("Should expose custom port 8081", controllerPorts.contains(8081), is(true));
         assertThat(controller.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
+    }
+
+    @Test
+    void testNetworkLatencyResilienceWithToxiproxy() throws ExecutionException, InterruptedException, TimeoutException, IOException {
+        final ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
+            DockerImageName.parse(TOXIPROXY_IMAGE)
+                .asCompatibleSubstituteFor("shopify/toxiproxy"));
+
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        systemUnderTest.start();
+
+        final String topicName = "latency-test-topic";
+
+        try (final AdminClient adminClient = AdminClient.create(Map.of(
+            AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
+            AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000,
+            AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 60000));
+             final KafkaProducer<String, String> producer = new KafkaProducer<>(
+                 Map.of(
+                     ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
+                     ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString(),
+                     ProducerConfig.ACKS_CONFIG, "all",
+                     ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000
+                 ),
+                 new StringSerializer(),
+                 new StringSerializer()
+             )) {
+
+            adminClient.createTopics(List.of(new NewTopic(topicName, 3, (short) 3)))
+                .all().get(60, TimeUnit.SECONDS);
+
+            producer.send(new ProducerRecord<>(topicName, "key1", "value-before-latency")).get();
+            LOGGER.info("Successfully produced message before latency");
+
+            // Add network latency (1000ms) to one of the brokers
+            final int brokerId = 0;
+            Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
+            assertThat(proxy, notNullValue());
+
+            proxy.toxics()
+                .latency("latency", ToxicDirection.DOWNSTREAM, 1000)
+                .setJitter(100);
+
+            LOGGER.info("Added 1000ms latency to broker-{}", brokerId);
+
+            // Verify cluster still works with latency (though slower)
+            producer.send(new ProducerRecord<>(topicName, "key2", "value-with-latency")).get();
+
+            proxy.toxics().get("latency").remove();
+            LOGGER.info("Removed latency toxic");
+
+            // Verify normal operation restored
+            producer.send(new ProducerRecord<>(topicName, "key3", "value-after-latency")).get();
+            LOGGER.info("Successfully produced message after latency removed");
+        }
+    }
+
+    @Test
+    void testSlowNetworkPerformanceDegradationWithToxiproxy() throws ExecutionException, InterruptedException, TimeoutException, IOException {
+        final ToxiproxyContainer proxyContainer = new ToxiproxyContainer(
+            DockerImageName.parse(TOXIPROXY_IMAGE)
+                .asCompatibleSubstituteFor("shopify/toxiproxy"));
+
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        systemUnderTest.start();
+
+        final String topicName = "slow-network-test";
+
+        try (final AdminClient adminClient = AdminClient.create(Map.of(
+            AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
+             final KafkaProducer<String, String> producer = new KafkaProducer<>(
+                 Map.of(
+                     ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
+                     ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString(),
+                     ProducerConfig.ACKS_CONFIG, "all",
+                     ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000
+                 ),
+                 new StringSerializer(),
+                 new StringSerializer()
+             )) {
+
+            adminClient.createTopics(List.of(new NewTopic(topicName, 1, (short) 3)))
+                .all().get(30, TimeUnit.SECONDS);
+
+            final String largeValue = "x".repeat(5000); // 5KB message
+            long startTime = System.currentTimeMillis();
+
+            for (int i = 0; i < 10; i++) {
+                producer.send(new ProducerRecord<>(topicName, "key" + i, largeValue)).get();
+            }
+            final long baselineTime = System.currentTimeMillis() - startTime;
+            LOGGER.info("Baseline: 10 messages (50KB total) in {}ms", baselineTime);
+
+            // Apply bandwidth limitation to all brokers in the cluster
+            for (int brokerId = 0; brokerId < NUMBER_OF_REPLICAS; brokerId++) {
+                final Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
+
+                // Limit bandwidth to 5 KB/s in both directions (very slow network)
+                proxy.toxics()
+                    .bandwidth("limit-bandwidth-down", ToxicDirection.DOWNSTREAM, 5);
+                proxy.toxics()
+                    .bandwidth("limit-bandwidth-up", ToxicDirection.UPSTREAM, 5);
+
+                LOGGER.info("Limited bandwidth to 5 KB/s for broker-{}", brokerId);
+            }
+
+            startTime = System.currentTimeMillis();
+            for (int i = 0; i < 10; i++) {
+                producer.send(new ProducerRecord<>(topicName, "key-slow" + i, largeValue)).get();
+            }
+            long slowTime = System.currentTimeMillis() - startTime;
+            LOGGER.info("With bandwidth limit: 10 messages (50KB total) in {}ms", slowTime);
+
+            assertThat("Slow network should take longer than baseline", slowTime > baselineTime, is(true));
+
+            // Remove bandwidth limitations from all brokers
+            for (int brokerId = 0; brokerId < NUMBER_OF_REPLICAS; brokerId++) {
+                final Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
+                proxy.toxics().get("limit-bandwidth-down").remove();
+                proxy.toxics().get("limit-bandwidth-up").remove();
+            }
+
+            LOGGER.info("Bandwidth limitations removed - cluster performance restored");
+
+            startTime = System.currentTimeMillis();
+            for (int i = 0; i < 10; i++) {
+                producer.send(new ProducerRecord<>(topicName, "key-restored" + i, largeValue)).get();
+            }
+            final long restoredTime = System.currentTimeMillis() - startTime;
+            LOGGER.info("After restoration: 10 messages (50KB total) in {}ms", restoredTime);
+
+            assertThat("Restored performance should be better than slow network", restoredTime < slowTime, is(true));
+        }
     }
 
     @AfterEach

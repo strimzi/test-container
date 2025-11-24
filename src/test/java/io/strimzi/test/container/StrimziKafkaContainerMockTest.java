@@ -7,9 +7,11 @@ package io.strimzi.test.container;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.NetworkSettings;
+import eu.rekawek.toxiproxy.Proxy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.testcontainers.containers.ToxiproxyContainer;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -374,6 +376,98 @@ public class StrimziKafkaContainerMockTest {
         assertTrue(kafkaContainer.listenerNames.contains("BROKER1"));
         assertTrue(kafkaContainer.listenerNames.contains("BROKER2"));
         assertTrue(kafkaContainer.listenerNames.contains("BROKER3"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapServersWithBrokerNodeAndProxy() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+            }
+
+            @Override
+            public synchronized Proxy getProxy() {
+                // Mock the proxy to avoid actual container interaction
+                return Mockito.mock(Proxy.class);
+            }
+        }
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .withBrokerId(1)
+            .withProxyContainer(proxyContainer);
+
+        String networkBootstrapServers = kafkaContainer.getNetworkBootstrapServers();
+        assertThat(networkBootstrapServers, is("PLAINTEXT://toxiproxy:8667"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapServersWithCombinedNodeAndProxy() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+            }
+
+            @Override
+            public synchronized Proxy getProxy() {
+                // Mock the proxy to avoid actual container interaction
+                return Mockito.mock(Proxy.class);
+            }
+        }
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(2)
+            .withProxyContainer(proxyContainer);
+
+        String networkBootstrapServers = kafkaContainer.getNetworkBootstrapServers();
+        assertThat(networkBootstrapServers, is("PLAINTEXT://toxiproxy:8668"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithControllerNodeAndProxy() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+            }
+
+            @Override
+            public synchronized Proxy getProxy() {
+                // Mock the proxy to avoid actual container interaction
+                return Mockito.mock(Proxy.class);
+            }
+        }
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withBrokerId(1)
+            .withProxyContainer(proxyContainer);
+
+        String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, is("CONTROLLER://toxiproxy:8667"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithCombinedNodeAndProxy() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+            }
+
+            @Override
+            public synchronized Proxy getProxy() {
+                // Mock the proxy to avoid actual container interaction
+                return Mockito.mock(Proxy.class);
+            }
+        }
+            .withNodeRole(KafkaNodeRole.COMBINED)
+            .withBrokerId(3)
+            .withProxyContainer(proxyContainer);
+
+        String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
+        assertThat(networkBootstrapControllers, is("CONTROLLER://toxiproxy:8669"));
     }
 
     @BeforeEach
