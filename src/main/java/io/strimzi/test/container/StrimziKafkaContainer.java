@@ -84,7 +84,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
     protected static final String TOXIPROXY_NETWORK_ALIAS = "toxiproxy";
 
     /**
-     * Base port for ToxiProxy listen ports (actual port = base + brokerId)
+     * Base port for ToxiProxy listen ports (actual port = base + nodeId)
      */
     protected static final int TOXIPROXY_PORT_BASE = 8666;
 
@@ -99,7 +99,6 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
     private int kafkaExposedPort;
     private int controllerExposedPort;
     private Map<String, String> kafkaConfigurationMap;
-    private int brokerId;
     private Integer nodeId;
     private String kafkaVersion;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
@@ -171,14 +170,14 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         super.setExposedPorts(determineExposedPorts());
 
         // Setup network alias
-        super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.brokerId);
+        super.withNetworkAliases(NETWORK_ALIAS_PREFIX + this.nodeId);
 
         // Setup OAuth configuration
         setupOAuthConfiguration();
 
         // Setup logging
         if (this.enableBrokerContainerSlf4jLogging) {
-            this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.brokerId)));
+            this.withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("StrimziKafkaContainer-" + this.nodeId)));
         }
 
         // Start the container
@@ -245,11 +244,11 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
                         fileName = "kafka-controller-" + this.nodeId + ".log";
                         break;
                     case BROKER:
-                        fileName = "kafka-broker-" + this.brokerId + ".log";
+                        fileName = "kafka-broker-" + this.nodeId + ".log";
                         break;
                     case COMBINED:
                     default:
-                        fileName = "kafka-container-" + this.brokerId + ".log";
+                        fileName = "kafka-container-" + this.nodeId + ".log";
                         break;
                 }
                 finalLogPath = this.logFilePath + fileName;
@@ -340,12 +339,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         }
 
         if (this.nodeId == null) {
-            LOGGER.warn("Node ID is not set. Using broker ID {} as the default node ID.", this.brokerId);
-            this.nodeId = this.brokerId;
-        }
-
-        if (this.brokerId != this.nodeId) {
-            throw new IllegalStateException("`broker.id` and `node.id` must have the same value!");
+            throw new IllegalStateException("Node ID must be set using withNodeId()");
         }
 
         final String[] listenersConfig = this.buildListenersConfig(containerInfo);
@@ -570,11 +564,11 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         // For standalone containers (not part of a cluster), set default quorum voters
         if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters")) {
             if (this.nodeRole == KafkaNodeRole.COMBINED) {
-                properties.setProperty("controller.quorum.voters", 
-                    String.format("%d@%s%d:%d", this.nodeId, NETWORK_ALIAS_PREFIX, this.brokerId, StrimziKafkaContainer.CONTROLLER_PORT));
+                properties.setProperty("controller.quorum.voters",
+                    String.format("%d@%s%d:%d", this.nodeId, NETWORK_ALIAS_PREFIX, this.nodeId, StrimziKafkaContainer.CONTROLLER_PORT));
             }
         }
-        //  In KRaft mode => broker.id should always equal node.id
+        //  In KRaft mode => broker.id property should always equal node.id
         if (this.nodeRole.isBroker()) {
             properties.setProperty("broker.id", String.valueOf(this.nodeId));
         }
@@ -736,7 +730,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         if (proxyContainer != null) {
             initializeProxy();
             // Return the host-accessible proxy address
-            final int mappedPort = proxyContainer.getMappedPort(TOXIPROXY_PORT_BASE + this.brokerId);
+            final int mappedPort = proxyContainer.getMappedPort(TOXIPROXY_PORT_BASE + this.nodeId);
             return String.format("PLAINTEXT://%s:%d", proxyContainer.getHost(), mappedPort);
         }
         return bootstrapServersProvider.apply(this);
@@ -755,10 +749,10 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         if (proxyContainer != null) {
             initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
-            final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
+            final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
             return String.format("PLAINTEXT://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
-        return NETWORK_ALIAS_PREFIX + brokerId + ":" + INTER_BROKER_LISTENER_PORT;
+        return NETWORK_ALIAS_PREFIX + nodeId + ":" + INTER_BROKER_LISTENER_PORT;
     }
 
     /**
@@ -780,7 +774,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         if (proxyContainer != null) {
             initializeProxy();
             // Return the host-accessible proxy address
-            final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
+            final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
             final int mappedPort = proxyContainer.getMappedPort(listenPort);
             return String.format("CONTROLLER://%s:%d", proxyContainer.getHost(), mappedPort);
         }
@@ -801,10 +795,10 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         if (proxyContainer != null) {
             initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
-            final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
+            final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
             return String.format("CONTROLLER://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
-        return NETWORK_ALIAS_PREFIX + brokerId + ":" + StrimziKafkaContainer.CONTROLLER_PORT;
+        return NETWORK_ALIAS_PREFIX + nodeId + ":" + StrimziKafkaContainer.CONTROLLER_PORT;
     }
 
     /**
@@ -826,16 +820,6 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         return this;
     }
 
-    /**
-     * Fluent method, which sets {@code brokerId}.
-     *
-     * @param brokerId broker id
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withBrokerId(final int brokerId) {
-        this.brokerId = brokerId;
-        return self();
-    }
 
     /**
      * Fluent method that sets the node ID.
@@ -1067,8 +1051,8 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
      *
      * If the path ends with "/", role-based filenames are automatically appended at runtime for each container:
      *      Controller-only: "kafka-controller-{nodeId}.log"
-     *      Broker-only: "kafka-broker-{brokerId}.log"
-     *      Combined: "kafka-container-{brokerId}.log"
+     *      Broker-only: "kafka-broker-{nodeId}.log"
+     *      Combined: "kafka-container-{nodeId}.log"
      * otherwise,  the path doesn't end with "/", it's used as the exact filename base for all containers
      *
      * @param logFilePath the base path where container logs will be saved. Use "/" suffix for automatic role-based naming.
@@ -1103,9 +1087,9 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
                 this.toxiproxyClient = new ToxiproxyClient(proxyContainer.getHost(), proxyContainer.getControlPort());
             }
             try {
-                final int listenPort = TOXIPROXY_PORT_BASE + this.brokerId;
-                final String upstream = NETWORK_ALIAS_PREFIX + this.brokerId + ":" + KAFKA_PORT;
-                this.proxy = this.toxiproxyClient.createProxy("kafka" + this.brokerId, "0.0.0.0:" + listenPort, upstream);
+                final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
+                final String upstream = NETWORK_ALIAS_PREFIX + this.nodeId + ":" + KAFKA_PORT;
+                this.proxy = this.toxiproxyClient.createProxy("kafka" + this.nodeId, "0.0.0.0:" + listenPort, upstream);
             } catch (IOException e) {
                 LOGGER.error("Error happened during creation of the Proxy: {}", e.getMessage());
                 throw new RuntimeException(e);
@@ -1127,8 +1111,8 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         return this.kafkaVersion;
     }
 
-    /* test */ int getBrokerId() {
-        return brokerId;
+    /* test */ int getNodeId() {
+        return nodeId;
     }
 
     /* test */ Map<String, String> getKafkaConfigurationMap() {

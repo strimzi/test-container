@@ -22,7 +22,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.testcontainers.containers.ContainerLaunchException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,7 +41,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SuppressWarnings("ClassDataAbstractionCoupling")
@@ -54,7 +52,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @MethodSource("retrieveKafkaVersionsFile")
     void testStartContainerWithEmptyConfiguration(final String imageName, final String kafkaVersion) throws ExecutionException, InterruptedException, TimeoutException {
         systemUnderTest = new StrimziKafkaContainer(imageName)
-            .withBrokerId(1)
+            .withNodeId(1)
             .waitForRunning();
 
         systemUnderTest.start();
@@ -81,7 +79,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         kafkaConfiguration.put("log.index.interval.bytes", "2048");
 
         systemUnderTest = new StrimziKafkaContainer(imageName)
-            .withBrokerId(1)
+            .withNodeId(1)
             .withKafkaConfigurationMap(kafkaConfiguration)
             .waitForRunning();
 
@@ -103,28 +101,11 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     void testUnsupportedKRaftUsingKafkaVersion() {
         systemUnderTest = new StrimziKafkaContainer()
             .withKafkaVersion("2.8.2")
-            .withBrokerId(1)
+            .withNodeId(1)
             .waitForRunning();
 
         assertThrows(UnknownKafkaVersionException.class, () -> systemUnderTest.start());
     }
-
-    @ParameterizedTest(name = "testStartContainerWithSomeConfiguration-{0}")
-    @MethodSource("retrieveKafkaVersionsFile")
-    void testUnsupportedKraftAndIdsMismatch(final String imageName, final String kafkaVersion) {
-        systemUnderTest = new StrimziKafkaContainer(imageName)
-                .withNodeId(1)
-                .withBrokerId(2)
-                .waitForRunning();
-        Throwable cause = assertThrows(ContainerLaunchException.class,
-            () -> systemUnderTest.start());
-        while (cause.getCause() != null) {
-            cause = cause.getCause();
-        }
-        assertEquals(IllegalStateException.class, cause.getClass());
-        assertThat(cause.getMessage(), containsString("`broker.id` and `node.id` must have the same value!"));
-    }
-
 
     @Test
     void testWithKafkaLog() {
@@ -185,7 +166,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         Files.deleteIfExists(logPath);
 
         systemUnderTest = new StrimziKafkaContainer()
-            .withBrokerId(1)
+            .withNodeId(1)
             .withLogCollection()
             .waitForRunning();
 
@@ -217,7 +198,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
         Files.deleteIfExists(logPath);
 
         systemUnderTest = new StrimziKafkaContainer()
-            .withBrokerId(1)
+            .withNodeId(1)
             .withLogCollection(customLogPath)
             .waitForRunning();
 

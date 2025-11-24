@@ -394,7 +394,7 @@ public class StrimziKafkaContainerMockTest {
             }
         }
             .withNodeRole(KafkaNodeRole.BROKER)
-            .withBrokerId(1)
+            .withNodeId(1)
             .withProxyContainer(proxyContainer);
 
         String networkBootstrapServers = kafkaContainer.getNetworkBootstrapServers();
@@ -417,7 +417,7 @@ public class StrimziKafkaContainerMockTest {
             }
         }
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(2)
+            .withNodeId(2)
             .withProxyContainer(proxyContainer);
 
         String networkBootstrapServers = kafkaContainer.getNetworkBootstrapServers();
@@ -440,7 +440,7 @@ public class StrimziKafkaContainerMockTest {
             }
         }
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(1)
+            .withNodeId(1)
             .withProxyContainer(proxyContainer);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
@@ -463,7 +463,7 @@ public class StrimziKafkaContainerMockTest {
             }
         }
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(3)
+            .withNodeId(3)
             .withProxyContainer(proxyContainer);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
