@@ -568,10 +568,6 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
                     String.format("%d@%s%d:%d", this.nodeId, NETWORK_ALIAS_PREFIX, this.nodeId, StrimziKafkaContainer.CONTROLLER_PORT));
             }
         }
-        //  In KRaft mode => broker.id property should always equal node.id
-        if (this.nodeRole.isBroker()) {
-            properties.setProperty("broker.id", String.valueOf(this.nodeId));
-        }
     }
 
     private void configureAuthentication(Properties properties) {

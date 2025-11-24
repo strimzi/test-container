@@ -110,6 +110,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
     @Test
     void testWithKafkaLog() {
         systemUnderTest = new StrimziKafkaContainer()
+            .withNodeId(1)
             .waitForRunning()
             .withKafkaLog(Level.DEBUG);
         systemUnderTest.start();
