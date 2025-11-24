@@ -624,7 +624,7 @@ public class StrimziKafkaClusterTest {
         int expectedMinBrokerId = 5; // controllersNum
         for (KafkaContainer broker : cluster.getBrokers()) {
             StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
-            assertThat(container.getBrokerId() >= expectedMinBrokerId, is(true));
+            assertThat(container.getNodeId() >= expectedMinBrokerId, is(true));
         }
     }
 
@@ -642,7 +642,7 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getControllers().size(), is(1));
         
         StrimziKafkaContainer brokerContainer = (StrimziKafkaContainer) cluster.getBrokers().iterator().next();
-        assertThat(brokerContainer.getBrokerId(), is(1)); // 1 controller + 0 index = 1
+        assertThat(brokerContainer.getNodeId(), is(1)); // 1 controller + 0 index = 1
     }
 
     @Test
