@@ -9,7 +9,8 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.ToxiproxyContainer;
+import org.testcontainers.toxiproxy.ToxiproxyContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StrimziKafkaClusterTest {
+
+    private static final DockerImageName TOXIPROXY_DOCKER_IMAGE_NAME = DockerImageName.parse("shopify/toxiproxy");
 
     @Test
     void testKafkaClusterNegativeOrZeroNumberOfNodes() {
@@ -79,7 +82,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterWithProxyContainer() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
         assertDoesNotThrow(() ->
             new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(3)
@@ -91,7 +94,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterWithProxyContainerConfiguresProxyPorts() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
@@ -111,7 +114,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterWithProxyContainerAndDedicatedRolesConfiguresProxyPorts() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
@@ -134,7 +137,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterWithProxyContainerSingleBrokerConfiguresProxyPorts() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
@@ -151,7 +154,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterWithProxyContainerDedicatedRolesMinimumConfiguresProxyPorts() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
@@ -171,7 +174,7 @@ public class StrimziKafkaClusterTest {
 
     @Test
     void testKafkaClusterWithProxyContainerAndKafkaClusterSetSameNetwork() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
 
         assertThat(proxyContainer.getNetwork(), CoreMatchers.nullValue());
 
