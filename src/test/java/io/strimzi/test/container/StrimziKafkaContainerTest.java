@@ -562,7 +562,7 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testGetBrokerId() {
+    void testGetNodeId() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeId(5);
 
