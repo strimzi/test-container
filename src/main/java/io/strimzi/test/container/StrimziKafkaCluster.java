@@ -113,7 +113,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .range(0, this.brokersNum)
             .mapToObj(nodeId -> {
                 LOGGER.info("Starting combined-role node with id {}", nodeId);
-                // adding broker id for each kafka container
+                // adding node id for each kafka container
                 StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
                     .withNodeId(nodeId)
                     .withKafkaConfigurationMap(kafkaConfiguration)

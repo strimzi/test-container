@@ -142,7 +142,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify that the proxy container has the correct exposed ports configured
-        // For 1 broker in combined mode, port 8666 should be exposed
+        // For 1 node in combined mode, port 8666 should be exposed
         // Note: ToxiproxyContainer pre-configures ports 8666-8695, so we can only verify presence
         List<Integer> exposedPorts = cluster.getToxiproxyContainer().getExposedPorts();
         assertThat(exposedPorts, CoreMatchers.notNullValue());
@@ -613,23 +613,23 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testDedicatedRolesClusterBrokerIdCalculation() {
+    void testDedicatedRolesClusterNodeIdCalculation() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
             .withDedicatedRoles()
             .withNumberOfControllers(5) // Test specific controller count
             .build();
         
-        // Verify broker IDs start after controller count
-        int expectedMinBrokerId = 5; // controllersNum
+        // Verify node IDs start after controller count
+        int expectedMinNodeId = 5; // controllersNum
         for (KafkaContainer broker : cluster.getBrokers()) {
             StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
-            assertThat(container.getNodeId() >= expectedMinBrokerId, is(true));
+            assertThat(container.getNodeId() >= expectedMinNodeId, is(true));
         }
     }
 
     @Test
-    void testDedicatedRolesClusterWithVersionAndBrokerIdEdgeCases() {
+    void testDedicatedRolesClusterWithVersionAndNodeIdEdgeCases() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
             .withDedicatedRoles()
@@ -637,7 +637,7 @@ public class StrimziKafkaClusterTest {
             .withKafkaVersion("3.8.0") // Test non-null version
             .build();
         
-        // Test that version is properly set and broker ID calculation works with minimal setup
+        // Test that version is properly set and node ID calculation works with minimal setup
         assertThat(cluster.getBrokers().size(), is(1));
         assertThat(cluster.getControllers().size(), is(1));
         
