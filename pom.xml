@@ -96,23 +96,22 @@
         <maven.compiler.release>11</maven.compiler.release>
 
         <!-- DEPENDENCY CODE VERSIONS       -->
-        <test-containers.version>1.21.0</test-containers.version>
+        <test-containers.version>2.0.2</test-containers.version>
         <spotbugs.version>4.9.3</spotbugs.version>
         <log4j.version>2.19.0</log4j.version>
-        <docker-java.version>3.5.0</docker-java.version>
+        <docker-java.version>3.7.0</docker-java.version>
         <kafka.version>4.0.0</kafka.version>
         <slf4j.version>1.7.36</slf4j.version>
         <fasterxml.jackson-core.version>2.19.0</fasterxml.jackson-core.version>
         <fasterxml.jackson-databind.version>2.19.0</fasterxml.jackson-databind.version>
-        <toxiproxy.java.version>2.1.7</toxiproxy.java.version>
+        <toxiproxy.java.version>2.1.11</toxiproxy.java.version>
         <pitest-annotations.version>2.2.1</pitest-annotations.version>
 
         <!-- DEPENDENCY TEST VERSIONS      -->
         <jupiter.version>5.11.4</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-surefire-failsafe-plugin.version>3.1.2</maven-surefire-failsafe-plugin.version>
-        <!-- for Java 11 compatibility (newer versions does not support Java 11)  -->
-        <testcontainers-keycloak.version>2.6.0</testcontainers-keycloak.version>
+        <testcontainers-keycloak.version>4.0.0</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
         <kafka-oauth-client.version>0.16.2</kafka-oauth-client.version>
         <mockito.version>5.17.0</mockito.version>
@@ -144,7 +143,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>toxiproxy</artifactId>
+            <artifactId>testcontainers-toxiproxy</artifactId>
             <version>${test-containers.version}</version>
         </dependency>
         <dependency>

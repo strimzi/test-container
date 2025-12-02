@@ -9,7 +9,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.ToxiproxyContainer;
+import org.testcontainers.toxiproxy.ToxiproxyContainer;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import java.lang.reflect.Method;
@@ -32,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class StrimziKafkaContainerTest {
+
+    private static final DockerImageName TOXIPROXY_DOCKER_IMAGE_NAME = DockerImageName.parse("shopify/toxiproxy");
 
     private StrimziKafkaContainer kafkaContainer;
 
@@ -85,7 +88,7 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testBootstrapServersWithProxy() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withProxyContainer(proxyContainer);
 
@@ -762,7 +765,7 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testWithProxyContainerSetsNetworkAliases() {
-        ToxiproxyContainer proxyContainer = new ToxiproxyContainer();
+        ToxiproxyContainer proxyContainer = new ToxiproxyContainer(TOXIPROXY_DOCKER_IMAGE_NAME);
         kafkaContainer.withProxyContainer(proxyContainer);
         
         assertThat(proxyContainer.getNetworkAliases(), hasItem("toxiproxy"));
