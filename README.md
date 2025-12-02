@@ -300,7 +300,54 @@ Log collection happens automatically when containers are stopped.
 If a path ends with "/", role-based filenames are automatically appended. 
 Without the trailing slash, the exact path is used as the filename base.
 
-#### xii) Logging Kafka Container/Cluster Output to SLF4J
+#### xii) OAuth Authentication for StrimziKafkaCluster
+
+StrimziKafkaCluster supports OAuth authentication for secure broker communication. 
+You can configure OAuth Bearer tokens or OAuth over PLAIN authentication.
+
+##### OAuth Bearer Authentication
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withSharedNetwork()
+    .withOAuthConfig(
+        "demo",                        // OAuth realm name
+        "kafka-broker",                // OAuth client ID
+        "kafka-broker-secret",         // OAuth client secret
+        "http://keycloak:8080",        // OAuth server URI
+        "preferred_username"           // Username claim
+    )
+    .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
+    .build();
+
+kafkaCluster.start();
+```
+
+##### OAuth over PLAIN Authentication
+
+For OAuth over PLAIN, you also need to provide SASL credentials:
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withSharedNetwork()
+    .withOAuthConfig(
+        "demo",                        // OAuth realm name
+        "kafka",                       // OAuth client ID
+        "kafka-secret",                // OAuth client secret
+        "http://keycloak:8080",        // OAuth server URI
+        "preferred_username"           // Username claim
+    )
+    .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
+    .withSaslUsername("kafka-broker")
+    .withSaslPassword("kafka-broker-secret")
+    .build();
+
+kafkaCluster.start();
+```
+
+#### xiii) Logging Kafka Container/Cluster Output to SLF4J
 
 If you want to enable logging of the Kafka container’s output to SLF4J, 
 you can set the environment variable `STRIMZI_TEST_CONTAINER_LOGGING_ENABLED` to true. 

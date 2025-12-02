@@ -882,4 +882,77 @@ public class StrimziKafkaClusterTest {
                 container.getLogFilePath(), is(CoreMatchers.nullValue()));
         }
     }
+
+    @Test
+    void testClusterWithSaslUsernameWhitespaceOnlyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSaslUsername("   ")
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("SASL username cannot be null or empty"));
+    }
+
+    @Test
+    void testClusterWithSaslPasswordWhitespaceOnlyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSaslPassword("   ")
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("SASL password cannot be null or empty"));
+    }
+
+    @Test
+    void testOAuthConfigIsAppliedToDedicatedRolesBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withOAuthConfig("test-realm", "test-client-id", "test-client-secret",
+                "http://oauth-server:8080", "preferred_username")
+            .build();
+
+        // Verify OAuth config is propagated to broker nodes
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("OAuth should be enabled on broker", container.isOAuthEnabled(), is(true));
+        }
+    }
+
+    @Test
+    void testSaslCredentialsAreAppliedToDedicatedRolesBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withSaslUsername("test-user")
+            .withSaslPassword("test-password")
+            .build();
+
+        // Verify SASL credentials are propagated to broker nodes
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("SASL username should be set on broker",
+                container.getSaslUsername(), is("test-user"));
+            assertThat("SASL password should be set on broker",
+                container.getSaslPassword(), is("test-password"));
+        }
+    }
+    @Test
+    void testWithAuthenticationTypeNullDoesNotOverridePreviousValue() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
+            .withAuthenticationType(null) // This should NOT override the previous value
+            .build();
+
+        for (GenericContainer<?> node : cluster.getNodes()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            assertThat("Authentication type should still be OAUTH_BEARER after null call",
+                container.getAuthenticationType(), is(AuthenticationType.OAUTH_BEARER));
+        }
+    }
 }
