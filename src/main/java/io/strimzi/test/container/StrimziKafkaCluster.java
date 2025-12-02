@@ -723,37 +723,44 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     @DoNotMutate
     private String buildMetadataQuorumCommand() {
-        if (this.oauthEnabled && this.authenticationType != null) {
-            final String saslMechanism;
-            final String jaasConfig;
+        final String baseCommand = "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" +
+            StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT;
 
-            if (this.authenticationType == AuthenticationType.OAUTH_OVER_PLAIN) {
+        if (!this.oauthEnabled || this.authenticationType == null) {
+            return baseCommand + " describe --status";
+        }
+
+        final String saslMechanism;
+        final String jaasConfig;
+        final String loginCallbackHandler;
+
+        switch (this.authenticationType) {
+            case OAUTH_OVER_PLAIN:
                 saslMechanism = "PLAIN";
                 jaasConfig = String.format(
                     "org.apache.kafka.common.security.plain.PlainLoginModule required username=\\\"%s\\\" password=\\\"%s\\\";",
                     this.saslUsername, this.saslPassword);
-            } else if (this.authenticationType == AuthenticationType.OAUTH_BEARER) {
+                loginCallbackHandler = null;
+                break;
+            case OAUTH_BEARER:
                 saslMechanism = "OAUTHBEARER";
                 jaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
-            } else {
-                saslMechanism = null;
-                jaasConfig = null;
-            }
-
-            if (saslMechanism != null) {
-                return String.format(
-                    "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:%d " +
-                        "--command-config <(echo -e 'security.protocol=SASL_PLAINTEXT\\n" +
-                        "sasl.mechanism=%s\\n" +
-                        "sasl.jaas.config=%s') describe --status",
-                    StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT,
-                    saslMechanism,
-                    jaasConfig);
-            }
+                loginCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
+                break;
+            default:
+                return baseCommand + " describe --status";
         }
 
-        return "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" +
-            StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status";
+        final StringBuilder commandConfig = new StringBuilder();
+        commandConfig.append("security.protocol=SASL_PLAINTEXT\\n");
+        commandConfig.append("sasl.mechanism=").append(saslMechanism).append("\\n");
+        commandConfig.append("sasl.jaas.config=").append(jaasConfig);
+        if (loginCallbackHandler != null) {
+            commandConfig.append("\\nsasl.login.callback.handler.class=").append(loginCallbackHandler);
+        }
+
+        return String.format("%s --command-config <(echo -e '%s') describe --status",
+            baseCommand, commandConfig);
     }
 
     @DoNotMutate
