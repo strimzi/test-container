@@ -23,6 +23,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -48,6 +49,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final String kafkaVersion;
     private final boolean useDedicatedRoles;
     private final String logFilePath;
+    private final int fixedExposedPort;
+    private final Function<StrimziKafkaContainer, String> bootstrapServersProvider;
 
     // not editable
     private final Network network;
@@ -71,6 +74,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.kafkaVersion = builder.kafkaVersion;
         this.clusterId = builder.clusterId;
         this.logFilePath = builder.logFilePath;
+        this.fixedExposedPort = builder.fixedExposedPort;
+        this.bootstrapServersProvider = builder.bootstrapServersProvider;
 
         validateBrokerNum(this.brokersNum);
         if (this.isUsingDedicatedRoles()) {
@@ -129,6 +134,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     kafkaContainer.withLogCollection(this.logFilePath);
                 }
 
+                if (this.fixedExposedPort > 0) {
+                    kafkaContainer.withPort(this.fixedExposedPort + nodeId);
+                }
+
+                if (this.bootstrapServersProvider != null) {
+                    kafkaContainer.withBootstrapServers(this.bootstrapServersProvider);
+                }
+
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
 
                 return kafkaContainer;
@@ -169,7 +182,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 int nodeId = this.controllersNum + brokerIndex;
 
                 LOGGER.info("Starting broker-only node with node.id={}", nodeId);
-                
+
                 StrimziKafkaContainer brokerContainer = new StrimziKafkaContainer()
                     .withNodeId(nodeId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
@@ -182,6 +195,14 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
                 if (this.logFilePath != null) {
                     brokerContainer.withLogCollection(this.logFilePath);
+                }
+
+                if (this.fixedExposedPort > 0) {
+                    brokerContainer.withPort(this.fixedExposedPort + brokerIndex);
+                }
+
+                if (this.bootstrapServersProvider != null) {
+                    brokerContainer.withBootstrapServers(this.bootstrapServersProvider);
                 }
 
                 LOGGER.info("Started broker-only node with id: {}", brokerContainer);
@@ -245,6 +266,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private String kafkaVersion;
         private String clusterId;
         private String logFilePath;
+        private int fixedExposedPort;
+        private Function<StrimziKafkaContainer, String> bootstrapServersProvider;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -369,6 +392,42 @@ public class StrimziKafkaCluster implements KafkaContainer {
             } else {
                 throw new IllegalArgumentException("Log file path cannot be null or empty.");
             }
+            return this;
+        }
+
+        /**
+         * Sets a fixed exposed port for all broker nodes in the cluster.
+         * <p>
+         * Note: When using multiple brokers, each broker needs a unique port.
+         * The first broker will use the specified port, and subsequent brokers will use
+         * incrementing port numbers (e.g., if port 9092 is specified for a 3-broker cluster,
+         * the brokers will use ports 9092, 9093, and 9094).
+         * </p>
+         *
+         * @param fixedPort the base fixed port to expose for the first broker
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @throws IllegalArgumentException if the port is less than or equal to 0
+         */
+        public StrimziKafkaClusterBuilder withPort(final int fixedPort) {
+            if (fixedPort <= 0) {
+                throw new IllegalArgumentException("The fixed Kafka port must be greater than 0");
+            }
+            this.fixedExposedPort = fixedPort;
+            return this;
+        }
+
+        /**
+         * Assigns a provider function for overriding the bootstrap servers string for all broker nodes.
+         * <p>
+         * This is useful when you need to customize how the bootstrap servers address is generated,
+         * for example when using a shared network with specific hostnames.
+         * </p>
+         *
+         * @param provider a function that takes a {@link StrimziKafkaContainer} and returns the bootstrap servers string
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withBootstrapServers(final Function<StrimziKafkaContainer, String> provider) {
+            this.bootstrapServersProvider = provider;
             return this;
         }
 
