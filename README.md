@@ -51,31 +51,31 @@ Add the Strimzi test container to your project as dependency, for example with M
 
 Examples:
 
-#### i) default configuration 
+#### i) default configuration
 
 ```java
-final int brokerId = 1;
+final int nodeId = 1;
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(brokerId);
+    .withNodeId(nodeId);
 // startup of the Kafka container
 strimziKafkaContainer.start();
 ```
 #### ii) (Optional) Run Strimzi test container with additional configuration
 
 ```java
-final int brokerId = 1;
+final int nodeId = 1;
 
 // additional configuration
 Map<String, String> additionalKafkaConfiguration = Map.of(
-    "log.cleaner.enable", "false", 
-    "log.cleaner.backoff.ms", 
-    "1000", "ssl.enabled.protocols", "TLSv1", 
+    "log.cleaner.enable", "false",
+    "log.cleaner.backoff.ms",
+    "1000", "ssl.enabled.protocols", "TLSv1",
     "log.index.interval.bytes", "2048"
 );
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(1)
+    .withNodeId(1)
     .withKafkaConfigurationMap(additionalKafkaConfiguration);
 // startup of the Kafka container
 strimziKafkaContainer.start();
@@ -125,7 +125,7 @@ Before starting the container, use the following code configuring Test Container
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(1)
+    .withNodeId(1)
     .waitForRunning();
 
 strimziKafkaContainer.start();
@@ -138,7 +138,7 @@ Strimzi test container supported versions can be find in `src/main/java/resource
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
     .withKafkaVersion("3.8.0")
-    .withBrokerId(1)
+    .withNodeId(1)
     .waitForRunning();
 
 strimziKafkaContainer.start();
@@ -148,12 +148,12 @@ released minor version at the point of release of test-containers.
 
 #### viii) (Optional) Specify Kafka custom image
 
-In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and 
+In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and
 use for instance Strimzi base image you can achieve it by passing the image name to the constructor:
 
 ```java
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer("quay.io/strimzi/kafka:0.27.1-kafka-3.0.0")
-    .withBrokerId(1)
+    .withNodeId(1)
     .waitForRunning();
 
 strimziKafkaContainer.start();
@@ -166,7 +166,7 @@ Alternatively you can set System property `strimzi.test-container.kafka.custom.i
 System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
 
 StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withBrokerId(1)
+    .withNodeId(1)
     .waitForRunning();
 
 strimziKafkaContainer.start();

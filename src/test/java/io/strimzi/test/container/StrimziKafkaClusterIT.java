@@ -498,8 +498,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             .withNumberOfBrokers(1)
             .build();
 
-        for (GenericContainer<?> broker : this.systemUnderTest.getNodes()) {
-            broker.withExposedPorts(8080, 8081);
+        for (GenericContainer<?> node : this.systemUnderTest.getNodes()) {
+            node.withExposedPorts(8080, 8081);
         }
 
         this.systemUnderTest.start();
@@ -521,8 +521,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             .withNumberOfControllers(1)
             .build();
 
-        for (GenericContainer<?> broker : this.systemUnderTest.getNodes()) {
-            broker.withExposedPorts(8080, 8081);
+        for (GenericContainer<?> node : this.systemUnderTest.getNodes()) {
+            node.withExposedPorts(8080, 8081);
         }
 
         this.systemUnderTest.start();
@@ -582,16 +582,16 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             producer.send(new ProducerRecord<>(topicName, "key1", "value-before-latency")).get();
             LOGGER.info("Successfully produced message before latency");
 
-            // Add network latency (1000ms) to one of the brokers
-            final int brokerId = 0;
-            Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
+            // Add network latency (1000ms) to one of the nodes
+            final int nodeId = 0;
+            Proxy proxy = systemUnderTest.getProxyForNode(nodeId);
             assertThat(proxy, notNullValue());
 
             proxy.toxics()
                 .latency("latency", ToxicDirection.DOWNSTREAM, 1000)
                 .setJitter(100);
 
-            LOGGER.info("Added 1000ms latency to broker-{}", brokerId);
+            LOGGER.info("Added 1000ms latency to node-{}", nodeId);
 
             // Verify cluster still works with latency (though slower)
             producer.send(new ProducerRecord<>(topicName, "key2", "value-with-latency")).get();
@@ -645,9 +645,9 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             final long baselineTime = System.currentTimeMillis() - startTime;
             LOGGER.info("Baseline: 10 messages (50KB total) in {}ms", baselineTime);
 
-            // Apply bandwidth limitation to all brokers in the cluster
-            for (int brokerId = 0; brokerId < NUMBER_OF_REPLICAS; brokerId++) {
-                final Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
+            // Apply bandwidth limitation to all nodes in the cluster
+            for (int nodeId = 0; nodeId < NUMBER_OF_REPLICAS; nodeId++) {
+                final Proxy proxy = systemUnderTest.getProxyForNode(nodeId);
 
                 // Limit bandwidth to 5 KB/s in both directions (very slow network)
                 proxy.toxics()
@@ -655,7 +655,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                 proxy.toxics()
                     .bandwidth("limit-bandwidth-up", ToxicDirection.UPSTREAM, 5);
 
-                LOGGER.info("Limited bandwidth to 5 KB/s for broker-{}", brokerId);
+                LOGGER.info("Limited bandwidth to 5 KB/s for node-{}", nodeId);
             }
 
             startTime = System.currentTimeMillis();
@@ -667,9 +667,9 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             assertThat("Slow network should take longer than baseline", slowTime > baselineTime, is(true));
 
-            // Remove bandwidth limitations from all brokers
-            for (int brokerId = 0; brokerId < NUMBER_OF_REPLICAS; brokerId++) {
-                final Proxy proxy = systemUnderTest.getProxyForNode(brokerId);
+            // Remove bandwidth limitations from all nodes
+            for (int nodeId = 0; nodeId < NUMBER_OF_REPLICAS; nodeId++) {
+                final Proxy proxy = systemUnderTest.getProxyForNode(nodeId);
                 proxy.toxics().get("limit-bandwidth-down").remove();
                 proxy.toxics().get("limit-bandwidth-up").remove();
             }

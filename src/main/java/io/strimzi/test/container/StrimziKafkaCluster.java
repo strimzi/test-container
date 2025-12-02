@@ -111,17 +111,15 @@ public class StrimziKafkaCluster implements KafkaContainer {
         // multi-node set up with combined roles
         this.nodes = IntStream
             .range(0, this.brokersNum)
-            .mapToObj(brokerId -> {
-                LOGGER.info("Starting combined-role node with id {}", brokerId);
-                // adding broker id for each kafka container
+            .mapToObj(nodeId -> {
+                LOGGER.info("Starting combined-role node with id {}", nodeId);
+                // adding node id for each kafka container
                 StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-                    .withBrokerId(brokerId)
+                    .withNodeId(nodeId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    // One must set `node.id` to the same value as `broker.id` if we use KRaft mode
-                    .withNodeId(brokerId)
                     // pass shared `cluster.id` to each broker
                     .withClusterId(this.clusterId)
                     .withNodeRole(KafkaNodeRole.COMBINED)
@@ -145,12 +143,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .mapToObj(controllerId -> {
                 LOGGER.info("Starting controller-only node with id {}", controllerId);
                 StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
-                    .withBrokerId(controllerId)
+                    .withNodeId(controllerId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    .withNodeId(controllerId)
                     .withClusterId(this.clusterId)
                     .withNodeRole(KafkaNodeRole.CONTROLLER)
                     .waitForRunning();
@@ -168,18 +165,17 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.brokers = IntStream
             .range(0, this.brokersNum)
             .mapToObj(brokerIndex -> {
-                // Use broker IDs that start after the highest controller ID to avoid conflicts
-                int brokerId = this.controllersNum + brokerIndex;
+                // Use node IDs that start after the highest controller ID to avoid conflicts
+                int nodeId = this.controllersNum + brokerIndex;
 
-                LOGGER.info("Starting broker-only node with broker.id={}", brokerId);
+                LOGGER.info("Starting broker-only node with node.id={}", nodeId);
                 
                 StrimziKafkaContainer brokerContainer = new StrimziKafkaContainer()
-                    .withBrokerId(brokerId)
+                    .withNodeId(nodeId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
                     .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    .withNodeId(brokerId)
                     .withClusterId(this.clusterId)
                     .withNodeRole(KafkaNodeRole.BROKER)
                     .waitForRunning();
@@ -360,8 +356,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
          *
          * If the path ends with "/", role-based filenames are automatically appended at runtime for each container:
          *      Controller-only: "kafka-controller-{nodeId}.log"
-         *      Broker-only: "kafka-broker-{brokerId}.log"
-         *      Combined: "kafka-container-{brokerId}.log"
+         *      Broker-only: "kafka-broker-{nodeId}.log"
+         *      Combined: "kafka-container-{nodeId}.log"
          * otherwise,  the path doesn't end with "/", it's used as the exact filename base for all containers
          *
          * @param logFilePath the base path where container logs will be saved. Use "/" suffix for automatic role-based naming.
@@ -464,7 +460,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         } else {
             // For combined roles, all nodes participate in the quorum
             quorumVoters = IntStream.range(0, this.brokersNum)
-                .mapToObj(brokerId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:" + StrimziKafkaContainer.CONTROLLER_PORT, brokerId, brokerId))
+                .mapToObj(nodeId -> String.format("%d@" + StrimziKafkaContainer.NETWORK_ALIAS_PREFIX + "%d:" + StrimziKafkaContainer.CONTROLLER_PORT, nodeId, nodeId))
                 .collect(Collectors.joining(","));
         }
 
@@ -523,7 +519,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         );
         String output = result.getStdout();
 
-        LOGGER.info("Metadata quorum status from broker {}: {}", kafkaContainer.getBrokerId(), output);
+        LOGGER.info("Metadata quorum status from broker {}: {}", kafkaContainer.getNodeId(), output);
 
         if (output == null || output.isEmpty()) {
             return false;
@@ -624,7 +620,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
         for (final KafkaContainer node : this.nodes) {
             final StrimziKafkaContainer kafkaNode = (StrimziKafkaContainer) node;
-            if (kafkaNode.getBrokerId() == nodeId) {
+            if (kafkaNode.getNodeId() == nodeId) {
                 return kafkaNode.getProxy();
             }
         }

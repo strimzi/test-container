@@ -327,7 +327,7 @@ class StrimziKafkaContainerTest {
         String advertisedListeners = "PLAINTEXT://localhost:9092";
         kafkaContainer.listenerNames.add("PLAINTEXT");
         kafkaContainer
-            .withBrokerId(1)
+            .withNodeId(1)
             .withNodeId(1)
             .withAuthenticationType(AuthenticationType.NONE);
 
@@ -337,7 +337,6 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("listeners"), is(listeners));
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("broker.id"), is("1"));
         assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
@@ -366,7 +365,7 @@ class StrimziKafkaContainerTest {
         String advertisedListeners = "PLAINTEXT://localhost:9092";
         kafkaContainer.listenerNames.add("PLAINTEXT");
         kafkaContainer
-            .withBrokerId(1)
+            .withNodeId(1)
             .withNodeId(1)
             .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
             // OAuth is not enabled, no OAuth config is provided
@@ -386,7 +385,7 @@ class StrimziKafkaContainerTest {
         String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
         kafkaContainer.listenerNames.add("SASL_PLAINTEXT");
         kafkaContainer
-            .withBrokerId(1)
+            .withNodeId(1)
             .withNodeId(1)
             .withSaslUsername("admin")
             .withSaslPassword("password")
@@ -399,7 +398,6 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("listeners"), is(listeners));
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("broker.id"), is("1"));
         assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
@@ -440,7 +438,7 @@ class StrimziKafkaContainerTest {
         String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
         kafkaContainer.listenerNames.add("SASL_PLAINTEXT");
         kafkaContainer
-            .withBrokerId(1)
+            .withNodeId(1)
             .withNodeId(1)
             .withOAuthConfig("test-realm", "test-client", "test-secret", "http://oauth-uri", "preferred_username")
             .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
@@ -451,7 +449,6 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("listeners"), is(listeners));
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
         assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("broker.id"), is("1"));
         assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
@@ -568,13 +565,13 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testGetBrokerId() {
+    void testGetNodeId() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
-            .withBrokerId(5);
+            .withNodeId(5);
 
-        int brokerId = kafkaContainer.getBrokerId();
+        int nodeId = kafkaContainer.getNodeId();
 
-        assertThat(brokerId, is(5));
+        assertThat(nodeId, is(5));
     }
 
     @Test
@@ -655,7 +652,7 @@ class StrimziKafkaContainerTest {
     void testBrokerOnlyNodeAllowsBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.BROKER)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         // Should not throw exception
         String bootstrapServers = kafkaContainer.getBootstrapServers();
@@ -666,7 +663,7 @@ class StrimziKafkaContainerTest {
     void testcombinedNodeAllowsBootstrapServers() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         // Should not throw exception
         String bootstrapServers = kafkaContainer.getBootstrapServers();
@@ -677,19 +674,19 @@ class StrimziKafkaContainerTest {
     void testDedicatedRolesNodeRoleConfiguration() {
         StrimziKafkaContainer controllerNode = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(0)
+            .withNodeId(0)
             .withNodeId(0)
             .withClusterId("test-cluster");
 
         StrimziKafkaContainer brokerNode = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.BROKER)
-            .withBrokerId(0)
+            .withNodeId(0)
             .withNodeId(1)
             .withClusterId("test-cluster");
 
         StrimziKafkaContainer combinedNode = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(0)
+            .withNodeId(0)
             .withNodeId(2)
             .withClusterId("test-cluster");
 
@@ -784,7 +781,7 @@ class StrimziKafkaContainerTest {
             .withKafkaConfigurationMap(kafkaConfig)
             .withNodeRole(KafkaNodeRole.COMBINED)
             .withNodeId(1)
-            .withBrokerId(1);
+            .withNodeId(1);
         container.listenerNames.add("PLAINTEXT");
         
         Properties defaultProps = container.buildDefaultServerProperties(
@@ -805,7 +802,7 @@ class StrimziKafkaContainerTest {
     void testGetBootstrapControllersWithControllerOnlyNode() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
         assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
@@ -815,7 +812,7 @@ class StrimziKafkaContainerTest {
     void testGetBootstrapControllersWithCombinedNode() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
         assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
@@ -838,7 +835,7 @@ class StrimziKafkaContainerTest {
     void testGetNetworkBootstrapControllerWithControllersOnlyNode() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
         assertThat(networkBootstrapControllers, is("broker-1:9094"));
@@ -848,7 +845,7 @@ class StrimziKafkaContainerTest {
     void testGetNetworkBootstrapControllersWithCombinedNode() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(2);
+            .withNodeId(2);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
         assertThat(networkBootstrapControllers, is("broker-2:9094"));
@@ -912,7 +909,7 @@ class StrimziKafkaContainerTest {
     void testEnsureControllerMappingIsPresent() {
         StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(1)
+            .withNodeId(1)
             .withNodeId(1);
 
         controllerContainer.listenerNames.add("CONTROLLER");
@@ -935,7 +932,7 @@ class StrimziKafkaContainerTest {
     void testControllerOnlyNodeExtractsControllerListenerFromMultipleListeners() {
         StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(1)
+            .withNodeId(1)
             .withNodeId(1);
 
         controllerContainer.listenerNames.add("CONTROLLER");
@@ -956,7 +953,7 @@ class StrimziKafkaContainerTest {
     void testDetermineExposedPortsForControllerRole() {
         StrimziKafkaContainer container = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         List<Integer> exposedPorts = container.determineExposedPorts();
 
@@ -968,7 +965,7 @@ class StrimziKafkaContainerTest {
     void testDetermineExposedPortsForBrokerRole() {
         StrimziKafkaContainer container = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.BROKER)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         List<Integer> exposedPorts = container.determineExposedPorts();
 
@@ -980,7 +977,7 @@ class StrimziKafkaContainerTest {
     void testDetermineExposedPortsForCombinedRole() {
         StrimziKafkaContainer container = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.COMBINED)
-            .withBrokerId(1);
+            .withNodeId(1);
 
         List<Integer> exposedPorts = container.determineExposedPorts();
 
@@ -992,7 +989,7 @@ class StrimziKafkaContainerTest {
     void testDetermineExposedPortsIncludesAdditionalPorts() {
         StrimziKafkaContainer container = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.BROKER)
-            .withBrokerId(1)
+            .withNodeId(1)
             .withExposedPorts(8080);
 
         List<Integer> exposedPorts = container.determineExposedPorts();
