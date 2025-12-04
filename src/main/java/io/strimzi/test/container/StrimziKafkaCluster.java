@@ -23,6 +23,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -48,6 +49,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final String kafkaVersion;
     private final boolean useDedicatedRoles;
     private final String logFilePath;
+    private final int fixedExposedPort;
+    private final Function<StrimziKafkaContainer, String> bootstrapServersProvider;
+
+    // OAuth fields
+    private final boolean oauthEnabled;
+    private final String realm;
+    private final String oauthClientId;
+    private final String oauthClientSecret;
+    private final String oauthUri;
+    private final String usernameClaim;
+    private final AuthenticationType authenticationType;
+    private final String saslUsername;
+    private final String saslPassword;
 
     // not editable
     private final Network network;
@@ -71,6 +85,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.kafkaVersion = builder.kafkaVersion;
         this.clusterId = builder.clusterId;
         this.logFilePath = builder.logFilePath;
+        this.fixedExposedPort = builder.fixedExposedPort;
+        this.bootstrapServersProvider = builder.bootstrapServersProvider;
+
+        // OAuth configuration
+        this.oauthEnabled = builder.oauthEnabled;
+        this.realm = builder.realm;
+        this.oauthClientId = builder.oauthClientId;
+        this.oauthClientSecret = builder.oauthClientSecret;
+        this.oauthUri = builder.oauthUri;
+        this.usernameClaim = builder.usernameClaim;
+        this.authenticationType = builder.authenticationType;
+        this.saslUsername = builder.saslUsername;
+        this.saslPassword = builder.saslPassword;
 
         validateBrokerNum(this.brokersNum);
         if (this.isUsingDedicatedRoles()) {
@@ -129,6 +156,16 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     kafkaContainer.withLogCollection(this.logFilePath);
                 }
 
+                if (this.fixedExposedPort > 0) {
+                    kafkaContainer.withPort(this.fixedExposedPort + nodeId);
+                }
+
+                if (this.bootstrapServersProvider != null) {
+                    kafkaContainer.withBootstrapServers(this.bootstrapServersProvider);
+                }
+
+                applyOAuthConfiguration(kafkaContainer);
+
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
 
                 return kafkaContainer;
@@ -169,7 +206,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 int nodeId = this.controllersNum + brokerIndex;
 
                 LOGGER.info("Starting broker-only node with node.id={}", nodeId);
-                
+
                 StrimziKafkaContainer brokerContainer = new StrimziKafkaContainer()
                     .withNodeId(nodeId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
@@ -184,6 +221,16 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     brokerContainer.withLogCollection(this.logFilePath);
                 }
 
+                if (this.fixedExposedPort > 0) {
+                    brokerContainer.withPort(this.fixedExposedPort + brokerIndex);
+                }
+
+                if (this.bootstrapServersProvider != null) {
+                    brokerContainer.withBootstrapServers(this.bootstrapServersProvider);
+                }
+
+                applyOAuthConfiguration(brokerContainer);
+
                 LOGGER.info("Started broker-only node with id: {}", brokerContainer);
                 return brokerContainer;
             })
@@ -193,6 +240,35 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.nodes = new ArrayList<>();
         this.nodes.addAll(this.controllers);
         this.nodes.addAll(this.brokers);
+    }
+
+    /**
+     * Applies OAuth configuration to a Kafka container if OAuth is enabled.
+     *
+     * @param container the container to configure
+     */
+    private void applyOAuthConfiguration(StrimziKafkaContainer container) {
+        if (this.oauthEnabled) {
+            container.withOAuthConfig(
+                this.realm,
+                this.oauthClientId,
+                this.oauthClientSecret,
+                this.oauthUri,
+                this.usernameClaim
+            );
+        }
+
+        if (this.authenticationType != null) {
+            container.withAuthenticationType(this.authenticationType);
+        }
+
+        if (this.saslUsername != null) {
+            container.withSaslUsername(this.saslUsername);
+        }
+
+        if (this.saslPassword != null) {
+            container.withSaslPassword(this.saslPassword);
+        }
     }
 
     private void validateBrokerNum(int brokersNum) {
@@ -245,6 +321,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private String kafkaVersion;
         private String clusterId;
         private String logFilePath;
+        private int fixedExposedPort;
+        private Function<StrimziKafkaContainer, String> bootstrapServersProvider;
+
+        // OAuth fields
+        private boolean oauthEnabled;
+        private String realm;
+        private String oauthClientId;
+        private String oauthClientSecret;
+        private String oauthUri;
+        private String usernameClaim;
+        private AuthenticationType authenticationType;
+        private String saslUsername;
+        private String saslPassword;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -368,6 +457,111 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 this.logFilePath = logFilePath.trim();
             } else {
                 throw new IllegalArgumentException("Log file path cannot be null or empty.");
+            }
+            return this;
+        }
+
+        /**
+         * Sets a fixed exposed port for all broker nodes in the cluster.
+         * <p>
+         * Note: When using multiple brokers, each broker needs a unique port.
+         * The first broker will use the specified port, and subsequent brokers will use
+         * incrementing port numbers (e.g., if port 9092 is specified for a 3-broker cluster,
+         * the brokers will use ports 9092, 9093, and 9094).
+         * </p>
+         *
+         * @param fixedPort the base fixed port to expose for the first broker
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @throws IllegalArgumentException if the port is less than or equal to 0
+         */
+        public StrimziKafkaClusterBuilder withPort(final int fixedPort) {
+            if (fixedPort <= 0) {
+                throw new IllegalArgumentException("The fixed Kafka port must be greater than 0");
+            }
+            this.fixedExposedPort = fixedPort;
+            return this;
+        }
+
+        /**
+         * Assigns a provider function for overriding the bootstrap servers string for all broker nodes.
+         * <p>
+         * This is useful when you need to customize how the bootstrap servers address is generated,
+         * for example when using a shared network with specific hostnames.
+         * </p>
+         *
+         * @param provider a function that takes a {@link StrimziKafkaContainer} and returns the bootstrap servers string
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withBootstrapServers(final Function<StrimziKafkaContainer, String> provider) {
+            this.bootstrapServersProvider = provider;
+            return this;
+        }
+
+        /**
+         * Configures OAuth settings for all nodes in the cluster.
+         *
+         * @param realm         the OAuth realm name
+         * @param clientId      the OAuth client ID
+         * @param clientSecret  the OAuth client secret
+         * @param oauthUri      the OAuth server URI
+         * @param usernameClaim the claim to use for the username
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withOAuthConfig(final String realm,
+                                                          final String clientId,
+                                                          final String clientSecret,
+                                                          final String oauthUri,
+                                                          final String usernameClaim) {
+            this.oauthEnabled = true;
+            this.realm = realm;
+            this.oauthClientId = clientId;
+            this.oauthClientSecret = clientSecret;
+            this.oauthUri = oauthUri;
+            this.usernameClaim = usernameClaim;
+            return this;
+        }
+
+        /**
+         * Sets the authentication type for all nodes in the cluster.
+         *
+         * @param authType the authentication type to enable
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withAuthenticationType(AuthenticationType authType) {
+            if (authType != null) {
+                this.authenticationType = authType;
+            }
+            return this;
+        }
+
+        /**
+         * Sets the SASL username for OAuth over PLAIN authentication.
+         *
+         * @param saslUsername the SASL username
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @throws IllegalArgumentException if the username is null or empty
+         */
+        public StrimziKafkaClusterBuilder withSaslUsername(String saslUsername) {
+            if (saslUsername != null && !saslUsername.trim().isEmpty()) {
+                this.saslUsername = saslUsername;
+            } else {
+                throw new IllegalArgumentException("SASL username cannot be null or empty.");
+            }
+            return this;
+        }
+
+        /**
+         * Sets the SASL password for OAuth over PLAIN authentication.
+         *
+         * @param saslPassword the SASL password
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @throws IllegalArgumentException if the password is null or empty
+         */
+        public StrimziKafkaClusterBuilder withSaslPassword(String saslPassword) {
+            if (saslPassword != null && !saslPassword.trim().isEmpty()) {
+                this.saslPassword = saslPassword;
+            } else {
+                throw new IllegalArgumentException("SASL password cannot be null or empty.");
             }
             return this;
         }
@@ -513,10 +707,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     @DoNotMutate
     private boolean isBrokerReady(StrimziKafkaContainer kafkaContainer) throws IOException, InterruptedException {
-        Container.ExecResult result = kafkaContainer.execInContainer(
-            "bash", "-c",
-            "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" + StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT + " describe --status"
-        );
+        String command = buildMetadataQuorumCommand();
+
+        Container.ExecResult result = kafkaContainer.execInContainer("bash", "-c", command);
         String output = result.getStdout();
 
         LOGGER.info("Metadata quorum status from broker {}: {}", kafkaContainer.getNodeId(), output);
@@ -526,6 +719,48 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         return isValidLeaderIdPresent(output);
+    }
+
+    @DoNotMutate
+    private String buildMetadataQuorumCommand() {
+        final String baseCommand = "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" +
+            StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT;
+
+        if (!this.oauthEnabled || this.authenticationType == null) {
+            return baseCommand + " describe --status";
+        }
+
+        final String saslMechanism;
+        final String jaasConfig;
+        final String loginCallbackHandler;
+
+        switch (this.authenticationType) {
+            case OAUTH_OVER_PLAIN:
+                saslMechanism = "PLAIN";
+                jaasConfig = String.format(
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required username=\\\"%s\\\" password=\\\"%s\\\";",
+                    this.saslUsername, this.saslPassword);
+                loginCallbackHandler = null;
+                break;
+            case OAUTH_BEARER:
+                saslMechanism = "OAUTHBEARER";
+                jaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
+                loginCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
+                break;
+            default:
+                return baseCommand + " describe --status";
+        }
+
+        final StringBuilder commandConfig = new StringBuilder();
+        commandConfig.append("security.protocol=SASL_PLAINTEXT\\n");
+        commandConfig.append("sasl.mechanism=").append(saslMechanism).append("\\n");
+        commandConfig.append("sasl.jaas.config=").append(jaasConfig);
+        if (loginCallbackHandler != null) {
+            commandConfig.append("\\nsasl.login.callback.handler.class=").append(loginCallbackHandler);
+        }
+
+        return String.format("%s --command-config <(echo -e '%s') describe --status",
+            baseCommand, commandConfig);
     }
 
     @DoNotMutate

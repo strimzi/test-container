@@ -81,44 +81,37 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### iii) (Optional) Run Strimzi Kafka container on a fixed port
+#### iii) (Optional) Run Strimzi Kafka cluster on a fixed port
 
-By default, the Kafka container will be exposed on a random host port. To expose Kafka on a fixed port:
-
-```java
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withFixedPort(9092);
-
-strimziKafkaContainer.start();
-```
-
-#### iv) (Optional) Run Strimzi Kafka container with a custom server.properties file
-
-You can configure Kafka by providing a `server.properties` file:
+By default, Kafka brokers will be exposed on random host ports. To expose brokers on fixed ports:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-        .withServerProperties(MountableFile.forClasspathResource("server.properties"));
-strimziKafkaContainer.start();
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .withPort(9092)
+    .build();
+
+kafkaCluster.start();
 ```
+> [!NOTE]
+> When using multiple brokers, each broker gets an incrementing port starting from the specified base port.
 
-Note that configuration properties `listeners`, `advertised.listeners`, `listener.security.protocol.map`, 
-`inter.broker.listener.name`, `controller.listener.names` will be overridden during container startup.
-Properties configured through `withKafkaConfigurationMap` will also precede those configured in `server.properties` file.
-
-#### v) (Optional) Run Strimzi Kafka container with a custom bootstrap servers
+#### iv) (Optional) Run Strimzi Kafka cluster with custom bootstrap servers
 
 You can customize the bootstrap servers, thus the advertised listeners property by:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-        .withBootstrapServers(container -> String.format("SSL://%s:%s", container.getHost(), container.getMappedPort(9092)));
-strimziKafkaContainer.start();
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .withBootstrapServers(container -> String.format("SSL://%s:%s", container.getHost(), container.getMappedPort(9092)))
+    .build();
+
+kafkaCluster.start();
 ```
 
 Note that this won't change the port exposed from the container.
 
-#### vi) (Optional) Waiting for Kafka to be ready
+#### v) (Optional) Waiting for Kafka to be ready
 
 Test Container can block waiting the container to be ready.
 Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
@@ -131,7 +124,7 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### vii) (Optional) Specify Kafka version
+#### vi) (Optional) Specify Kafka version
 
 Strimzi test container supported versions can be find in `src/main/java/resources/kafka_versions.json` file.
 
@@ -146,7 +139,7 @@ strimziKafkaContainer.start();
 If kafka version is not set then the latest version is configured automatically. Latest in this scope is recently 
 released minor version at the point of release of test-containers.
 
-#### viii) (Optional) Specify Kafka custom image
+#### vii) (Optional) Specify Kafka custom image
 
 In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and
 use for instance Strimzi base image you can achieve it by passing the image name to the constructor:
@@ -172,7 +165,7 @@ StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
 strimziKafkaContainer.start();
 ```
 
-#### ix) (Optional) Specify a proxy container
+#### viii) (Optional) Specify a proxy container
 
 The proxy container allows to create a TCP proxy between test code and Kafka nodes.
 
@@ -195,7 +188,7 @@ Proxy proxy = cluster.getProxyForNode(0);
 proxy.setConnectionCut(true);
 ```
 
-#### x) Run a multi-node Kafka cluster
+#### ix) Run a multi-node Kafka cluster
 
 To run a multi-node Kafka cluster, you can use the StrimziKafkaCluster class with the builder pattern.
 
@@ -213,7 +206,7 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xi) Run a Kafka cluster with separate controller and broker roles
+#### x) Run a Kafka cluster with separate controller and broker roles
 
 By default, `StrimziKafkaCluster` uses combined-role nodes where each node acts as both controller and broker. 
 For more realistic production-like testing, you can configure the cluster to use dedicated controller and broker nodes:
@@ -228,7 +221,7 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xii) Log Collection for StrimziKafkaCluster
+#### xi) Log Collection for StrimziKafkaCluster
 
 StrimziKafkaCluster supports automatic log collection from all Kafka containers. This is useful for debugging, monitoring, and analyzing the cluster behavior during tests.
 
@@ -306,6 +299,53 @@ kafkaCluster.stop();
 Log collection happens automatically when containers are stopped. 
 If a path ends with "/", role-based filenames are automatically appended. 
 Without the trailing slash, the exact path is used as the filename base.
+
+#### xii) OAuth Authentication for StrimziKafkaCluster
+
+StrimziKafkaCluster supports OAuth authentication for secure broker communication. 
+You can configure OAuth Bearer tokens or OAuth over PLAIN authentication.
+
+##### OAuth Bearer Authentication
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withSharedNetwork()
+    .withOAuthConfig(
+        "demo",                        // OAuth realm name
+        "kafka-broker",                // OAuth client ID
+        "kafka-broker-secret",         // OAuth client secret
+        "http://keycloak:8080",        // OAuth server URI
+        "preferred_username"           // Username claim
+    )
+    .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
+    .build();
+
+kafkaCluster.start();
+```
+
+##### OAuth over PLAIN Authentication
+
+For OAuth over PLAIN, you also need to provide SASL credentials:
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withSharedNetwork()
+    .withOAuthConfig(
+        "demo",                        // OAuth realm name
+        "kafka",                       // OAuth client ID
+        "kafka-secret",                // OAuth client secret
+        "http://keycloak:8080",        // OAuth server URI
+        "preferred_username"           // Username claim
+    )
+    .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
+    .withSaslUsername("kafka-broker")
+    .withSaslPassword("kafka-broker-secret")
+    .build();
+
+kafkaCluster.start();
+```
 
 #### xiii) Logging Kafka Container/Cluster Output to SLF4J
 

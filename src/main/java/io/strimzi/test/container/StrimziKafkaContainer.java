@@ -18,7 +18,6 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -103,8 +102,8 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
     private String kafkaVersion;
     private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
     private String clusterId;
-    private MountableFile serverPropertiesFile;
     private KafkaNodeRole nodeRole = KafkaNodeRole.COMBINED;
+    private int fixedExposedPort;
 
     // proxy attributes
     private ToxiproxyContainer proxyContainer;
@@ -360,11 +359,6 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
 
         command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
         command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
-
-        Utils.asTransferableBytes(serverPropertiesFile).ifPresent(properties -> copyFileToContainer(
-                properties,
-                "/opt/kafka/config/kraft/server.properties"
-        ));
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
@@ -846,25 +840,12 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
      * @return StrimziKafkaContainer instance
      */
     public StrimziKafkaContainer withPort(final int fixedPort) {
-        if (fixedPort <= 0) {
+        this.fixedExposedPort = fixedPort;
+
+        if (fixedExposedPort <= 0) {
             throw new IllegalArgumentException("The fixed Kafka port must be greater than 0");
         }
-        addFixedExposedPort(fixedPort, KAFKA_PORT);
-        return self();
-    }
-
-    /**
-     * Fluent method, copy server properties file to the container
-     *
-     * @param serverPropertiesFile the mountable config file
-     * @return StrimziKafkaContainer instance
-     */
-    public StrimziKafkaContainer withServerProperties(final MountableFile serverPropertiesFile) {
-        /*
-         * Save a reference to the file and delay copying to the container until the container
-         * is starting.
-         */
-        this.serverPropertiesFile = serverPropertiesFile;
+        addFixedExposedPort(fixedExposedPort, KAFKA_PORT);
         return self();
     }
 
@@ -1163,5 +1144,17 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
      */
     public KafkaNodeRole getNodeRole() {
         return nodeRole;
+    }
+
+    /* test */ String getLogFilePath() {
+        return logFilePath;
+    }
+
+    /* test */ Function<StrimziKafkaContainer, String> getBootstrapServersProvider() {
+        return bootstrapServersProvider;
+    }
+
+    /* test */ int getFixedExposedPort() {
+        return fixedExposedPort;
     }
 }

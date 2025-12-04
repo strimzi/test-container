@@ -216,7 +216,7 @@ public class StrimziKafkaOauthIT extends AbstractIT {
             .withExposedPorts(KEYCLOAK_PORT)
             .withNetwork(Network.SHARED)
             .withNetworkAliases(KEYCLOAK_NETWORK_ALIAS)
-            .waitingFor(Wait.forHttp("/realms/master").forStatusCode(200).forPort(KEYCLOAK_PORT));
+            .waitingFor(Wait.forHttp("/realms/demo").forStatusCode(200).forPort(KEYCLOAK_PORT));
 
         this.keycloakContainer.start();
     }

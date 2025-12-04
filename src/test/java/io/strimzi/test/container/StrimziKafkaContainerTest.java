@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Network;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -542,16 +541,6 @@ class StrimziKafkaContainerTest {
         StrimziKafkaContainer result = kafkaContainer.withKafkaLog(Level.DEBUG);
 
         assertSame(kafkaContainer, result, "withKafkaLog() should return the same instance for method chaining.");
-    }
-
-    @Test
-    void testWithServerProperties() {
-        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
-        MountableFile serverPropertiesFile = MountableFile.forClasspathResource("server.properties");
-
-        StrimziKafkaContainer result = kafkaContainer.withServerProperties(serverPropertiesFile);
-
-        assertSame(kafkaContainer, result, "withServerProperties() should return the same instance for method chaining.");
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -748,16 +749,6 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testWithLogFilePathTrimsWhitespace() {
-        assertDoesNotThrow(() ->
-            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-                .withNumberOfBrokers(3)
-                .withLogCollection("  target/test-logs/  ")
-                .build()
-        );
-    }
-
-    @Test
     void testDedicatedRolesClusterWithLogFilePath() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
@@ -770,5 +761,198 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getControllers().size(), is(2));
         assertThat(cluster.getBrokers().size(), is(2));
         assertThat(cluster.getNodes().size(), is(4));
+    }
+
+    @Test
+    void testWithPortValidation() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withPort(0)
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("The fixed Kafka port must be greater than 0"));
+
+        exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(3)
+                .withPort(-1)
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("The fixed Kafka port must be greater than 0"));
+    }
+
+    @Test
+    void testCombinedRolesClusterWithPortIncrement() {
+        int basePort = 19092;
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withPort(basePort)
+            .build();
+
+        int nodeIndex = 0;
+        for (GenericContainer<?> node : cluster.getNodes()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            int nodeId = container.getNodeId();
+            int expectedPort = basePort + nodeId;
+            assertThat("Node " + nodeId + " should have fixed exposed port " + expectedPort,
+                container.getFixedExposedPort(), is(expectedPort));
+            nodeIndex++;
+        }
+        assertThat(nodeIndex, is(3));
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithPortIncrementOnlyBrokers() {
+        int basePort = 19092;
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .withPort(basePort)
+            .build();
+
+        int brokerIndex = 0;
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            int expectedPort = basePort + brokerIndex;
+            assertThat("Broker " + brokerIndex + " should have fixed exposed port " + expectedPort,
+                container.getFixedExposedPort(), is(expectedPort));
+            brokerIndex++;
+        }
+        assertThat(brokerIndex, is(2));
+
+        // Verify controllers do NOT have fixed ports (port increment only applies to brokers)
+        for (KafkaContainer controller : cluster.getControllers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+            assertThat("Controller should not have a fixed exposed port",
+                container.getFixedExposedPort(), is(0));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithBootstrapServersProviderAppliedToBrokers() {
+        Function<StrimziKafkaContainer, String> customProvider =
+            c -> String.format("PLAINTEXT://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withBootstrapServers(customProvider)
+            .build();
+
+        // Verify bootstrapServersProvider is applied to brokers
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("Broker should have custom bootstrapServersProvider set",
+                container.getBootstrapServersProvider(), is(customProvider));
+        }
+    }
+
+    @Test
+    void testCombinedRolesClusterWithBootstrapServersProviderApplied() {
+        Function<StrimziKafkaContainer, String> customProvider =
+            c -> String.format("PLAINTEXT://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
+
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withBootstrapServers(customProvider)
+            .build();
+
+        // Verify bootstrapServersProvider is applied to all nodes in combined mode
+        for (GenericContainer<?> node : cluster.getNodes()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            assertThat("Node should have custom bootstrapServersProvider set",
+                container.getBootstrapServersProvider(), is(customProvider));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithoutLogFilePathBrokersHaveNullPath() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .build();
+
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("Broker should not have logFilePath set when not configured",
+                container.getLogFilePath(), is(CoreMatchers.nullValue()));
+        }
+    }
+
+    @Test
+    void testClusterWithSaslUsernameWhitespaceOnlyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSaslUsername("   ")
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("SASL username cannot be null or empty"));
+    }
+
+    @Test
+    void testClusterWithSaslPasswordWhitespaceOnlyThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSaslPassword("   ")
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("SASL password cannot be null or empty"));
+    }
+
+    @Test
+    void testOAuthConfigIsAppliedToDedicatedRolesBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withOAuthConfig("test-realm", "test-client-id", "test-client-secret",
+                "http://oauth-server:8080", "preferred_username")
+            .build();
+
+        // Verify OAuth config is propagated to broker nodes
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("OAuth should be enabled on broker", container.isOAuthEnabled(), is(true));
+        }
+    }
+
+    @Test
+    void testSaslCredentialsAreAppliedToDedicatedRolesBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withSaslUsername("test-user")
+            .withSaslPassword("test-password")
+            .build();
+
+        // Verify SASL credentials are propagated to broker nodes
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("SASL username should be set on broker",
+                container.getSaslUsername(), is("test-user"));
+            assertThat("SASL password should be set on broker",
+                container.getSaslPassword(), is("test-password"));
+        }
+    }
+    @Test
+    void testWithAuthenticationTypeNullDoesNotOverridePreviousValue() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
+            .withAuthenticationType(null) // This should NOT override the previous value
+            .build();
+
+        for (GenericContainer<?> node : cluster.getNodes()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            assertThat("Authentication type should still be OAUTH_BEARER after null call",
+                container.getAuthenticationType(), is(AuthenticationType.OAUTH_BEARER));
+        }
     }
 }
