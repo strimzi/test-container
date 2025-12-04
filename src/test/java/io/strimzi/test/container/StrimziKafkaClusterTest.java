@@ -955,4 +955,88 @@ public class StrimziKafkaClusterTest {
                 container.getAuthenticationType(), is(AuthenticationType.OAUTH_BEARER));
         }
     }
+
+    @Test
+    void testWithImageValidImageName() {
+        String customImage = "quay.io/strimzi/kafka:0.49.0-kafka-4.1.0";
+        assertDoesNotThrow(() ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withImage(customImage)
+                .build()
+        );
+    }
+
+    @Test
+    void testWithImageNullThrowsException() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withImage(null)
+                .build()
+        );
+        assertThat(exception.getMessage(), CoreMatchers.containsString("Kafka image cannot be null or empty"));
+    }
+
+    @Test
+    void testWithImageDedicatedRolesCluster() {
+        String customImage = "quay.io/strimzi/kafka:0.49.0-kafka-4.1.0";
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withImage(customImage)
+            .build();
+
+        assertThat(cluster.isUsingDedicatedRoles(), is(true));
+        assertThat(cluster.getNodes().size(), is(4));
+    }
+
+    @Test
+    void testWithoutImageDedicatedRolesSetsKafkaVersion() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withKafkaVersion("4.1.0")
+            .build();
+
+        // Verify kafkaVersion => set on controller containers
+        for (KafkaContainer controller : cluster.getControllers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+            assertThat("Controller should have kafkaVersion set",
+                container.getKafkaVersion(), is("4.1.0"));
+        }
+
+        // Verify kafkaVersion => set on broker containers
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("Broker should have kafkaVersion set",
+                container.getKafkaVersion(), is("4.1.0"));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithLogFilePathAppliesToControllers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withLogCollection("target/controller-logs/")
+            .build();
+
+        // Verify logFilePath is set on controller containers
+        for (KafkaContainer controller : cluster.getControllers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+            assertThat("Controller should have logFilePath set",
+                container.getLogFilePath(), is("target/controller-logs/"));
+        }
+
+        // Verify logFilePath is set on broker containers
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("Broker should have logFilePath set",
+                container.getLogFilePath(), is("target/controller-logs/"));
+        }
+    }
 }
