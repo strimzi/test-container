@@ -47,6 +47,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final ToxiproxyContainer proxyContainer;
     private final boolean enableSharedNetwork;
     private final String kafkaVersion;
+    private final String kafkaImage;
     private final boolean useDedicatedRoles;
     private final String logFilePath;
     private final int fixedExposedPort;
@@ -83,6 +84,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.additionalKafkaConfiguration = builder.additionalKafkaConfiguration;
         this.proxyContainer = builder.proxyContainer;
         this.kafkaVersion = builder.kafkaVersion;
+        this.kafkaImage = builder.kafkaImage;
         this.clusterId = builder.clusterId;
         this.logFilePath = builder.logFilePath;
         this.fixedExposedPort = builder.fixedExposedPort;
@@ -141,29 +143,24 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .mapToObj(nodeId -> {
                 LOGGER.info("Starting combined-role node with id {}", nodeId);
                 // adding node id for each kafka container
-                StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+                StrimziKafkaContainer kafkaContainer = this.kafkaImage != null
+                    ? new StrimziKafkaContainer(this.kafkaImage)
+                    : new StrimziKafkaContainer();
+
+                kafkaContainer
                     .withNodeId(nodeId)
                     .withKafkaConfigurationMap(kafkaConfiguration)
                     .withNetwork(this.network)
                     .withProxyContainer(proxyContainer)
-                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
                     // pass shared `cluster.id` to each broker
                     .withClusterId(this.clusterId)
                     .withNodeRole(KafkaNodeRole.COMBINED)
                     .waitForRunning();
 
-                if (this.logFilePath != null) {
-                    kafkaContainer.withLogCollection(this.logFilePath);
-                }
-
-                if (this.fixedExposedPort > 0) {
-                    kafkaContainer.withPort(this.fixedExposedPort + nodeId);
-                }
-
-                if (this.bootstrapServersProvider != null) {
-                    kafkaContainer.withBootstrapServers(this.bootstrapServersProvider);
-                }
-
+                applyKafkaVersion(kafkaContainer, kafkaVersion);
+                applyLogCollection(kafkaContainer);
+                applyFixedPort(kafkaContainer, nodeId);
+                applyBootstrapServersProvider(kafkaContainer);
                 applyOAuthConfiguration(kafkaContainer);
 
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
@@ -177,69 +174,97 @@ public class StrimziKafkaCluster implements KafkaContainer {
         // Create controller nodes - they get the first set of IDs
         this.controllers = IntStream
             .range(0, this.controllersNum)
-            .mapToObj(controllerId -> {
-                LOGGER.info("Starting controller-only node with id {}", controllerId);
-                StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
-                    .withNodeId(controllerId)
-                    .withKafkaConfigurationMap(kafkaConfiguration)
-                    .withNetwork(this.network)
-                    .withProxyContainer(proxyContainer)
-                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    .withClusterId(this.clusterId)
-                    .withNodeRole(KafkaNodeRole.CONTROLLER)
-                    .waitForRunning();
-
-                if (this.logFilePath != null) {
-                    controllerContainer.withLogCollection(this.logFilePath);
-                }
-
-                LOGGER.info("Started controller-only node with id: {}", controllerContainer);
-                return controllerContainer;
-            })
+            .mapToObj(controllerId -> createControllerContainer(controllerId, kafkaConfiguration, kafkaVersion))
             .collect(Collectors.toList());
 
-        // Create broker nodes - use node IDs that don't conflict with controllers
+        // Create broker nodes - use node IDs that do not conflict with controllers
         this.brokers = IntStream
             .range(0, this.brokersNum)
-            .mapToObj(brokerIndex -> {
-                // Use node IDs that start after the highest controller ID to avoid conflicts
-                int nodeId = this.controllersNum + brokerIndex;
-
-                LOGGER.info("Starting broker-only node with node.id={}", nodeId);
-
-                StrimziKafkaContainer brokerContainer = new StrimziKafkaContainer()
-                    .withNodeId(nodeId)
-                    .withKafkaConfigurationMap(kafkaConfiguration)
-                    .withNetwork(this.network)
-                    .withProxyContainer(proxyContainer)
-                    .withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion)
-                    .withClusterId(this.clusterId)
-                    .withNodeRole(KafkaNodeRole.BROKER)
-                    .waitForRunning();
-
-                if (this.logFilePath != null) {
-                    brokerContainer.withLogCollection(this.logFilePath);
-                }
-
-                if (this.fixedExposedPort > 0) {
-                    brokerContainer.withPort(this.fixedExposedPort + brokerIndex);
-                }
-
-                if (this.bootstrapServersProvider != null) {
-                    brokerContainer.withBootstrapServers(this.bootstrapServersProvider);
-                }
-
-                applyOAuthConfiguration(brokerContainer);
-
-                LOGGER.info("Started broker-only node with id: {}", brokerContainer);
-                return brokerContainer;
-            })
+            .mapToObj(brokerIndex -> createBrokerContainer(brokerIndex, kafkaConfiguration, kafkaVersion))
             .collect(Collectors.toList());
 
         // Combine all nodes for compatibility with existing methods
         this.nodes = new ArrayList<>();
         this.nodes.addAll(this.controllers);
         this.nodes.addAll(this.brokers);
+    }
+
+    private StrimziKafkaContainer createControllerContainer(int controllerId, Map<String, String> kafkaConfiguration, String kafkaVersion) {
+        LOGGER.info("Starting controller-only node with id {}", controllerId);
+        StrimziKafkaContainer controllerContainer = createBaseContainer();
+
+        controllerContainer
+            .withNodeId(controllerId)
+            .withKafkaConfigurationMap(kafkaConfiguration)
+            .withNetwork(this.network)
+            .withProxyContainer(proxyContainer)
+            .withClusterId(this.clusterId)
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .waitForRunning();
+
+        applyKafkaVersion(controllerContainer, kafkaVersion);
+        applyLogCollection(controllerContainer);
+        applyOAuthConfiguration(controllerContainer);
+
+        LOGGER.info("Started controller-only node with id: {}", controllerContainer);
+        return controllerContainer;
+    }
+
+    private StrimziKafkaContainer createBrokerContainer(int brokerIndex, Map<String, String> kafkaConfiguration, String kafkaVersion) {
+        // Use node IDs that start after the highest controller ID to avoid conflicts
+        int nodeId = this.controllersNum + brokerIndex;
+
+        LOGGER.info("Starting broker-only node with node.id={}", nodeId);
+        StrimziKafkaContainer brokerContainer = createBaseContainer();
+
+        brokerContainer
+            .withNodeId(nodeId)
+            .withKafkaConfigurationMap(kafkaConfiguration)
+            .withNetwork(this.network)
+            .withProxyContainer(proxyContainer)
+            .withClusterId(this.clusterId)
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .waitForRunning();
+
+        applyKafkaVersion(brokerContainer, kafkaVersion);
+        applyLogCollection(brokerContainer);
+        applyFixedPort(brokerContainer, brokerIndex);
+        applyBootstrapServersProvider(brokerContainer);
+        applyOAuthConfiguration(brokerContainer);
+
+        LOGGER.info("Started broker-only node with id: {}", brokerContainer);
+        return brokerContainer;
+    }
+
+    private StrimziKafkaContainer createBaseContainer() {
+        return this.kafkaImage != null
+            ? new StrimziKafkaContainer(this.kafkaImage)
+            : new StrimziKafkaContainer();
+    }
+
+    private void applyKafkaVersion(StrimziKafkaContainer container, String kafkaVersion) {
+        // Only set Kafka version if no custom image is specified
+        if (this.kafkaImage == null) {
+            container.withKafkaVersion(kafkaVersion == null ? KafkaVersionService.getInstance().latestRelease().getVersion() : kafkaVersion);
+        }
+    }
+
+    private void applyLogCollection(StrimziKafkaContainer container) {
+        if (this.logFilePath != null) {
+            container.withLogCollection(this.logFilePath);
+        }
+    }
+
+    private void applyFixedPort(StrimziKafkaContainer container, int nodeIndex) {
+        if (this.fixedExposedPort > 0) {
+            container.withPort(this.fixedExposedPort + nodeIndex);
+        }
+    }
+
+    private void applyBootstrapServersProvider(StrimziKafkaContainer container) {
+        if (this.bootstrapServersProvider != null) {
+            container.withBootstrapServers(this.bootstrapServersProvider);
+        }
     }
 
     /**
@@ -319,6 +344,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private ToxiproxyContainer proxyContainer;
         private boolean enableSharedNetwork;
         private String kafkaVersion;
+        private String kafkaImage;
         private String clusterId;
         private String logFilePath;
         private int fixedExposedPort;
@@ -399,10 +425,30 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * If no version is provided, the latest Kafka version available from {@link KafkaVersionService} will be used.
          *
          * @param kafkaVersion the desired Kafka version for the cluster
-         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withKafkaVersion(String kafkaVersion) {
             this.kafkaVersion = kafkaVersion;
+            return this;
+        }
+
+        /**
+         * Specifies a custom Docker image to be used for the Kafka brokers in the cluster.
+         * This allows using custom Kafka images instead of the default Strimzi test container images.
+         * <p>
+         * When this is set, the image specified here takes precedence over the version-based image selection.
+         * </p>
+         *
+         * @param kafkaImage the full Docker image name
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         * @throws IllegalArgumentException if the image name is null or empty
+         */
+        public StrimziKafkaClusterBuilder withImage(String kafkaImage) {
+            if (kafkaImage != null && !kafkaImage.trim().isEmpty()) {
+                this.kafkaImage = kafkaImage.trim();
+            } else {
+                throw new IllegalArgumentException("Kafka image cannot be null or empty.");
+            }
             return this;
         }
 

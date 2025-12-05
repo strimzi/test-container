@@ -17,18 +17,15 @@ The main dependency is the Testcontainers framework, which lets you control the 
 
 Since the Docker image is a simple encapsulation of Kafka binaries, you can spin up a Kafka container rapidly.
 Therefore, it is a suitable candidate for the unit or integration testing. If you need something more complex, there is a multi-node Kafka cluster implementation with only infrastructure limitations.
-The most important classes are described here:
-- `StrimziKafkaContainer` is a single-node instance of Kafka using the image from quay.io/strimzi-test-container/test-container with the given version.
-
-  Additional configuration for Kafka brokers can be injected through methods such as withKafkaConfigurationMap.
-  This container is a good fit for integration testing, but for more comprehensive testing, we suggest using StrimziKafkaCluster.
-
-- `StrimziKafkaCluster` is a multi-node instance of Kafka nodes (i.e, combined-roles) and  using the latest image from quay.io/strimzi-test-container/test-container with the given version.
-  It's a perfect fit for integration or system testing. 
+The main classes are:
+- `StrimziKafkaCluster` is a Kafka cluster using the image from quay.io/strimzi-test-container/test-container with the given version.
+  It supports both single-node and multi-node configurations with combined or dedicated controller/broker roles.
+  It's a perfect fit for integration or system testing.
   Additional configuration for Kafka brokers can be passed using the builder pattern.
 
-In summary, you can use `StrimziKafkaContainer` to use a Kafka cluster with a single Kafka broker.
-Or you can use `StrimziKafkaCluster` for a Kafka cluster with multiple Kafka brokers.
+- `StrimziConnectCluster` is a Kafka Connect cluster that runs in distributed mode.
+  It connects to a `StrimziKafkaCluster` and exposes a REST API for managing connectors.
+  You can configure the number of workers, Kafka version, and additional Connect configuration.
 
 ## How to use the Test container?
 
@@ -41,44 +38,42 @@ Using Strimzi test container takes two simple steps:
 Add the Strimzi test container to your project as dependency, for example with Maven:
 
 ```
-// in case of 0.108.0 version
+// in case of 0.113.0 version
 <dependency>
     <groupId>io.strimzi</groupId>
     <artifactId>strimzi-test-container</artifactId>
-    <version>0.108.0</version>
+    <version>0.113.0</version>
 </dependency>
 ```
 
 Examples:
 
-#### i) default configuration
+#### i) Default configuration (single-node)
 
 ```java
-final int nodeId = 1;
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .build();
 
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withNodeId(nodeId);
-// startup of the Kafka container
-strimziKafkaContainer.start();
+kafkaCluster.start();
 ```
-#### ii) (Optional) Run Strimzi test container with additional configuration
+
+#### ii) (Optional) Run Strimzi Kafka cluster with additional configuration
 
 ```java
-final int nodeId = 1;
-
-// additional configuration
 Map<String, String> additionalKafkaConfiguration = Map.of(
     "log.cleaner.enable", "false",
-    "log.cleaner.backoff.ms",
-    "1000", "ssl.enabled.protocols", "TLSv1",
+    "log.cleaner.backoff.ms", "1000",
+    "ssl.enabled.protocols", "TLSv1",
     "log.index.interval.bytes", "2048"
 );
 
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withNodeId(1)
-    .withKafkaConfigurationMap(additionalKafkaConfiguration);
-// startup of the Kafka container
-strimziKafkaContainer.start();
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .withAdditionalKafkaConfiguration(additionalKafkaConfiguration)
+    .build();
+
+kafkaCluster.start();
 ```
 
 #### iii) (Optional) Run Strimzi Kafka cluster on a fixed port
@@ -111,61 +106,49 @@ kafkaCluster.start();
 
 Note that this won't change the port exposed from the container.
 
-#### v) (Optional) Waiting for Kafka to be ready
+#### v) (Optional) Specify Kafka version
 
-Test Container can block waiting the container to be ready.
-Before starting the container, use the following code configuring Test Containers to wait until Kafka becomes ready to receive connections:
-
-```java
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withNodeId(1)
-    .waitForRunning();
-
-strimziKafkaContainer.start();
-```
-
-#### vi) (Optional) Specify Kafka version
-
-Strimzi test container supported versions can be find in `src/main/java/resources/kafka_versions.json` file.
+Strimzi test container supported versions can be found in `src/main/java/resources/kafka_versions.json` file.
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withKafkaVersion("3.8.0")
-    .withNodeId(1)
-    .waitForRunning();
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .withKafkaVersion("4.1.1")
+    .build();
 
-strimziKafkaContainer.start();
+kafkaCluster.start();
 ```
-If kafka version is not set then the latest version is configured automatically. Latest in this scope is recently 
-released minor version at the point of release of test-containers.
+If kafka version is not set then the latest version is configured automatically. 
+Latest in this scope is recently released minor version at the point of release of test-containers.
 
-#### vii) (Optional) Specify Kafka custom image
+#### vi) (Optional) Specify Kafka custom image
 
 In case you want to use your custom image (i.e., not from `src/main/java/resources/kafka_versions.json`) and
-use for instance Strimzi base image you can achieve it by passing the image name to the constructor:
+use for instance Strimzi base image you can achieve it using the builder:
 
 ```java
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer("quay.io/strimzi/kafka:0.27.1-kafka-3.0.0")
-    .withNodeId(1)
-    .waitForRunning();
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .withImage("quay.io/strimzi/kafka:0.49.0-kafka-4.1.0")
+    .build();
 
-strimziKafkaContainer.start();
+kafkaCluster.start();
 ```
 
 Alternatively you can set System property `strimzi.test-container.kafka.custom.image`:
 
 ```java
 // explicitly set strimzi.test-container.kafka.custom.image
-System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.27.1-kafka-3.0.0");
+System.setProperty("strimzi.test-container.kafka.custom.image", "quay.io/strimzi/kafka:0.49.0-kafka-4.1.0");
 
-StrimziKafkaContainer strimziKafkaContainer = new StrimziKafkaContainer()
-    .withNodeId(1)
-    .waitForRunning();
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(1)
+    .build();
 
-strimziKafkaContainer.start();
+kafkaCluster.start();
 ```
 
-#### viii) (Optional) Specify a proxy container
+#### vii) (Optional) Specify a proxy container
 
 The proxy container allows to create a TCP proxy between test code and Kafka nodes.
 
@@ -188,25 +171,7 @@ Proxy proxy = cluster.getProxyForNode(0);
 proxy.setConnectionCut(true);
 ```
 
-#### ix) Run a multi-node Kafka cluster
-
-To run a multi-node Kafka cluster, you can use the StrimziKafkaCluster class with the builder pattern.
-
-2. Specified Kafka version and additional Kafka configuration
-
-```java
-StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-    .withNumberOfBrokers(3)
-    .withKafkaVersion("3.8.0") // if not specified then latest Kafka version is selected
-    .withAdditionalKafkaConfiguration(Map.of(
-        "log.cleaner.enable", "false"
-    ))
-    .build();
-
-kafkaCluster.start();
-```
-
-#### x) Run a Kafka cluster with separate controller and broker roles
+#### viii) Run a Kafka cluster with separate controller and broker roles
 
 By default, `StrimziKafkaCluster` uses combined-role nodes where each node acts as both controller and broker. 
 For more realistic production-like testing, you can configure the cluster to use dedicated controller and broker nodes:
@@ -221,7 +186,7 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xi) Log Collection for StrimziKafkaCluster
+#### ix) Log Collection for StrimziKafkaCluster
 
 StrimziKafkaCluster supports automatic log collection from all Kafka containers. This is useful for debugging, monitoring, and analyzing the cluster behavior during tests.
 
@@ -300,7 +265,7 @@ Log collection happens automatically when containers are stopped.
 If a path ends with "/", role-based filenames are automatically appended. 
 Without the trailing slash, the exact path is used as the filename base.
 
-#### xii) OAuth Authentication for StrimziKafkaCluster
+#### x) OAuth Authentication for StrimziKafkaCluster
 
 StrimziKafkaCluster supports OAuth authentication for secure broker communication. 
 You can configure OAuth Bearer tokens or OAuth over PLAIN authentication.
@@ -347,12 +312,39 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xiii) Logging Kafka Container/Cluster Output to SLF4J
+#### xi) Logging Kafka Container/Cluster Output to SLF4J
 
-If you want to enable logging of the Kafka container’s output to SLF4J, 
-you can set the environment variable `STRIMZI_TEST_CONTAINER_LOGGING_ENABLED` to true. 
+If you want to enable logging of the Kafka container's output to SLF4J,
+you can set the environment variable `STRIMZI_TEST_CONTAINER_LOGGING_ENABLED` to true.
 By default, this feature is disabled.
-This can help in debugging or monitoring the Kafka broker’s activities during tests.
+This can help in debugging or monitoring the Kafka broker's activities during tests.
+
+### Kafka Connect Cluster
+
+You can run a Kafka Connect cluster alongside your Kafka cluster using `StrimziConnectCluster`.
+Kafka Connect is started in distributed mode, and you can use the REST API to manage connectors.
+
+```java
+// First, create and start a Kafka cluster
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withSharedNetwork()
+    .build();
+
+kafkaCluster.start();
+
+// Then create and start the Connect cluster
+StrimziConnectCluster connectCluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+    .withKafkaCluster(kafkaCluster)
+    .withGroupId("my-connect-cluster")
+    .build();
+
+connectCluster.start();
+
+// Use the REST API to manage connectors
+String restEndpoint = connectCluster.getRestEndpoint();
+// e.g., POST to restEndpoint + "/connectors" to create a connector
+```
 
 ### Running Mutation Testing
 
