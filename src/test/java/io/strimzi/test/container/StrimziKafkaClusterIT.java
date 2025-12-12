@@ -120,8 +120,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         systemUnderTest.start();
         List<String> bootstrapUrls = new ArrayList<>();
-        for (KafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
-            Proxy proxy = ((StrimziKafkaContainer) kafkaContainer).getProxy();
+        for (StrimziKafkaContainer kafkaContainer : systemUnderTest.getBrokers()) {
+            Proxy proxy = kafkaContainer.getProxy();
             assertThat(proxy, notNullValue());
             bootstrapUrls.add(kafkaContainer.getBootstrapServers());
         }
@@ -467,7 +467,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         this.systemUnderTest.start();
 
-        StrimziKafkaContainer container = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        StrimziKafkaContainer container = systemUnderTest.getBrokers().iterator().next();
         List<Integer> exposedPorts = container.getExposedPorts();
 
         assertThat("Combined role should expose KAFKA_PORT", exposedPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
@@ -485,14 +485,14 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         this.systemUnderTest.start();
 
-        StrimziKafkaContainer broker = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        StrimziKafkaContainer broker = systemUnderTest.getBrokers().iterator().next();
         List<Integer> brokerPorts = broker.getExposedPorts();
 
         assertThat("Broker should expose KAFKA_PORT", brokerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
         assertThat("Broker should not expose CONTROLLER_PORT", brokerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
         assertThat(broker.getNodeRole(), is(KafkaNodeRole.BROKER));
 
-        StrimziKafkaContainer controller = (StrimziKafkaContainer) systemUnderTest.getControllers().iterator().next();
+        StrimziKafkaContainer controller = systemUnderTest.getControllers().iterator().next();
         List<Integer> controllerPorts = controller.getExposedPorts();
 
         assertThat("Controller should expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
@@ -512,7 +512,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         this.systemUnderTest.start();
 
-        StrimziKafkaContainer container = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        StrimziKafkaContainer container = systemUnderTest.getBrokers().iterator().next();
         List<Integer> exposedPorts = container.getExposedPorts();
 
         assertThat("Should expose KAFKA_PORT", exposedPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
@@ -535,7 +535,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         this.systemUnderTest.start();
 
-        StrimziKafkaContainer broker = (StrimziKafkaContainer) systemUnderTest.getBrokers().iterator().next();
+        StrimziKafkaContainer broker = systemUnderTest.getBrokers().iterator().next();
         List<Integer> brokerPorts = broker.getExposedPorts();
 
         assertThat("Broker should expose KAFKA_PORT", brokerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
@@ -544,7 +544,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat("Should expose custom port 8081", brokerPorts.contains(8081), is(true));
         assertThat(broker.getNodeRole(), is(KafkaNodeRole.BROKER));
 
-        StrimziKafkaContainer controller = (StrimziKafkaContainer) systemUnderTest.getControllers().iterator().next();
+        StrimziKafkaContainer controller = systemUnderTest.getControllers().iterator().next();
         List<Integer> controllerPorts = controller.getExposedPorts();
 
         assertThat("Controller should expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
@@ -796,8 +796,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             this.systemUnderTest.start();
 
             // Verify all brokers have successfully logged in
-            for (KafkaContainer broker : this.systemUnderTest.getBrokers()) {
-                StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            for (StrimziKafkaContainer container : this.systemUnderTest.getBrokers()) {
                 assertThat(container.getLogs(), CoreMatchers.containsString("Successfully logged in."));
                 assertThat(container.getLogs(), CoreMatchers.containsString("JWKS keys change detected. Keys updated."));
             }
