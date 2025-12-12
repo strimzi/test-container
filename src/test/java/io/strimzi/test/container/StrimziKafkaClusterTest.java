@@ -869,6 +869,39 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
+    void testDedicatedRolesClusterWithContainerCustomizerAppliedToBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withDedicatedRoles()
+                .withNumberOfControllers(2)
+                .withContainerCustomizer(c -> c.withLabel("custom-label", "custom-value"))
+                .build();
+
+        // Verify bootstrapServersProvider is applied to brokers
+        for (KafkaContainer broker : cluster.getBrokers()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+            assertThat("Broker should have custom bootstrapServersProvider set",
+                    container.getLabels().get("custom-label"), is("custom-value"));
+        }
+    }
+
+
+    @Test
+    void testCombinedRolesClusterWithContainerCustomizerApplied() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withContainerCustomizer(c -> c.withLabel("custom-label", "custom-value"))
+            .build();
+
+        // Verify bootstrapServersProvider is applied to all nodes in combined mode
+        for (GenericContainer<?> node : cluster.getNodes()) {
+            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+            assertThat("Node should have custom bootstrapServersProvider set",
+                container.getLabels().get("custom-label"), is("custom-value"));
+        }
+    }
+
+    @Test
     void testDedicatedRolesClusterWithoutLogFilePathBrokersHaveNullPath() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)

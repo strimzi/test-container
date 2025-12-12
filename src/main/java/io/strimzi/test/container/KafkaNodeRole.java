@@ -7,7 +7,7 @@ package io.strimzi.test.container;
 /**
  * Internal: Enum representing the different roles a Kafka node can have in KRaft mode.
  */
-enum KafkaNodeRole {
+public enum KafkaNodeRole {
     /**
      * Combined node that acts as both broker and controller.
      * This is the default behavior and maintains backward compatibility.
