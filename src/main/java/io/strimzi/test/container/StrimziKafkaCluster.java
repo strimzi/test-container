@@ -23,6 +23,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,6 +53,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final String logFilePath;
     private final int fixedExposedPort;
     private final Function<StrimziKafkaContainer, String> bootstrapServersProvider;
+    private final Consumer<StrimziKafkaContainer> containerCustomizer;
 
     // OAuth fields
     private final boolean oauthEnabled;
@@ -66,9 +68,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
     // not editable
     private final Network network;
-    private Collection<KafkaContainer> nodes;
-    private Collection<KafkaContainer> controllers;
-    private Collection<KafkaContainer> brokers;
+    private Collection<StrimziKafkaContainer> nodes;
+    private Collection<StrimziKafkaContainer> controllers;
+    private Collection<StrimziKafkaContainer> brokers;
     private final String clusterId;
 
     private StrimziKafkaCluster(StrimziKafkaClusterBuilder builder) {
@@ -89,6 +91,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.logFilePath = builder.logFilePath;
         this.fixedExposedPort = builder.fixedExposedPort;
         this.bootstrapServersProvider = builder.bootstrapServersProvider;
+        this.containerCustomizer = builder.containerCustomizer;
 
         // OAuth configuration
         this.oauthEnabled = builder.oauthEnabled;
@@ -162,6 +165,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
                 applyFixedPort(kafkaContainer, nodeId);
                 applyBootstrapServersProvider(kafkaContainer);
                 applyOAuthConfiguration(kafkaContainer);
+                applyContainerCustomizer(kafkaContainer);
 
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
 
@@ -205,6 +209,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         applyKafkaVersion(controllerContainer, kafkaVersion);
         applyLogCollection(controllerContainer);
         applyOAuthConfiguration(controllerContainer);
+        applyContainerCustomizer(controllerContainer);
 
         LOGGER.info("Started controller-only node with id: {}", controllerContainer);
         return controllerContainer;
@@ -231,6 +236,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         applyFixedPort(brokerContainer, brokerIndex);
         applyBootstrapServersProvider(brokerContainer);
         applyOAuthConfiguration(brokerContainer);
+        applyContainerCustomizer(brokerContainer);
 
         LOGGER.info("Started broker-only node with id: {}", brokerContainer);
         return brokerContainer;
@@ -264,6 +270,12 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private void applyBootstrapServersProvider(StrimziKafkaContainer container) {
         if (this.bootstrapServersProvider != null) {
             container.withBootstrapServers(this.bootstrapServersProvider);
+        }
+    }
+
+    private void applyContainerCustomizer(StrimziKafkaContainer container) {
+        if (this.containerCustomizer != null) {
+            this.containerCustomizer.accept(container);
         }
     }
 
@@ -336,7 +348,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      * </p>
      */
     public static class StrimziKafkaClusterBuilder {
-        private int brokersNum;
+        private int brokersNum = 1;
         private int controllersNum;
         private boolean useDedicatedRoles;
         private int internalTopicReplicationFactor;
@@ -349,6 +361,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private String logFilePath;
         private int fixedExposedPort;
         private Function<StrimziKafkaContainer, String> bootstrapServersProvider;
+        private Consumer<StrimziKafkaContainer> containerCustomizer;
 
         // OAuth fields
         private boolean oauthEnabled;
@@ -535,11 +548,23 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * for example when using a shared network with specific hostnames.
          * </p>
          *
-         * @param provider a function that takes a {@link StrimziKafkaContainer} and returns the bootstrap servers string
+         * @param provider a function that takes a {@link GenericContainer} and returns the bootstrap servers string
          * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withBootstrapServers(final Function<StrimziKafkaContainer, String> provider) {
             this.bootstrapServersProvider = provider;
+            return this;
+        }
+
+        /**
+         * Assigns a customizer function to modify each Kafka container after its creation.
+         * This allows for additional configurations or adjustments to be applied to each container.
+         *
+         * @param customizer a consumer that takes a {@link GenericContainer} for customization
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withContainerCustomizer(final Consumer<StrimziKafkaContainer> customizer) {
+            this.containerCustomizer = customizer;
             return this;
         }
 
@@ -631,10 +656,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
      *
      * @return Collection of GenericContainer representing the cluster nodes
      */
-    public Collection<GenericContainer<?>> getNodes() {
-        return nodes.stream()
-            .map(node -> (GenericContainer<?>) node)
-            .collect(Collectors.toList());
+    public Collection<StrimziKafkaContainer> getNodes() {
+        return nodes;
     }
 
     /**
@@ -644,7 +667,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @DoNotMutate
     public String getNetworkBootstrapServers() {
         return getBrokers().stream()
-                .map(broker -> ((StrimziKafkaContainer) broker).getNetworkBootstrapServers())
+                .map(StrimziKafkaContainer::getNetworkBootstrapServers)
                 .collect(Collectors.joining(","));
     }
 
@@ -673,7 +696,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
     @DoNotMutate
     public String getNetworkBootstrapControllers() {
         return getControllers().stream()
-                .map(controller -> ((StrimziKafkaContainer) controller).getNetworkBootstrapControllers())
+                .map(StrimziKafkaContainer::getNetworkBootstrapControllers)
                 .collect(Collectors.joining(","));
     }
 
@@ -716,7 +739,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         // Start all Kafka containers
-        Stream<KafkaContainer> startables = this.nodes.stream();
+        Stream<StrimziKafkaContainer> startables = this.nodes.stream();
         try {
             Startables.deepStart(startables).get(60, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -737,10 +760,8 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private boolean checkAllBrokersReady() {
         try {
             // check broker nodes for quorum readiness (if combined-node then we check all nodes)
-            Collection<KafkaContainer> brokersToCheck = getBrokers();
-            
-            for (KafkaContainer kafkaContainer : brokersToCheck) {
-                if (!isBrokerReady((StrimziKafkaContainer) kafkaContainer)) {
+            for (StrimziKafkaContainer kafkaContainer : getBrokers()) {
+                if (!isBrokerReady(kafkaContainer)) {
                     return false;
                 }
             }
@@ -850,7 +871,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      *
      * @return Collection of controller nodes
      */
-    public Collection<KafkaContainer> getControllers() {
+    public Collection<StrimziKafkaContainer> getControllers() {
         if (this.useDedicatedRoles) {
             return this.controllers;
         } else {
@@ -867,7 +888,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      *
      * @return Collection of broker nodes
      */
-    public Collection<KafkaContainer> getBrokers() {
+    public Collection<StrimziKafkaContainer> getBrokers() {
         if (this.useDedicatedRoles) {
             return this.brokers;
         } else {
@@ -899,8 +920,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
             throw new IllegalStateException("Proxy container has not been configured for this cluster");
         }
 
-        for (final KafkaContainer node : this.nodes) {
-            final StrimziKafkaContainer kafkaNode = (StrimziKafkaContainer) node;
+        for (final StrimziKafkaContainer kafkaNode : this.nodes) {
             if (kafkaNode.getNodeId() == nodeId) {
                 return kafkaNode.getProxy();
             }

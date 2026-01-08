@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
  * When {@code proxyContainer} is configured, the bootstrap URL returned by {@code getBootstrapServers()} contains the proxy host and port.
  * For this reason, Kafka clients will always pass through the proxy, even after refreshing cluster metadata.
  */
-class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> implements KafkaContainer {
+public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> implements KafkaContainer {
 
     // class attributes
     private static final Logger LOGGER = LoggerFactory.getLogger(StrimziKafkaContainer.class);
@@ -132,7 +132,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
     /**
      * Image name is specified lazily automatically in {@link #doStart()} method
      */
-    public StrimziKafkaContainer() {
+    StrimziKafkaContainer() {
         this(new CompletableFuture<>());
     }
 
@@ -141,7 +141,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
      *
      * @param dockerImageName specific docker image name provided by constructor parameter
      */
-    public StrimziKafkaContainer(String dockerImageName) {
+    StrimziKafkaContainer(String dockerImageName) {
         this(CompletableFuture.completedFuture(dockerImageName));
     }
 
@@ -1088,7 +1088,7 @@ class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContainer> impl
         return this.kafkaVersion;
     }
 
-    /* test */ int getNodeId() {
+    public int getNodeId() {
         return nodeId;
     }
 
