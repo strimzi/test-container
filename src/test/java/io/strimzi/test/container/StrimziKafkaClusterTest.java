@@ -7,7 +7,6 @@ package io.strimzi.test.container;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -266,12 +265,9 @@ public class StrimziKafkaClusterTest {
             .build();
 
         assertThat(cluster.getNodes().size(), is(3));
-        assertThat(((StrimziKafkaContainer) cluster.getNodes().iterator().next()).getKafkaVersion(), is("3.7.1"));
+        assertThat(cluster.getNodes().iterator().next().getKafkaVersion(), is("3.7.1"));
         assertThat(cluster.getAdditionalKafkaConfiguration().get("log.retention.bytes"), is("10485760"));
-        assertThat(
-            ((StrimziKafkaContainer) cluster.getNodes().iterator().next())
-                .getKafkaConfigurationMap()
-                .get("log.retention.bytes"),
+        assertThat(cluster.getNodes().iterator().next().getKafkaConfigurationMap().get("log.retention.bytes"),
             is("10485760")
         );
     }
@@ -454,20 +450,6 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testGetNodesAndBrokersReturnsGenericContainers() {
-        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(2)
-            .build();
-
-        assertThat(cluster.getBrokers().size(), is(2));
-        assertThat(cluster.getNodes().size(), is(2));
-
-        for (GenericContainer<?> container : cluster.getNodes()) {
-            assertThat(container, CoreMatchers.instanceOf(GenericContainer.class));
-        }
-    }
-
-    @Test
     void testCombinedRolesClusterQuorumVoters() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
@@ -570,14 +552,12 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getBrokers().size(), is(2));
 
         // Verify controller nodes have CONTROLLER role
-        for (KafkaContainer controller : cluster.getControllers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
             assertThat(container.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
         }
 
         // Verify broker nodes have BROKER role
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat(container.getNodeRole(), is(KafkaNodeRole.BROKER));
         }
     }
@@ -595,8 +575,7 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getBrokers().size(), is(3)); // All nodes are brokers in combined mode
 
         // Verify all nodes have combined role
-        for (KafkaContainer node : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat(container.getNodeRole(), is(KafkaNodeRole.COMBINED));
         }
     }
@@ -626,8 +605,7 @@ public class StrimziKafkaClusterTest {
         
         // Verify node IDs start after controller count
         int expectedMinNodeId = 5; // controllersNum
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat(container.getNodeId() >= expectedMinNodeId, is(true));
         }
     }
@@ -645,7 +623,7 @@ public class StrimziKafkaClusterTest {
         assertThat(cluster.getBrokers().size(), is(1));
         assertThat(cluster.getControllers().size(), is(1));
         
-        StrimziKafkaContainer brokerContainer = (StrimziKafkaContainer) cluster.getBrokers().iterator().next();
+        StrimziKafkaContainer brokerContainer = cluster.getBrokers().iterator().next();
         assertThat(brokerContainer.getNodeId(), is(1)); // 1 controller + 0 index = 1
     }
 
@@ -791,8 +769,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         int nodeIndex = 0;
-        for (GenericContainer<?> node : cluster.getNodes()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
             int nodeId = container.getNodeId();
             int expectedPort = basePort + nodeId;
             assertThat("Node " + nodeId + " should have fixed exposed port " + expectedPort,
@@ -813,8 +790,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         int brokerIndex = 0;
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             int expectedPort = basePort + brokerIndex;
             assertThat("Broker " + brokerIndex + " should have fixed exposed port " + expectedPort,
                 container.getFixedExposedPort(), is(expectedPort));
@@ -823,8 +799,7 @@ public class StrimziKafkaClusterTest {
         assertThat(brokerIndex, is(2));
 
         // Verify controllers do NOT have fixed ports (port increment only applies to brokers)
-        for (KafkaContainer controller : cluster.getControllers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
             assertThat("Controller should not have a fixed exposed port",
                 container.getFixedExposedPort(), is(0));
         }
@@ -843,8 +818,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify bootstrapServersProvider is applied to brokers
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("Broker should have custom bootstrapServersProvider set",
                 container.getBootstrapServersProvider(), is(customProvider));
         }
@@ -861,10 +835,40 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify bootstrapServersProvider is applied to all nodes in combined mode
-        for (GenericContainer<?> node : cluster.getNodes()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
             assertThat("Node should have custom bootstrapServersProvider set",
                 container.getBootstrapServersProvider(), is(customProvider));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithContainerCustomizerAppliedToBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withDedicatedRoles()
+                .withNumberOfControllers(2)
+                .withContainerCustomizer(c -> c.withLabel("custom-label", "custom-value"))
+                .build();
+
+        // Verify bootstrapServersProvider is applied to brokers
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
+            assertThat("Broker should have custom bootstrapServersProvider set",
+                    container.getLabels().get("custom-label"), is("custom-value"));
+        }
+    }
+
+
+    @Test
+    void testCombinedRolesClusterWithContainerCustomizerApplied() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withContainerCustomizer(c -> c.withLabel("custom-label", "custom-value"))
+            .build();
+
+        // Verify bootstrapServersProvider is applied to all nodes in combined mode
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat("Node should have custom bootstrapServersProvider set",
+                container.getLabels().get("custom-label"), is("custom-value"));
         }
     }
 
@@ -876,8 +880,7 @@ public class StrimziKafkaClusterTest {
             .withNumberOfControllers(2)
             .build();
 
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("Broker should not have logFilePath set when not configured",
                 container.getLogFilePath(), is(CoreMatchers.nullValue()));
         }
@@ -916,8 +919,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify OAuth config is propagated to broker nodes
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("OAuth should be enabled on broker", container.isOAuthEnabled(), is(true));
         }
     }
@@ -933,8 +935,7 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify SASL credentials are propagated to broker nodes
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("SASL username should be set on broker",
                 container.getSaslUsername(), is("test-user"));
             assertThat("SASL password should be set on broker",
@@ -949,8 +950,7 @@ public class StrimziKafkaClusterTest {
             .withAuthenticationType(null) // This should NOT override the previous value
             .build();
 
-        for (GenericContainer<?> node : cluster.getNodes()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) node;
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
             assertThat("Authentication type should still be OAUTH_BEARER after null call",
                 container.getAuthenticationType(), is(AuthenticationType.OAUTH_BEARER));
         }
@@ -1002,15 +1002,13 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify kafkaVersion => set on controller containers
-        for (KafkaContainer controller : cluster.getControllers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
             assertThat("Controller should have kafkaVersion set",
                 container.getKafkaVersion(), is("4.1.0"));
         }
 
         // Verify kafkaVersion => set on broker containers
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("Broker should have kafkaVersion set",
                 container.getKafkaVersion(), is("4.1.0"));
         }
@@ -1026,15 +1024,13 @@ public class StrimziKafkaClusterTest {
             .build();
 
         // Verify logFilePath is set on controller containers
-        for (KafkaContainer controller : cluster.getControllers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) controller;
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
             assertThat("Controller should have logFilePath set",
                 container.getLogFilePath(), is("target/controller-logs/"));
         }
 
         // Verify logFilePath is set on broker containers
-        for (KafkaContainer broker : cluster.getBrokers()) {
-            StrimziKafkaContainer container = (StrimziKafkaContainer) broker;
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("Broker should have logFilePath set",
                 container.getLogFilePath(), is("target/controller-logs/"));
         }
