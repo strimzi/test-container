@@ -7,6 +7,8 @@ package io.strimzi.test.container;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -78,5 +80,35 @@ public class KafkaVersionServiceTest {
         String imageName = "quay.io/strimzi-test-container/test-container:0.107.0-rc1-kafka-3.7.1-suffix";
         Exception exception = assertThrows(IllegalArgumentException.class, () -> KafkaVersionService.KafkaVersion.extractVersionFromImageName(imageName));
         assertThat(exception.getMessage(), CoreMatchers.containsString("Cannot extract Kafka version from image name"));
+    }
+
+    @Test
+    void testGetSupportedKafkaVersionsReturnsNonEmptyList() {
+        List<String> versions = KafkaVersionService.getInstance().getSupportedKafkaVersions();
+
+        assertThat(versions, CoreMatchers.notNullValue());
+        assertThat(versions.isEmpty(), CoreMatchers.is(false));
+    }
+
+    @Test
+    void testGetSupportedKafkaVersionsAreSorted() {
+        List<String> versions = KafkaVersionService.getInstance().getSupportedKafkaVersions();
+
+        for (int i = 0; i < versions.size() - 1; i++) {
+            String current = versions.get(i);
+            String next = versions.get(i + 1);
+            int comparison = KafkaVersionService.KafkaVersion.compareVersions(current, next);
+            assertThat("Versions should be sorted: " + current + " should be <= " + next,
+                comparison <= 0, CoreMatchers.is(true));
+        }
+    }
+
+    @Test
+    void testGetSupportedKafkaVersionsContainsLatestRelease() {
+        List<String> versions = KafkaVersionService.getInstance().getSupportedKafkaVersions();
+        String latestVersion = KafkaVersionService.getInstance().latestRelease().getVersion();
+
+        assertThat("Supported versions should contain the latest release",
+            versions.contains(latestVersion), CoreMatchers.is(true));
     }
 }

@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -903,6 +904,15 @@ public class StrimziKafkaCluster implements KafkaContainer {
      */
     public boolean isUsingDedicatedRoles() {
         return this.useDedicatedRoles;
+    }
+
+    /**
+     * Get list of all supported Kafka versions.
+     *
+     * @return list of supported Kafka version strings, sorted from oldest to newest
+     */
+    public static List<String> getSupportedKafkaVersions() {
+        return KafkaVersionService.getInstance().getSupportedKafkaVersions();
     }
 
     /**

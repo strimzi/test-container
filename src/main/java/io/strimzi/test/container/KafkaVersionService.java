@@ -189,6 +189,18 @@ class KafkaVersionService {
     }
 
     /**
+     * Get list of all supported Kafka versions.
+     *
+     * @return list of supported Kafka version strings, sorted from oldest to newest
+     */
+    public List<String> getSupportedKafkaVersions() {
+        return this.logicalKafkaVersionEntities.stream()
+            .sorted()
+            .map(KafkaVersion::getVersion)
+            .collect(Collectors.toList());
+    }
+
+    /**
      * Get the latest release where the result is intentionally not deterministic.
      * It's the released test-container-images image with the highest Kafka version number.
      * The result will change when a new version of Kafka is released with a higher Kafka version number,
