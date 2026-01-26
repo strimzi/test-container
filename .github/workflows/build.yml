@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "main"
+      - "release-*"
+  pull_request:
+    branches:
+      - "*"
+
+# Declare default permissions as read only
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-container:
+    name: Build & Test Test-Container
+    strategy:
+      matrix:
+        javaVersion: 
+          - "11"
+          - "17"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/build/build-binaries
+        with:
+          javaVersion: ${{ matrix.javaVersion }}
+          runnerArch: "amd64"
+  
+  deploy-java:
+    name: Deploy Java artifacts to Maven Central
+    needs:
+      - build-test-container
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/build/deploy-java
+        with:
+          javaVersion: "17"
+          runnerArch: "amd64"
+          gpgPassphrase: ${{ secrets.GPG_PASSPHRASE }}
+          gpgSigningKey: ${{ secrets.GPG_SIGNING_KEY }}
+          centralUsername: ${{ secrets.CENTRAL_USERNAME }}
+          centralPassword: ${{ secrets.CENTRAL_PASSWORD }}
