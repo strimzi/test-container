@@ -22,15 +22,18 @@ jobs:
     name: Build & Test Test-Container
     strategy:
       matrix:
-        javaVersion: 
-          - "11"
-          - "17"
+        java: 
+          - version: "11"
+            mainBuild: false
+          - version: "17"
+            mainBuild: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/build/build-binaries
         with:
-          javaVersion: ${{ matrix.javaVersion }}
+          javaVersion: ${{ matrix.java.version }}
+          mainBuild: ${{ matrix.java.mainBuild }}
           runnerArch: "amd64"
   
   deploy-java:

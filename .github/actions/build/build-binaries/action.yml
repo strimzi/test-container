@@ -10,6 +10,10 @@ inputs:
     description: "Architecture of GitHub runner"
     required: false
     default: "amd64"
+  mainBuild:
+    description: "Whether this is the main build"
+    required: false
+    default: "false"
 
 runs:
   using: "composite"
@@ -65,9 +69,16 @@ runs:
       run: tar -cvpf test-container.tar ./target
 
     - name: Upload binaries artifact
+      if: ${{ inputs.mainBuild == 'true' }}
       uses: actions/upload-artifact@v5
       with:
         name: test-container.tar
+        path: test-container.tar
+
+    - name: Upload binaries artifact with Java version
+      uses: actions/upload-artifact@v5
+      with:
+        name: test-container-java-${{ inputs.javaVersion }}.tar
         path: test-container.tar
 
     - name: Clean external SNAPSHOT dependencies from Maven repository
