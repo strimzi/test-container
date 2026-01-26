@@ -1035,4 +1035,35 @@ public class StrimziKafkaClusterTest {
                 container.getLogFilePath(), is("target/controller-logs/"));
         }
     }
+
+    @Test
+    void testGetSupportedKafkaVersionsReturnsNonEmptyList() {
+        List<String> versions = StrimziKafkaCluster.getSupportedKafkaVersions();
+
+        assertThat(versions, is(CoreMatchers.notNullValue()));
+        assertThat(versions.isEmpty(), is(false));
+    }
+
+    @Test
+    void testGetSupportedKafkaVersionsAreSorted() {
+        List<String> versions = StrimziKafkaCluster.getSupportedKafkaVersions();
+
+        for (int i = 0; i < versions.size() - 1; i++) {
+            String current = versions.get(i);
+            String next = versions.get(i + 1);
+            int comparison = KafkaVersionService.KafkaVersion.compareVersions(current, next);
+            assertThat("Versions should be sorted: " + current + " should be <= " + next,
+                comparison <= 0, is(true));
+        }
+    }
+
+    @Test
+    void testGetSupportedKafkaVersionsContainsValidVersionFormat() {
+        List<String> versions = StrimziKafkaCluster.getSupportedKafkaVersions();
+
+        for (String version : versions) {
+            assertThat("Version should match X.Y.Z format: " + version,
+                version.matches("\\d+\\.\\d+\\.\\d+"), is(true));
+        }
+    }
 }
