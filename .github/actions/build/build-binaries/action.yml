@@ -1,0 +1,106 @@
+name: "Build test-container Binaries"
+description: "Build and test test-container binaries"
+
+inputs:
+  javaVersion:
+    description: "Java version"
+    required: false
+    default: "17"
+  runnerArch:
+    description: "Architecture of GitHub runner"
+    required: false
+    default: "amd64"
+  mainBuild:
+    description: "Whether this is the main build"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Java
+      uses: strimzi/strimzi-kafka-operator/.github/actions/dependencies/setup-java@main
+      with:
+        javaVersion: ${{ inputs.javaVersion }}
+
+    - name: Setup Docker
+      uses: strimzi/strimzi-kafka-operator/.github/actions/dependencies/install-docker@main
+
+    - name: Restore Maven cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ~/.m2/repository
+        key: maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          maven-
+
+    - name: Unit tests
+      shell: bash
+      run: mvn -e -V -B clean test
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: "TRUE"
+        TESTCONTAINERS_CHECKS_DISABLE: "TRUE"
+
+    - name: Run Mutation Testing
+      shell: bash
+      run: mvn -e -V -B test-compile org.pitest:pitest-maven:mutationCoverage
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: "TRUE"
+        TESTCONTAINERS_CHECKS_DISABLE: "TRUE"
+
+    - name: Integration tests
+      shell: bash
+      run: mvn verify -e -V -B -Dfailsafe.rerunFailingTestsCount=3 -Dskip.surefire.tests=true
+      env:
+        TESTCONTAINERS_RYUK_DISABLED: "TRUE"
+        TESTCONTAINERS_CHECKS_DISABLE: "TRUE"
+
+    # TODO: Uncomment once spotbugs-maven-plugin is added to pom.xml
+    # The plugin configuration is missing - need to add:
+    # 1. spotbugs-maven-plugin.version property
+    # 2. spotbugs-maven-plugin in build/plugins section
+    # See kafka-access-operator/pom.xml for reference configuration
+    # - name: Run Spotbugs
+    #   shell: bash
+    #   run: mvn -e -V -B spotbugs:check
+
+    - name: Create tarball with target directory
+      shell: bash
+      run: tar -cvpf test-container.tar ./target
+
+    - name: Upload binaries artifact
+      if: ${{ inputs.mainBuild == 'true' }}
+      uses: actions/upload-artifact@v5
+      with:
+        name: test-container.tar
+        path: test-container.tar
+
+    - name: Upload binaries artifact with Java version
+      uses: actions/upload-artifact@v5
+      with:
+        name: test-container-java-${{ inputs.javaVersion }}.tar
+        path: test-container.tar
+
+    - name: Clean external SNAPSHOT dependencies from Maven repository
+      if: github.ref == 'refs/heads/main'
+      shell: bash
+      run: |
+        mvn dependency:purge-local-repository \
+        -DsnapshotsOnly=true \
+        -DreResolve=false || true
+
+    - name: Save Maven cache
+      if: github.ref == 'refs/heads/main'
+      uses: actions/cache/save@v5
+      with:
+        path: ~/.m2/repository
+        key: maven-${{ hashFiles('**/pom.xml') }}
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v2
+      if: always()
+      with:
+        name: 'Unit & Integration Tests'
+        path: '**/TEST-*.xml'
+        reporter: java-junit
+        fail-on-error: false
