@@ -31,6 +31,11 @@ public class StrimziConnectCluster {
     private final String groupId;
     private final List<StrimziConnectContainer> workers;
 
+    /**
+     * Creates a new StrimziConnectCluster using the provided builder.
+     *
+     * @param builder the builder containing the configuration for this cluster
+     */
     public StrimziConnectCluster(StrimziConnectClusterBuilder builder) {
         this.kafkaCluster = builder.kafkaCluster;
         this.additionalConnectConfiguration = builder.additionalConnectConfiguration;

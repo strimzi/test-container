@@ -1088,6 +1088,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return this.kafkaVersion;
     }
 
+    /**
+     * Gets the node ID for this Kafka container.
+     *
+     * @return the node ID
+     */
     public int getNodeId() {
         return nodeId;
     }
@@ -1105,34 +1110,74 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return this.oauthEnabled;
     }
 
+    /**
+     * Gets the SASL username for authentication.
+     *
+     * @return the SASL username
+     */
     public String getSaslUsername() {
         return saslUsername;
     }
 
+    /**
+     * Gets the SASL password for authentication.
+     *
+     * @return the SASL password
+     */
     public String getSaslPassword() {
         return saslPassword;
     }
 
+    /**
+     * Gets the OAuth realm.
+     *
+     * @return the OAuth realm
+     */
     public String getRealm() {
         return realm;
     }
 
+    /**
+     * Gets the OAuth client ID.
+     *
+     * @return the OAuth client ID
+     */
     public String getClientId() {
         return clientId;
     }
 
+    /**
+     * Gets the OAuth client secret.
+     *
+     * @return the OAuth client secret
+     */
     public String getClientSecret() {
         return clientSecret;
     }
 
+    /**
+     * Gets the OAuth URI.
+     *
+     * @return the OAuth URI
+     */
     public String getOauthUri() {
         return oauthUri;
     }
 
+    /**
+     * Gets the OAuth username claim.
+     *
+     * @return the OAuth username claim
+     */
     public String getUsernameClaim() {
         return usernameClaim;
     }
 
+    /**
+     * Gets the authentication type configured for this container.
+     *
+     * @return the authentication type
+     */
     public AuthenticationType getAuthenticationType() {
         return authenticationType;
     }
