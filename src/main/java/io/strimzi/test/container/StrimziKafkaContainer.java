@@ -457,8 +457,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
+        String listeners = kafkaListeners.toString();
+        if (listeners.endsWith(",")) {
+            listeners = listeners.substring(0, listeners.length() - 1);
+        }
+
         return new String[] {
-            kafkaListeners.toString(),
+            listeners,
             advertisedListeners.toString()
         };
     }
