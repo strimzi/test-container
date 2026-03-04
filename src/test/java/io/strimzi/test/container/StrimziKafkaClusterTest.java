@@ -7,6 +7,7 @@ package io.strimzi.test.container;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.testcontainers.containers.Network;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -170,6 +171,21 @@ public class StrimziKafkaClusterTest {
         assertThat(exposedPorts, CoreMatchers.notNullValue());
         assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE), is(true));
         assertThat(exposedPorts.contains(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 1), is(true));
+    }
+
+    @Test
+    void testConfigureProxyContainerPortsIsCalledDuringConstruction() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+
+        new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withInternalTopicReplicationFactor(3)
+            .withProxyContainer(proxyContainer)
+            .build();
+
+        Mockito.verify(proxyContainer).addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE);
+        Mockito.verify(proxyContainer).addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 1);
+        Mockito.verify(proxyContainer).addExposedPort(StrimziKafkaContainer.TOXIPROXY_PORT_BASE + 2);
     }
 
     @Test
@@ -1065,5 +1081,245 @@ public class StrimziKafkaClusterTest {
             assertThat("Version should match X.Y.Z format: " + version,
                 version.matches("\\d+\\.\\d+\\.\\d+"), is(true));
         }
+    }
+
+    @Test
+    void testCombinedRolesClusterWithTlsEnabled() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withTls()
+            .build();
+
+        assertThat(cluster.isTlsEnabled(), is(true));
+
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat("Combined node should have TLS enabled (SSL protocol)",
+                container.getClientListenerProtocol(), is("SSL"));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithTlsEnabled() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withTls()
+            .build();
+
+        assertThat(cluster.isTlsEnabled(), is(true));
+
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
+            assertThat("Broker should have TLS enabled",
+                container.getClientListenerProtocol(), is("SSL"));
+        }
+
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
+            assertThat("Controller should have TLS enabled",
+                container.getClientListenerProtocol(), is("SSL"));
+        }
+    }
+
+    @Test
+    void testOAuthConfigIsAppliedToDedicatedRolesControllers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withOAuthConfig("test-realm", "test-client-id", "test-client-secret",
+                "http://oauth-server:8080", "preferred_username")
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
+            assertThat("OAuth should be enabled on controller", container.isOAuthEnabled(), is(true));
+        }
+    }
+
+    @Test
+    void testContainerCustomizerIsAppliedToDedicatedRolesControllers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withContainerCustomizer(c -> c.withLabel("custom-label", "custom-value"))
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
+            assertThat("Controller should have custom label applied",
+                container.getLabels().get("custom-label"), is("custom-value"));
+        }
+    }
+
+    @Test
+    void testCombinedRolesClusterWithLogCollectionAppliesToAllNodes() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withLogCollection("target/combined-logs/")
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat("Combined node should have logFilePath set",
+                container.getLogFilePath(), is("target/combined-logs/"));
+        }
+    }
+
+    @Test
+    void testCombinedRolesClusterWithCustomImageSetsDockerImageOnContainers() {
+        String customImage = "quay.io/strimzi/kafka:0.49.0-kafka-4.1.0";
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withImage(customImage)
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat(container.getDockerImageName(), is(customImage));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithCustomImageSetsDockerImageOnContainers() {
+        String customImage = "quay.io/strimzi/kafka:0.49.0-kafka-4.1.0";
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .withImage(customImage)
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat(container.getDockerImageName(), is(customImage));
+        }
+    }
+
+    @Test
+    void testCombinedRolesClusterWithoutTlsSetsWaitStrategy() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat("Combined node should have wait strategy set (from waitForRunning)",
+                container.hasWaitForRunningConfigured(), is(true));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithoutTlsSetsWaitStrategyOnControllers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
+            assertThat("Controller should have wait strategy set (from waitForRunning)",
+                container.hasWaitForRunningConfigured(), is(true));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithoutTlsSetsWaitStrategyOnBrokers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
+            assertThat("Broker should have wait strategy set (from waitForRunning)",
+                container.hasWaitForRunningConfigured(), is(true));
+        }
+    }
+
+    @Test
+    void testCombinedRolesClusterWithTlsDoesNotSetWaitForRunning() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withTls()
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getNodes()) {
+            assertThat("Combined node with TLS should not have waitForRunning set",
+                container.hasWaitForRunningConfigured(), is(false));
+        }
+    }
+
+    @Test
+    void testDedicatedRolesClusterWithTlsDoesNotSetWaitForRunningOnControllers() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(2)
+            .withTls()
+            .build();
+
+        for (StrimziKafkaContainer container : cluster.getControllers()) {
+            assertThat("Controller with TLS should not have waitForRunning set",
+                container.hasWaitForRunningConfigured(), is(false));
+        }
+
+        for (StrimziKafkaContainer container : cluster.getBrokers()) {
+            assertThat("Broker with TLS should not have waitForRunning set",
+                container.hasWaitForRunningConfigured(), is(false));
+        }
+    }
+
+    @Test
+    void testGetClientTrustStorePasswordWithTls() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .withTls()
+            .build();
+
+        assertThat("Client truststore password should be non-null when TLS is enabled",
+            cluster.getClientTrustStorePassword(), is(CoreMatchers.notNullValue()));
+        assertThat("Client truststore password should not be empty",
+            cluster.getClientTrustStorePassword().isEmpty(), is(false));
+    }
+
+    @Test
+    void testGetClientTrustStorePasswordWithoutTls() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .build();
+
+        assertThat("Client truststore password should be null when TLS is not enabled",
+            cluster.getClientTrustStorePassword(), is(CoreMatchers.nullValue()));
+    }
+
+    @Test
+    void testIsTlsEnabledReturnsFalseWithoutTls() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(1)
+            .build();
+
+        assertThat("isTlsEnabled should return false when TLS is not configured",
+            cluster.isTlsEnabled(), is(false));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithCombinedRoles() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .build();
+
+        String networkControllers = cluster.getNetworkBootstrapControllers();
+        assertThat(networkControllers, is(CoreMatchers.notNullValue()));
+        assertThat(networkControllers, is(CoreMatchers.not(emptyString())));
+        assertThat(networkControllers.split(",").length, is(3));
+    }
+
+    @Test
+    void testGetNetworkBootstrapControllersWithDedicatedRoles() {
+        StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build();
+
+        String networkControllers = cluster.getNetworkBootstrapControllers();
+        assertThat(networkControllers, is(CoreMatchers.notNullValue()));
+        // Should only include controller nodes
+        assertThat(networkControllers.split(",").length, is(3));
     }
 }

@@ -67,6 +67,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
     private final String saslUsername;
     private final String saslPassword;
 
+    // TLS field
+    private final CertAssembly certAssembly;
+
     // not editable
     private final Network network;
     private Collection<StrimziKafkaContainer> nodes;
@@ -104,6 +107,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
         this.authenticationType = builder.authenticationType;
         this.saslUsername = builder.saslUsername;
         this.saslPassword = builder.saslPassword;
+
+        // TLS configuration
+        this.certAssembly = builder.certAssembly;
 
         validateBrokerNum(this.brokersNum);
         if (this.isUsingDedicatedRoles()) {
@@ -158,14 +164,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
                     .withProxyContainer(proxyContainer)
                     // pass shared `cluster.id` to each broker
                     .withClusterId(this.clusterId)
-                    .withNodeRole(KafkaNodeRole.COMBINED)
-                    .waitForRunning();
+                    .withNodeRole(KafkaNodeRole.COMBINED);
+
+                // if plain then we just wait for Kafka starting
+                if (this.certAssembly == null) {
+                    kafkaContainer.waitForRunning();
+                }
 
                 applyKafkaVersion(kafkaContainer, kafkaVersion);
                 applyLogCollection(kafkaContainer);
                 applyFixedPort(kafkaContainer, nodeId);
                 applyBootstrapServersProvider(kafkaContainer);
                 applyOAuthConfiguration(kafkaContainer);
+                applyTlsConfiguration(kafkaContainer);
                 applyContainerCustomizer(kafkaContainer);
 
                 LOGGER.info("Started combined role node with id: {}", kafkaContainer);
@@ -204,12 +215,16 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .withNetwork(this.network)
             .withProxyContainer(proxyContainer)
             .withClusterId(this.clusterId)
-            .withNodeRole(KafkaNodeRole.CONTROLLER)
-            .waitForRunning();
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        if (this.certAssembly == null) {
+            controllerContainer.waitForRunning();
+        }
 
         applyKafkaVersion(controllerContainer, kafkaVersion);
         applyLogCollection(controllerContainer);
         applyOAuthConfiguration(controllerContainer);
+        applyTlsConfiguration(controllerContainer);
         applyContainerCustomizer(controllerContainer);
 
         LOGGER.info("Started controller-only node with id: {}", controllerContainer);
@@ -229,14 +244,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
             .withNetwork(this.network)
             .withProxyContainer(proxyContainer)
             .withClusterId(this.clusterId)
-            .withNodeRole(KafkaNodeRole.BROKER)
-            .waitForRunning();
+            .withNodeRole(KafkaNodeRole.BROKER);
+
+        // if plain then we just wait for Kafka starting
+        if (this.certAssembly == null) {
+            brokerContainer.waitForRunning();
+        }
 
         applyKafkaVersion(brokerContainer, kafkaVersion);
         applyLogCollection(brokerContainer);
         applyFixedPort(brokerContainer, brokerIndex);
         applyBootstrapServersProvider(brokerContainer);
         applyOAuthConfiguration(brokerContainer);
+        applyTlsConfiguration(brokerContainer);
         applyContainerCustomizer(brokerContainer);
 
         LOGGER.info("Started broker-only node with id: {}", brokerContainer);
@@ -309,6 +329,18 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
     }
 
+    /**
+     * Applies TLS configuration to a Kafka container if TLS is enabled.
+     * The actual certificate distribution is handled later by {@link CertAssembly#setupTlsCerts}.
+     *
+     * @param container the container to configure
+     */
+    private void applyTlsConfiguration(StrimziKafkaContainer container) {
+        if (this.certAssembly != null) {
+            container.enableTls(this.certAssembly);
+        }
+    }
+
     private void validateBrokerNum(int brokersNum) {
         if (brokersNum <= 0) {
             throw new IllegalArgumentException("brokersNum '" + brokersNum + "' must be greater than 0");
@@ -374,6 +406,9 @@ public class StrimziKafkaCluster implements KafkaContainer {
         private AuthenticationType authenticationType;
         private String saslUsername;
         private String saslPassword;
+
+        // TLS field
+        private CertAssembly certAssembly;
 
         /**
          * Sets the number of Kafka brokers in the cluster.
@@ -639,6 +674,19 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         /**
+         * Enables TLS for client connections with automatically generated self-signed certificates.
+         * When TLS is enabled, the client listener will use the SSL protocol (or SASL_SSL if
+         * authentication is also enabled). Same applies for inter-broker and controller traffic.
+         *
+         * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
+         */
+        public StrimziKafkaClusterBuilder withTls() {
+            this.certAssembly = CertAssembly.autoGenerated();
+            return this;
+        }
+
+
+        /**
          * Builds and returns a {@code StrimziKafkaCluster} instance based on the provided configurations.
          *
          * @return a new instance of {@code StrimziKafkaCluster}
@@ -649,6 +697,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
 
             return new StrimziKafkaCluster(this);
         }
+
     }
 
     /**
@@ -752,6 +801,11 @@ public class StrimziKafkaCluster implements KafkaContainer {
             throw new RuntimeException("Timed out while starting Kafka containers", e);
         }
 
+        if (this.certAssembly != null) {
+            int totalNodes = this.useDedicatedRoles ? this.controllersNum + this.brokersNum : this.brokersNum;
+            this.certAssembly.setupTlsCerts(getNodes(), totalNodes);
+        }
+
         // Wait for quorum formation
         Utils.waitFor("Kafka brokers to form a quorum", Duration.ofSeconds(1), Duration.ofMinutes(1),
             this::checkAllBrokersReady);
@@ -783,6 +837,10 @@ public class StrimziKafkaCluster implements KafkaContainer {
         LOGGER.info("Metadata quorum status from broker {}: {}", kafkaContainer.getNodeId(), output);
 
         if (output == null || output.isEmpty()) {
+            String stderr = result.getStderr();
+            if (stderr != null && !stderr.isEmpty()) {
+                LOGGER.debug("Metadata quorum stderr from broker {}: {}", kafkaContainer.getNodeId(), stderr);
+            }
             return false;
         }
 
@@ -794,41 +852,83 @@ public class StrimziKafkaCluster implements KafkaContainer {
         final String baseCommand = "bin/kafka-metadata-quorum.sh --bootstrap-server localhost:" +
             StrimziKafkaContainer.INTER_BROKER_LISTENER_PORT;
 
-        if (!this.oauthEnabled || this.authenticationType == null) {
+        boolean hasTls = this.certAssembly != null;
+        boolean hasOAuth = this.oauthEnabled && this.authenticationType != null;
+
+        if (!hasTls && !hasOAuth) {
             return baseCommand + " describe --status";
         }
 
-        final String saslMechanism;
-        final String jaasConfig;
-        final String loginCallbackHandler;
-
-        switch (this.authenticationType) {
-            case OAUTH_OVER_PLAIN:
-                saslMechanism = "PLAIN";
-                jaasConfig = String.format(
-                    "org.apache.kafka.common.security.plain.PlainLoginModule required username=\\\"%s\\\" password=\\\"%s\\\";",
-                    this.saslUsername, this.saslPassword);
-                loginCallbackHandler = null;
-                break;
-            case OAUTH_BEARER:
-                saslMechanism = "OAUTHBEARER";
-                jaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
-                loginCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
-                break;
-            default:
-                return baseCommand + " describe --status";
-        }
-
         final StringBuilder commandConfig = new StringBuilder();
-        commandConfig.append("security.protocol=SASL_PLAINTEXT\\n");
-        commandConfig.append("sasl.mechanism=").append(saslMechanism).append("\\n");
-        commandConfig.append("sasl.jaas.config=").append(jaasConfig);
-        if (loginCallbackHandler != null) {
-            commandConfig.append("\\nsasl.login.callback.handler.class=").append(loginCallbackHandler);
+
+        if (hasOAuth) {
+            final String saslMechanism;
+            final String jaasConfig;
+            final String loginCallbackHandler;
+
+            switch (this.authenticationType) {
+                case OAUTH_OVER_PLAIN:
+                    saslMechanism = "PLAIN";
+                    jaasConfig = String.format(
+                        "org.apache.kafka.common.security.plain.PlainLoginModule required username=\\\"%s\\\" password=\\\"%s\\\";",
+                        this.saslUsername, this.saslPassword);
+                    loginCallbackHandler = null;
+                    break;
+                case OAUTH_BEARER:
+                    saslMechanism = "OAUTHBEARER";
+                    jaasConfig = "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;";
+                    loginCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
+                    break;
+                default:
+                    return baseCommand + " describe --status";
+            }
+
+            String securityProtocol = hasTls ? "SASL_SSL" : "SASL_PLAINTEXT";
+            commandConfig.append("security.protocol=").append(securityProtocol).append("\\n");
+            commandConfig.append("sasl.mechanism=").append(saslMechanism).append("\\n");
+            commandConfig.append("sasl.jaas.config=").append(jaasConfig).append("\\n");
+            if (loginCallbackHandler != null) {
+                commandConfig.append("sasl.login.callback.handler.class=").append(loginCallbackHandler).append("\\n");
+            }
+
+            if (hasTls) {
+                appendSslCommandConfig(commandConfig);
+            }
+        } else {
+            // TLS only, no OAuth
+            commandConfig.append("security.protocol=SSL\\n");
+            appendSslCommandConfig(commandConfig);
         }
 
-        return String.format("%s --command-config <(echo -e '%s') describe --status",
-            baseCommand, commandConfig);
+        return String.format("echo -e '%s' > /tmp/quorum-client.properties && %s --command-config /tmp/quorum-client.properties describe --status",
+            commandConfig, baseCommand);
+    }
+
+    /**
+     * Appends the internal SSL key/trust-store properties
+     * to the command-config {@link StringBuilder}.
+     * Uses the internal stores because the quorum command
+     * connects via the inter-broker listener.
+     */
+    @DoNotMutate
+    private void appendSslCommandConfig(
+        StringBuilder commandConfig) {
+        String pw = this.certAssembly.getInternalPassword();
+        commandConfig
+            .append("ssl.keystore.location=")
+            .append(CertAssembly.INTERNAL_KEYSTORE_PATH)
+            .append("\\n")
+            .append("ssl.keystore.password=")
+            .append(pw).append("\\n")
+            .append("ssl.keystore.type=PKCS12\\n")
+            .append("ssl.key.password=")
+            .append(pw).append("\\n")
+            .append("ssl.truststore.location=")
+            .append(CertAssembly.INTERNAL_TRUSTSTORE_PATH)
+            .append("\\n")
+            .append("ssl.truststore.password=")
+            .append(pw).append("\\n")
+            .append("ssl.truststore.type=PKCS12");
     }
 
     @DoNotMutate
@@ -937,5 +1037,48 @@ public class StrimziKafkaCluster implements KafkaContainer {
         }
 
         throw new IllegalArgumentException("Node with ID " + nodeId + " not found in cluster");
+    }
+
+    /**
+     * Checks if TLS is enabled for client connections.
+     *
+     * @return {@code true} if TLS is enabled; {@code false} otherwise
+     */
+    public boolean isTlsEnabled() {
+        return this.certAssembly != null;
+    }
+
+    /**
+     * Gets the truststore bytes for clients to verify the broker's certificate.
+     * This is a dedicated client truststore containing only the broker certificate.
+     * Clients should write this to a file and configure their SSL truststore to use it.
+     * Available after the cluster has been started.
+     *
+     * @return the client truststore as a byte array in PKCS12 format, or null if TLS is not enabled
+     */
+    @DoNotMutate
+    public byte[] getClientTrustStoreBytes() {
+        return this.certAssembly != null ? this.certAssembly.getClientTrustStoreBytes() : null;
+    }
+
+    /**
+     * Gets the password for the client keystore and truststore.
+     *
+     * @return the client password, or null if TLS is not enabled
+     */
+    public String getClientTrustStorePassword() {
+        return this.certAssembly != null ? this.certAssembly.getClientPassword() : null;
+    }
+
+    /**
+     * Gets the client keystore bytes for mTLS authentication.
+     * Clients should write this to a file and configure their SSL keystore to use it.
+     * Available after the cluster has been started.
+     *
+     * @return the client keystore as a byte array in PKCS12 format, or null if TLS is not enabled
+     */
+    @DoNotMutate
+    public byte[] getClientKeyStoreBytes() {
+        return this.certAssembly != null ? this.certAssembly.getClientKeyStoreBytes() : null;
     }
 }

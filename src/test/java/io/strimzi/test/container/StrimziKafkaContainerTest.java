@@ -260,19 +260,20 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testConfigureListenerSecurityProtocolMap() {
-        kafkaContainer.listenerNames.add("PLAINTEXT");
-        kafkaContainer.listenerNames.add("SSL");
-        String result = kafkaContainer.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
+    void testConfigureListenerSecurityProtocolMapWithInterBrokerProtocol() {
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SASL_SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
+        // Both client and inter-broker can use SASL
+        String result = kafkaContainer.configureListenerSecurityProtocolMap("SASL_SSL");
 
-        assertThat(result, is("PLAINTEXT:SASL_PLAINTEXT,SSL:SASL_PLAINTEXT"));
+        assertThat(result, is("SASL_SSL:SASL_SSL,BROKER1:SASL_SSL"));
     }
 
     @Test
     void testConfigureOAuthOverPlain() {
         Properties properties = new Properties();
 
-        kafkaContainer.listenerNames.add("PLAINTEXT");
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         kafkaContainer.withSaslUsername("test-user");
         kafkaContainer.withSaslPassword("test-password");
 
@@ -300,7 +301,7 @@ class StrimziKafkaContainerTest {
     void testConfigureOAuthBearer() {
         Properties properties = new Properties();
 
-        kafkaContainer.listenerNames.add("PLAINTEXT");
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         kafkaContainer.withOAuthConfig("test-realm", "test-client-id", "test-client-secret", "http://oauth-server", "preferred_username");
 
         kafkaContainer.configureOAuthBearer(properties);
@@ -324,7 +325,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithKRaft() {
         String listeners = "PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "PLAINTEXT://localhost:9092";
-        kafkaContainer.listenerNames.add("PLAINTEXT");
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -362,7 +363,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithAuthenticationTypeButOAuthNotEnabled() {
         String listeners = "PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "PLAINTEXT://localhost:9092";
-        kafkaContainer.listenerNames.add("PLAINTEXT");
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -382,7 +383,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithOAutPlain() {
         String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
-        kafkaContainer.listenerNames.add("SASL_PLAINTEXT");
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SASL_PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -435,7 +436,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithOAuthBearer() {
         String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
-        kafkaContainer.listenerNames.add("SASL_PLAINTEXT");
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SASL_PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -771,7 +772,7 @@ class StrimziKafkaContainerTest {
             .withNodeRole(KafkaNodeRole.COMBINED)
             .withNodeId(1)
             .withNodeId(1);
-        container.listenerNames.add("PLAINTEXT");
+        container.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
         
         Properties defaultProps = container.buildDefaultServerProperties(
             "PLAINTEXT://0.0.0.0:9092", 
@@ -901,7 +902,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withNodeId(1);
 
-        controllerContainer.listenerNames.add("CONTROLLER");
+        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
             "CONTROLLER://0.0.0.0:9094",
@@ -924,7 +925,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withNodeId(1);
 
-        controllerContainer.listenerNames.add("CONTROLLER");
+        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
             "CONTROLLER://0.0.0.0:9094",
@@ -985,5 +986,164 @@ class StrimziKafkaContainerTest {
 
         assertThat(exposedPorts, hasItem(StrimziKafkaContainer.KAFKA_PORT));
         assertThat(exposedPorts, hasItem(8080));
+    }
+
+    @Test
+    void testEnableTlsThrowsExceptionOnNull() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+            kafkaContainer.enableTls(null)
+        );
+        assertThat(exception.getMessage(), containsString("CertAssembly cannot be null"));
+    }
+
+    @Test
+    void testGetClientListenerProtocolWithPlaintext() {
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1);
+
+        assertThat(kafkaContainer.getClientListenerProtocol(), is("PLAINTEXT"));
+    }
+
+    @Test
+    void testGetClientListenerProtocolWithSaslOnly() {
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1)
+            .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
+
+        assertThat(kafkaContainer.getClientListenerProtocol(), is("SASL_PLAINTEXT"));
+    }
+
+    @Test
+    void testGetClientListenerProtocolWithTlsAndSasl() {
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1)
+            .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
+            .enableTls(CertAssembly.autoGenerated());
+
+        assertThat(kafkaContainer.getClientListenerProtocol(), is("SASL_SSL"));
+    }
+
+    @Test
+    void testConfigureListenerSecurityProtocolMapWithTls() {
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1)
+            .enableTls(CertAssembly.autoGenerated());
+
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
+
+        String result = kafkaContainer.configureListenerSecurityProtocolMap("SSL");
+        assertThat(result, containsString("SSL:SSL"));
+    }
+
+    @Test
+    void testBuildDefaultServerPropertiesWithTls() {
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1)
+            .enableTls(CertAssembly.autoGenerated());
+
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
+
+        Properties properties = kafkaContainer.buildDefaultServerProperties(
+            "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091",
+            "SSL://localhost:9092,BROKER1://172.17.0.2:9091"
+        );
+
+        // Per-listener TLS: client listener (SSL) uses broker keystore/truststore
+        assertThat(properties.getProperty("listener.name.ssl.ssl.keystore.location"), is("/opt/kafka/config/server.keystore.p12"));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.keystore.password"), is(notNullValue()));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.keystore.type"), is("PKCS12"));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.truststore.location"), is("/opt/kafka/config/server.truststore.p12"));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.truststore.password"), is(notNullValue()));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.truststore.type"), is("PKCS12"));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.key.password"), is(notNullValue()));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.client.auth"), is("required"));
+        // Per-listener TLS: inter-broker listener (BROKER1) uses internal keystore/truststore
+        assertThat(properties.getProperty("listener.name.broker1.ssl.keystore.location"), is("/opt/kafka/config/internal.keystore.p12"));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.keystore.password"), is(notNullValue()));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.keystore.type"), is("PKCS12"));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.truststore.location"), is("/opt/kafka/config/internal.truststore.p12"));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.truststore.password"), is(notNullValue()));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.truststore.type"), is("PKCS12"));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.client.auth"), is("required"));
+        String protocolMap = properties.getProperty("listener.security.protocol.map");
+        assertThat(protocolMap, containsString("SSL:SSL"));
+        assertThat(protocolMap, containsString("BROKER1:SSL"));
+        assertThat(protocolMap, containsString("CONTROLLER:SSL"));
+    }
+
+    @Test
+    void testGetClientListenerProtocolWithTlsOnly() {
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1)
+            .enableTls(CertAssembly.autoGenerated());
+
+        assertThat(kafkaContainer.getClientListenerProtocol(), is("SSL"));
+    }
+
+    @Test
+    void testConfigureTlsUsesCorrectPasswordsForDifferentListenerRoles() {
+        CertAssembly certAssembly = CertAssembly.autoGenerated();
+
+        kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(1)
+            .enableTls(certAssembly);
+
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
+        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+
+        Properties properties = kafkaContainer.buildDefaultServerProperties(
+            "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094",
+            "SSL://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://broker-1:9094"
+        );
+
+        // Client listener (SSL) must use BROKER password
+        assertThat(properties.getProperty("listener.name.ssl.ssl.keystore.password"),
+            is(certAssembly.getBrokerPassword()));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.truststore.password"),
+            is(certAssembly.getBrokerPassword()));
+        assertThat(properties.getProperty("listener.name.ssl.ssl.key.password"),
+            is(certAssembly.getBrokerPassword()));
+
+        // Inter-broker listener (BROKER1) must use INTERNAL password
+        assertThat(properties.getProperty("listener.name.broker1.ssl.keystore.password"),
+            is(certAssembly.getInternalPassword()));
+        assertThat(properties.getProperty("listener.name.broker1.ssl.truststore.password"),
+            is(certAssembly.getInternalPassword()));
+
+        // Controller listener must use INTERNAL password
+        assertThat(properties.getProperty("listener.name.controller.ssl.keystore.password"),
+            is(certAssembly.getInternalPassword()));
+        assertThat(properties.getProperty("listener.name.controller.ssl.truststore.password"),
+            is(certAssembly.getInternalPassword()));
+
+        // Verify broker and internal passwords are actually different
+        assertThat(certAssembly.getBrokerPassword(),
+            CoreMatchers.not(is(certAssembly.getInternalPassword())));
+    }
+
+    @Test
+    void testWithPortAddsFixedExposedPort() {
+        kafkaContainer.withPort(19092);
+        assertThat("Port binding should be created for KAFKA_PORT",
+            kafkaContainer.getPortBindings(),
+            hasItem(containsString(":" + StrimziKafkaContainer.KAFKA_PORT + "/")));
+    }
+
+    @Test
+    void testUnsupportedAuthenticationTypeThrowsException() {
+        kafkaContainer
+            .withNodeId(0)
+            .withAuthenticationType(AuthenticationType.SCRAM_SHA_512);
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> kafkaContainer.buildDefaultServerProperties(
+                "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094",
+                "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://broker-0:9094"
+            )
+        );
+        assertThat(exception.getMessage(), containsString("Unsupported authentication type: SCRAM_SHA_512"));
     }
 }
