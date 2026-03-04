@@ -677,11 +677,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             return;
         }
 
-        for (ListenerConfig listener : this.listeners) {
-            String prefix = "listener.name."
-                + listener.name().toLowerCase(Locale.ROOT)
-                + ".ssl.";
+        // Broker-only nodes need CONTROLLER listener SSL config for outbound
+        // Raft connections to controllers, even though they do not bind the
+        // CONTROLLER listener themselves.
+        boolean hasControllerListener = this.listeners.stream()
+            .anyMatch(l -> l.role() == ListenerRole.CONTROLLER);
+        if (!hasControllerListener) {
+            this.listeners.add(new ListenerConfig("CONTROLLER", ListenerRole.CONTROLLER));
+        }
 
+        for (ListenerConfig listener : this.listeners) {
             boolean isInternal =
                 listener.role() == ListenerRole.INTER_BROKER
                 || listener.role() == ListenerRole.CONTROLLER;
@@ -696,23 +701,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 ? CertAssembly.INTERNAL_TRUSTSTORE_PATH
                 : CertAssembly.BROKER_TRUSTSTORE_PATH;
 
-            properties.setProperty(
-                prefix + "keystore.location", ksPath);
-            properties.setProperty(
-                prefix + "keystore.password", password);
-            properties.setProperty(
-                prefix + "keystore.type", "PKCS12");
-            properties.setProperty(
-                prefix + "key.password", password);
-            properties.setProperty(
-                prefix + "truststore.location", tsPath);
-            properties.setProperty(
-                prefix + "truststore.password", password);
-            properties.setProperty(
-                prefix + "truststore.type", "PKCS12");
+            String prefix = "listener.name." + listener.name().toLowerCase(Locale.ROOT) + ".ssl.";
 
-            properties.setProperty(
-                prefix + "client.auth", "required");
+            properties.setProperty(prefix + "keystore.location", ksPath);
+            properties.setProperty(prefix + "keystore.password", password);
+            properties.setProperty(prefix + "keystore.type", "PKCS12");
+            properties.setProperty(prefix + "key.password", password);
+            properties.setProperty(prefix + "truststore.location", tsPath);
+            properties.setProperty(prefix + "truststore.password", password);
+            properties.setProperty(prefix + "truststore.type", "PKCS12");
+            properties.setProperty(prefix + "client.auth", "required");
         }
     }
 
