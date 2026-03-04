@@ -579,7 +579,6 @@ public class StrimziKafkaContainerMockTest {
 
         Map<String, ContainerNetwork> networks = new LinkedHashMap<>();
         ContainerNetwork containerNetwork = Mockito.mock(ContainerNetwork.class);
-        Mockito.when(containerNetwork.getIpAddress()).thenReturn("172.17.0.2");
         networks.put("bridge", containerNetwork);
         Mockito.when(networkSettings.getNetworks()).thenReturn(networks);
 
@@ -589,12 +588,13 @@ public class StrimziKafkaContainerMockTest {
                 return "PLAINTEXT://localhost:9092";
             }
         };
-        kafkaContainer.withNodeRole(KafkaNodeRole.BROKER);
+        kafkaContainer.withNodeId(0)
+            .withNodeRole(KafkaNodeRole.BROKER);
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
