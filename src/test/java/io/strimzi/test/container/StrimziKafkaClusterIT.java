@@ -841,7 +841,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         assertThat(systemUnderTest.isTlsEnabled(), is(true));
         assertThat(systemUnderTest.getClientTrustStoreBytes(), is(notNullValue()));
-        assertThat(systemUnderTest.getClientTrustStorePassword(), is(notNullValue()));
+        assertThat(systemUnderTest.getClientStorePassword(), is(notNullValue()));
         assertThat(systemUnderTest.getClientKeyStoreBytes(), is(notNullValue()));
 
         String bootstrapServers = systemUnderTest.getBootstrapServers();
@@ -857,7 +857,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             Map<String, Object> sslProps = new HashMap<>();
             sslProps.put("bootstrap.servers", bootstrapServers);
             sslProps.put("security.protocol", "SSL");
-            configureTlsForClient(sslProps, truststorePath, clientKeystorePath, systemUnderTest.getClientTrustStorePassword());
+            configureTlsForClient(sslProps, truststorePath, clientKeystorePath, systemUnderTest.getClientStorePassword());
 
             Map<String, Object> adminConfig = new HashMap<>(sslProps);
             adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
@@ -943,10 +943,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             adminConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             adminConfig.put("security.protocol", "SSL");
             adminConfig.put("ssl.truststore.location", truststorePath.toString());
-            adminConfig.put("ssl.truststore.password", systemUnderTest.getClientTrustStorePassword());
+            adminConfig.put("ssl.truststore.password", systemUnderTest.getClientStorePassword());
             adminConfig.put("ssl.truststore.type", "PKCS12");
             adminConfig.put("ssl.keystore.location", clientKeystorePath.toString());
-            adminConfig.put("ssl.keystore.password", systemUnderTest.getClientTrustStorePassword());
+            adminConfig.put("ssl.keystore.password", systemUnderTest.getClientStorePassword());
             adminConfig.put("ssl.keystore.type", "PKCS12");
             adminConfig.put("ssl.endpoint.identification.algorithm", "");
             adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
@@ -1002,7 +1002,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             Files.write(clientKeystorePath, systemUnderTest.getClientKeyStoreBytes());
 
             try {
-                final String password = systemUnderTest.getClientTrustStorePassword();
+                final String password = systemUnderTest.getClientStorePassword();
 
                 final Map<String, Object> producerConfigs = new HashMap<>();
                 producerConfigs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -1078,7 +1078,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             Transferable.of(systemUnderTest.getClientTrustStoreBytes()),
             "/tmp/client.truststore.p12");
 
-        String password = systemUnderTest.getClientTrustStorePassword();
+        String password = systemUnderTest.getClientStorePassword();
 
         // Create a command-config that uses the client cert (signed by clients CA)
         // to connect to the internal listener (which only trusts the cluster CA)

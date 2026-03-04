@@ -1066,7 +1066,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
      *
      * @return the client password, or null if TLS is not enabled
      */
-    public String getClientTrustStorePassword() {
+    public String getClientStorePassword() {
         return this.certAssembly != null ? this.certAssembly.getClientPassword() : null;
     }
 

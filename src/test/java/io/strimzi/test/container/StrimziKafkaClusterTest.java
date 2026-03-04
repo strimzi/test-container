@@ -1265,26 +1265,26 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
-    void testGetClientTrustStorePasswordWithTls() {
+    void testGetClientStorePasswordWithTls() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
             .withTls()
             .build();
 
         assertThat("Client truststore password should be non-null when TLS is enabled",
-            cluster.getClientTrustStorePassword(), is(CoreMatchers.notNullValue()));
+            cluster.getClientStorePassword(), is(CoreMatchers.notNullValue()));
         assertThat("Client truststore password should not be empty",
-            cluster.getClientTrustStorePassword().isEmpty(), is(false));
+            cluster.getClientStorePassword().isEmpty(), is(false));
     }
 
     @Test
-    void testGetClientTrustStorePasswordWithoutTls() {
+    void testGetClientStorePasswordWithoutTls() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(1)
             .build();
 
         assertThat("Client truststore password should be null when TLS is not enabled",
-            cluster.getClientTrustStorePassword(), is(CoreMatchers.nullValue()));
+            cluster.getClientStorePassword(), is(CoreMatchers.nullValue()));
     }
 
     @Test
