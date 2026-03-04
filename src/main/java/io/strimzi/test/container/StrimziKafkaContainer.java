@@ -488,6 +488,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             //  (i.e., we use the network alias instead of the container IP for TLS SAN compatibility).
             //  We can replace this with single inter-broker listener since the alias is the same
             //  regardless of the number of networks.
+            // https://github.com/strimzi/test-container/issues/192
             for (ContainerNetwork network : networks) {
                 String advertisedName = "BROKER" + listenerNumber;
                 advertisedListeners.append(",")
