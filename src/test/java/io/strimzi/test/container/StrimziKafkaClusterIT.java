@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
@@ -44,6 +45,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -826,6 +828,300 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             this.keycloakContainer.stop();
             this.keycloakContainer = null;
         }
+    }
+
+    @Test
+    void testKafkaClusterWithTlsFunctionality() throws Exception {
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withTls()
+            .build();
+
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.isTlsEnabled(), is(true));
+        assertThat(systemUnderTest.getClientTrustStoreBytes(), is(notNullValue()));
+        assertThat(systemUnderTest.getClientTrustStorePassword(), is(notNullValue()));
+        assertThat(systemUnderTest.getClientKeyStoreBytes(), is(notNullValue()));
+
+        String bootstrapServers = systemUnderTest.getBootstrapServers();
+        assertThat(bootstrapServers, CoreMatchers.containsString("SSL://"));
+
+        Path truststorePath = Files.createTempFile("truststore", ".p12");
+        Files.write(truststorePath, systemUnderTest.getClientTrustStoreBytes());
+
+        Path clientKeystorePath = Files.createTempFile("client-keystore", ".p12");
+        Files.write(clientKeystorePath, systemUnderTest.getClientKeyStoreBytes());
+
+        try {
+            Map<String, Object> sslProps = new HashMap<>();
+            sslProps.put("bootstrap.servers", bootstrapServers);
+            sslProps.put("security.protocol", "SSL");
+            configureTlsForClient(sslProps, truststorePath, clientKeystorePath, systemUnderTest.getClientTrustStorePassword());
+
+            Map<String, Object> adminConfig = new HashMap<>(sslProps);
+            adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
+
+            try (AdminClient adminClient = AdminClient.create(adminConfig)) {
+                Collection<Node> brokers = adminClient.describeCluster().nodes().get(30, TimeUnit.SECONDS);
+                assertThat(brokers, is(notNullValue()));
+                assertThat(brokers.size(), is(NUMBER_OF_REPLICAS));
+            }
+
+            final String topicName = "tls-test-topic";
+            final String recordKey = "tls-key";
+            final String recordValue = "tls-value";
+
+            Map<String, Object> producerConfig = new HashMap<>(sslProps);
+            producerConfig.put(ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString());
+
+            Map<String, Object> consumerConfig = new HashMap<>(sslProps);
+            consumerConfig.put(ConsumerConfig.GROUP_ID_CONFIG, "tls-test-group-" + UUID.randomUUID());
+            consumerConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+            try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfig,
+                    new StringSerializer(), new StringSerializer());
+                 KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerConfig,
+                    new StringDeserializer(), new StringDeserializer())) {
+
+                Map<String, Object> adminConfig2 = new HashMap<>(sslProps);
+                try (AdminClient adminClient = AdminClient.create(adminConfig2)) {
+                    adminClient.createTopics(List.of(new NewTopic(topicName, 1, (short) 3)))
+                        .all().get(30, TimeUnit.SECONDS);
+                }
+
+                producer.send(new ProducerRecord<>(topicName, recordKey, recordValue)).get();
+
+                consumer.subscribe(List.of(topicName));
+
+                Utils.waitFor("Consumer records are present", Duration.ofSeconds(5), Duration.ofMinutes(1),
+                    () -> {
+                        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                        if (records.isEmpty()) {
+                            return false;
+                        }
+                        assertThat(records.count(), is(1));
+                        ConsumerRecord<String, String> record = records.iterator().next();
+                        assertThat(record.key(), is(recordKey));
+                        assertThat(record.value(), is(recordValue));
+                        return true;
+                    });
+            }
+        } finally {
+            Files.deleteIfExists(truststorePath);
+            Files.deleteIfExists(clientKeystorePath);
+        }
+    }
+
+    @Test
+    void testKafkaClusterWithTlsAndDedicatedRoles() throws Exception {
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(2)
+            .withDedicatedRoles()
+            .withNumberOfControllers(1)
+            .withTls()
+            .build();
+
+        systemUnderTest.start();
+
+        assertThat(systemUnderTest.isUsingDedicatedRoles(), is(true));
+        assertThat(systemUnderTest.isTlsEnabled(), is(true));
+        assertThat(systemUnderTest.getBrokers().size(), is(2));
+        assertThat(systemUnderTest.getControllers().size(), is(1));
+
+        String bootstrapServers = systemUnderTest.getBootstrapServers();
+        assertThat(bootstrapServers, CoreMatchers.containsString("SSL://"));
+
+        Path truststorePath = Files.createTempFile("truststore", ".p12");
+        Files.write(truststorePath, systemUnderTest.getClientTrustStoreBytes());
+
+        Path clientKeystorePath = Files.createTempFile("client-keystore", ".p12");
+        Files.write(clientKeystorePath, systemUnderTest.getClientKeyStoreBytes());
+
+        try {
+            Map<String, Object> adminConfig = new HashMap<>();
+            adminConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+            adminConfig.put("security.protocol", "SSL");
+            adminConfig.put("ssl.truststore.location", truststorePath.toString());
+            adminConfig.put("ssl.truststore.password", systemUnderTest.getClientTrustStorePassword());
+            adminConfig.put("ssl.truststore.type", "PKCS12");
+            adminConfig.put("ssl.keystore.location", clientKeystorePath.toString());
+            adminConfig.put("ssl.keystore.password", systemUnderTest.getClientTrustStorePassword());
+            adminConfig.put("ssl.keystore.type", "PKCS12");
+            adminConfig.put("ssl.endpoint.identification.algorithm", "");
+            adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
+
+            try (AdminClient adminClient = AdminClient.create(adminConfig)) {
+                Collection<Node> brokers = adminClient.describeCluster().nodes().get(30, TimeUnit.SECONDS);
+                assertThat(brokers, is(notNullValue()));
+                assertThat(brokers.size(), is(2));
+            }
+        } finally {
+            Files.deleteIfExists(truststorePath);
+            Files.deleteIfExists(clientKeystorePath);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("JavaNCSS")
+    void testKafkaClusterWithTlsAndOAuth() throws Exception {
+        try {
+            setUpKeycloak();
+
+            final String realmName = "demo";
+            final String keycloakAuthUri = "http://" + KEYCLOAK_NETWORK_ALIAS + ":" + KEYCLOAK_PORT;
+            final String oauthClientId = "kafka";
+            final String oauthClientSecret = "kafka-secret";
+
+            systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(2)
+                .withSharedNetwork()
+                .withTls()
+                .withOAuthConfig(
+                    realmName,
+                    oauthClientId,
+                    oauthClientSecret,
+                    keycloakAuthUri,
+                    "preferred_username")
+                .withAuthenticationType(AuthenticationType.OAUTH_OVER_PLAIN)
+                .withSaslUsername("kafka-broker")
+                .withSaslPassword("kafka-broker-secret")
+                .build();
+
+            systemUnderTest.start();
+
+            assertThat(systemUnderTest.isTlsEnabled(), is(true));
+
+            String bootstrapServers = systemUnderTest.getBootstrapServers();
+            assertThat(bootstrapServers, CoreMatchers.containsString("SASL_SSL://"));
+
+            Path truststorePath = Files.createTempFile("truststore", ".p12");
+            Files.write(truststorePath, systemUnderTest.getClientTrustStoreBytes());
+
+            Path clientKeystorePath = Files.createTempFile("client-keystore", ".p12");
+            Files.write(clientKeystorePath, systemUnderTest.getClientKeyStoreBytes());
+
+            try {
+                final String password = systemUnderTest.getClientTrustStorePassword();
+
+                final Map<String, Object> producerConfigs = new HashMap<>();
+                producerConfigs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                producerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                producerConfigs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+                producerConfigs.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+                producerConfigs.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+                producerConfigs.put(SaslConfigs.SASL_JAAS_CONFIG,
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                        "username=\"kafka-producer-client\" " +
+                        "password=\"kafka-producer-client-secret\";");
+                configureTlsForClient(producerConfigs, truststorePath, clientKeystorePath, password);
+
+                try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfigs)) {
+                    ProducerRecord<String, String> record = new ProducerRecord<>("tls-oauth-topic", "key", "value");
+                    producer.send(record).get();
+                }
+
+                LOGGER.info("Successfully produced message with TLS + OAuth");
+
+                final Map<String, Object> consumerConfigs = new HashMap<>();
+                consumerConfigs.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+                consumerConfigs.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
+                consumerConfigs.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+                consumerConfigs.put(SaslConfigs.SASL_JAAS_CONFIG,
+                    "org.apache.kafka.common.security.plain.PlainLoginModule required " +
+                        "username=\"kafka-consumer-client\" " +
+                        "password=\"kafka-consumer-client-secret\";");
+                consumerConfigs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                consumerConfigs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                consumerConfigs.put(ConsumerConfig.GROUP_ID_CONFIG, "tls-oauth-group");
+                consumerConfigs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+                configureTlsForClient(consumerConfigs, truststorePath, clientKeystorePath, password);
+
+                try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerConfigs)) {
+                    consumer.subscribe(List.of("tls-oauth-topic"));
+
+                    ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(10));
+                    assertThat("Should receive at least one record", records.count(), CoreMatchers.equalTo(1));
+
+                    for (ConsumerRecord<String, String> record : records) {
+                        assertThat(record.key(), is("key"));
+                        assertThat(record.value(), is("value"));
+                    }
+                }
+
+                LOGGER.info("Successfully consumed message with TLS + OAuth");
+            } finally {
+                Files.deleteIfExists(truststorePath);
+                Files.deleteIfExists(clientKeystorePath);
+            }
+        } finally {
+            cleanupKeycloak();
+        }
+    }
+
+    @Test
+    void testClientCertRejectedByInternalListener() throws Exception {
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withTls()
+            .build();
+
+        systemUnderTest.start();
+
+        StrimziKafkaContainer broker = systemUnderTest.getNodes().iterator().next();
+
+        // Copy client keystore and truststore into the container
+        broker.copyFileToContainer(
+            Transferable.of(systemUnderTest.getClientKeyStoreBytes()),
+            "/tmp/client.keystore.p12");
+        broker.copyFileToContainer(
+            Transferable.of(systemUnderTest.getClientTrustStoreBytes()),
+            "/tmp/client.truststore.p12");
+
+        String password = systemUnderTest.getClientTrustStorePassword();
+
+        // Create a command-config that uses the client cert (signed by clients CA)
+        // to connect to the internal listener (which only trusts the cluster CA)
+        String commandConfig = String.join("\\n",
+            "security.protocol=SSL",
+            "ssl.keystore.location=/tmp/client.keystore.p12",
+            "ssl.keystore.password=" + password,
+            "ssl.keystore.type=PKCS12",
+            "ssl.key.password=" + password,
+            "ssl.truststore.location=/tmp/client.truststore.p12",
+            "ssl.truststore.password=" + password,
+            "ssl.truststore.type=PKCS12");
+
+        Container.ExecResult result = broker.execInContainer(
+            "bash", "-c",
+            String.format(
+                "echo -e '%s' > /tmp/wrong-ca-client.properties && "
+                    + "bin/kafka-broker-api-versions.sh "
+                    + "--bootstrap-server localhost:9091 "
+                    + "--command-config /tmp/wrong-ca-client.properties 2>&1",
+                commandConfig));
+
+        String output = result.getStdout() + result.getStderr();
+
+        // The internal listener requires mTLS and its truststore only contains
+        // the cluster CA. The client cert is signed by the clients CA, so the
+        // SSL handshake should fail with a bad_certificate alert.
+        assertThat("Client cert signed by clients CA should be rejected by "
+                + "internal listener that only trusts cluster CA",
+            result.getExitCode(), is(not(0)));
+        assertThat("Should fail due to SSL authentication",
+            output, CoreMatchers.containsString("SslAuthenticationException"));
+        assertThat("Should receive bad_certificate alert from broker",
+            output, CoreMatchers.containsString("bad_certificate"));
+    }
+
+    private void configureTlsForClient(Map<String, Object> config, Path truststorePath, Path clientKeystorePath, String password) {
+        config.put("ssl.truststore.location", truststorePath.toString());
+        config.put("ssl.truststore.password", password);
+        config.put("ssl.truststore.type", "PKCS12");
+        config.put("ssl.keystore.location", clientKeystorePath.toString());
+        config.put("ssl.keystore.password", password);
+        config.put("ssl.keystore.type", "PKCS12");
     }
 
     @AfterEach

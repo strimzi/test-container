@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -27,15 +28,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -100,7 +100,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private Map<String, String> kafkaConfigurationMap;
     private Integer nodeId;
     private String kafkaVersion;
-    private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("PLAINTEXT://%s:%s", getHost(), this.kafkaExposedPort);
+    private Function<StrimziKafkaContainer, String> bootstrapServersProvider = c -> String.format("%s://%s:%s", getClientListenerProtocol(), getHost(), this.kafkaExposedPort);
     private String clusterId;
     private KafkaNodeRole nodeRole = KafkaNodeRole.COMBINED;
     private int fixedExposedPort;
@@ -110,7 +110,40 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private ToxiproxyClient toxiproxyClient;
     private Proxy proxy;
 
-    protected Set<String> listenerNames = new HashSet<>();
+    /**
+     * Defines the role of a Kafka listener.
+     */
+    protected enum ListenerRole {
+        /** Client-facing listener for external connections */
+        CLIENT,
+        /** Inter-broker communication listener */
+        INTER_BROKER,
+        /** Controller communication listener */
+        CONTROLLER
+    }
+
+    /**
+     * Configuration for a Kafka listener with its name and role.
+     */
+    protected static class ListenerConfig {
+        private final String name;
+        private final ListenerRole role;
+
+        ListenerConfig(String name, ListenerRole role) {
+            this.name = name;
+            this.role = role;
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public ListenerRole role() {
+            return role;
+        }
+    }
+
+    protected List<ListenerConfig> listeners = new ArrayList<>();
 
     // OAuth fields
     private boolean oauthEnabled;
@@ -125,6 +158,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private String saslPassword;
 
     private AuthenticationType authenticationType = AuthenticationType.NONE;
+
+    // TLS field
+    private CertAssembly certAssembly;
 
     // Log collection attributes
     private String logFilePath;
@@ -173,6 +209,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // Setup OAuth configuration
         setupOAuthConfiguration();
+
+        //    When TLS is enabled, the startup script waits for the keystore
+        // to be distributed by the cluster before starting Kafka. The default
+        // Testcontainers port-wait strategy would time out because the port isn't
+        // listening yet. Use a log-based wait so the container is considered
+        // "started" once the script reaches the keystore wait loop; the cluster
+        // will then distribute certs and wait for quorum formation separately.
+        if (this.certAssembly != null) {
+            super.waitingFor(Wait.forLogMessage(".*Waiting for TLS keystore.*", 1)
+                .withStartupTimeout(Duration.ofSeconds(30)));
+        }
 
         // Setup logging
         if (this.enableBrokerContainerSlf4jLogging) {
@@ -350,15 +397,12 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // copy override file to the container
         copyFileToContainer(Transferable.of(serverPropertiesWithOverride.getBytes(StandardCharsets.UTF_8)), "/opt/kafka/config/kraft/server.properties");
 
-        String command = "#!/bin/bash \n";
-
         if (this.clusterId == null) {
             this.clusterId = this.randomUuid();
             LOGGER.info("New `cluster.id` has been generated: {}", this.clusterId);
         }
 
-        command += "bin/kafka-storage.sh format -t=\"" + this.clusterId + "\" -c /opt/kafka/config/kraft/server.properties \n";
-        command += "bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n";
+        final String command = buildStartupCommand();
 
         LOGGER.info("Copying command to 'STARTER_SCRIPT' script.");
 
@@ -366,6 +410,32 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                 Transferable.of(command.getBytes(StandardCharsets.UTF_8), 700),
                 STARTER_SCRIPT
         );
+    }
+
+    /**
+     * Builds the startup script command based on the current configuration.
+     * When TLS is enabled on a broker, the script waits for the keystore file
+     * to be distributed by {@link StrimziKafkaCluster} before starting Kafka.
+     *
+     * @return the startup script content
+     */
+    @DoNotMutate
+    private String buildStartupCommand() {
+        StringBuilder command = new StringBuilder("#!/bin/bash \n");
+
+        if (this.certAssembly != null) {
+            command.append("bin/kafka-storage.sh format -t=\"").append(this.clusterId)
+                .append("\" -c /opt/kafka/config/kraft/server.properties \n");
+            command.append("echo 'Waiting for TLS keystore to be distributed...' \n");
+            command.append("while [ ! -f ").append(CertAssembly.BROKER_KEYSTORE_PATH).append(" ]; do sleep 0.1; done \n");
+            command.append("bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n");
+            return command.toString();
+        }
+
+        command.append("bin/kafka-storage.sh format -t=\"").append(this.clusterId)
+            .append("\" -c /opt/kafka/config/kraft/server.properties \n");
+        command.append("bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties \n");
+        return command.toString();
     }
 
     protected String extractListenerName(String bootstrapServers) {
@@ -391,10 +461,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final List<String> advertisedListenersNames = new ArrayList<>();
         final StringBuilder kafkaListeners = new StringBuilder();
         final StringBuilder advertisedListeners = new StringBuilder();
-        
+
         String bsListenerName = null;
         String bootstrapServers = null;
-        
+
         // Only get bootstrap servers for broker nodes
         if (this.nodeRole.isBroker()) {
             bootstrapServers = getBootstrapServers();
@@ -406,7 +476,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // add first PLAINTEXT listener
             advertisedListeners.append(bootstrapServers);
             kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
-            this.listenerNames.add(bsListenerName);
+            this.listeners.add(new ListenerConfig(bsListenerName, ListenerRole.CLIENT));
         }
 
         int listenerNumber = 1;
@@ -414,13 +484,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // Only add inter-broker listeners for nodes that act as brokers
         if (this.nodeRole.isBroker()) {
-            // configure advertised listeners
+            // TODO: refactor this... the loop iterates over networks but no longer uses the network variable
+            //  (i.e., we use the network alias instead of the container IP for TLS SAN compatibility).
+            //  We can replace this with single inter-broker listener since the alias is the same
+            //  regardless of the number of networks.
             for (ContainerNetwork network : networks) {
                 String advertisedName = "BROKER" + listenerNumber;
                 advertisedListeners.append(",")
                     .append(advertisedName)
                     .append("://")
-                    .append(network.getIpAddress())
+                    .append(NETWORK_ALIAS_PREFIX).append(this.nodeId)
                     .append(":")
                     .append(portNumber);
                 advertisedListenersNames.add(advertisedName);
@@ -440,7 +513,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     .append("://0.0.0.0:")
                     .append(portNumber)
                     .append(",");
-                this.listenerNames.add(listener);
+                this.listeners.add(new ListenerConfig(listener, ListenerRole.INTER_BROKER));
                 portNumber--;
             }
         }
@@ -452,7 +525,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             final String controllerListenerName = "CONTROLLER";
             // adding Controller listener for Kraft mode
             kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
-            this.listenerNames.add(controllerListenerName);
+            this.listeners.add(new ListenerConfig(controllerListenerName, ListenerRole.CONTROLLER));
         }
 
         LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
@@ -512,15 +585,18 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             extractControllerListener(properties, advertisedListeners);
         }
 
-        String securityProtocolMap = this.configureListenerSecurityProtocolMap("PLAINTEXT");
+        String protocol = this.certAssembly != null ? "SSL" : "PLAINTEXT";
+        String securityProtocolMap = this.configureListenerSecurityProtocolMap(protocol);
         // Ensure CONTROLLER mapping exists on ALL nodes when controller.listener.names is set
-        securityProtocolMap = ensureControllerMapping(securityProtocolMap, "PLAINTEXT");
+        securityProtocolMap = ensureControllerMapping(securityProtocolMap, protocol);
 
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
+        LOGGER.info("Node {} ({}) - Security protocol map: {}, TLS enabled: {}", this.nodeId, this.nodeRole, securityProtocolMap, this.certAssembly != null);
 
         setCommonServerProperties(properties);
         setKRaftProperties(properties);
         configureAuthentication(properties);
+        configureTls(properties);
 
         return properties;
     }
@@ -587,6 +663,58 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
     }
 
+    /**
+     * Configures per-listener TLS settings if TLS is enabled.
+     * Client-facing listeners use the broker keystore/truststore,
+     * while inter-broker and controller listeners use separate
+     * internal keystore/truststore.
+     *
+     * @param properties The Kafka server properties to configure.
+     */
+    private void configureTls(Properties properties) {
+        if (this.certAssembly == null) {
+            return;
+        }
+
+        for (ListenerConfig listener : this.listeners) {
+            String prefix = "listener.name."
+                + listener.name().toLowerCase(Locale.ROOT)
+                + ".ssl.";
+
+            boolean isInternal =
+                listener.role() == ListenerRole.INTER_BROKER
+                || listener.role() == ListenerRole.CONTROLLER;
+
+            String password = isInternal
+                ? this.certAssembly.getInternalPassword()
+                : this.certAssembly.getBrokerPassword();
+            String ksPath = isInternal
+                ? CertAssembly.INTERNAL_KEYSTORE_PATH
+                : CertAssembly.BROKER_KEYSTORE_PATH;
+            String tsPath = isInternal
+                ? CertAssembly.INTERNAL_TRUSTSTORE_PATH
+                : CertAssembly.BROKER_TRUSTSTORE_PATH;
+
+            properties.setProperty(
+                prefix + "keystore.location", ksPath);
+            properties.setProperty(
+                prefix + "keystore.password", password);
+            properties.setProperty(
+                prefix + "keystore.type", "PKCS12");
+            properties.setProperty(
+                prefix + "key.password", password);
+            properties.setProperty(
+                prefix + "truststore.location", tsPath);
+            properties.setProperty(
+                prefix + "truststore.password", password);
+            properties.setProperty(
+                prefix + "truststore.type", "PKCS12");
+
+            properties.setProperty(
+                prefix + "client.auth", "required");
+        }
+    }
+
     private void validateOAuthAndConfigure(Properties properties, Consumer<Properties> configurer) {
         if (this.isOAuthEnabled()) {
             configurer.accept(properties);
@@ -604,8 +732,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.enabled.mechanisms", "PLAIN");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
 
-        String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
-        securityProtocolMap = ensureControllerMapping(securityProtocolMap, "SASL_PLAINTEXT");
+        // Determine protocol based on TLS setting
+        String saslProtocol = this.certAssembly != null ? "SASL_SSL" : "SASL_PLAINTEXT";
+        String securityProtocolMap = this.configureListenerSecurityProtocolMap(saslProtocol);
+        securityProtocolMap = ensureControllerMapping(securityProtocolMap, saslProtocol);
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
         
         properties.setProperty("sasl.mechanism.controller.protocol", "PLAIN");
@@ -620,9 +750,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Callback handler classes
         final String callbackHandler = "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler";
 
-        for (String listenerName : this.listenerNames) {
-            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".plain.sasl.jaas.config", jaasConfig);
-            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".plain.sasl.server.callback.handler.class", callbackHandler);
+        for (ListenerConfig listener : this.listeners) {
+            String listenerName = listener.name().toLowerCase(Locale.ROOT);
+            properties.setProperty("listener.name." + listenerName + ".plain.sasl.jaas.config", jaasConfig);
+            properties.setProperty("listener.name." + listenerName + ".plain.sasl.server.callback.handler.class", callbackHandler);
         }
     }
 
@@ -634,9 +765,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     protected void configureOAuthBearer(Properties properties) {
         properties.setProperty("sasl.enabled.mechanisms", "OAUTHBEARER");
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
-        
-        String securityProtocolMap = this.configureListenerSecurityProtocolMap("SASL_PLAINTEXT");
-        securityProtocolMap = ensureControllerMapping(securityProtocolMap, "SASL_PLAINTEXT");
+
+        // Determine protocol based on TLS setting
+        String saslProtocol = this.certAssembly != null ? "SASL_SSL" : "SASL_PLAINTEXT";
+        String securityProtocolMap = this.configureListenerSecurityProtocolMap(saslProtocol);
+        securityProtocolMap = ensureControllerMapping(securityProtocolMap, saslProtocol);
 
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
         
@@ -649,22 +782,23 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
         final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
 
-        for (final String listenerName : this.listenerNames) {
-            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".oauthbearer.sasl.jaas.config", jaasConfig);
-            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
-            properties.setProperty("listener.name." + listenerName.toLowerCase(Locale.ROOT) + ".oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
+        for (final ListenerConfig listener : this.listeners) {
+            String listenerName = listener.name().toLowerCase(Locale.ROOT);
+            properties.setProperty("listener.name." + listenerName + ".oauthbearer.sasl.jaas.config", jaasConfig);
+            properties.setProperty("listener.name." + listenerName + ".oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
+            properties.setProperty("listener.name." + listenerName + ".oauthbearer.sasl.login.callback.handler.class", clientSideCallbackHandler);
         }
     }
 
     /**
-     * Configures the listener.security.protocol.map property based on the listenerNames set and the given security protocol.
+     * Configures the listener.security.protocol.map property with the same protocol for all listeners.
      *
-     * @param securityProtocol The security protocol to map each listener to (e.g., PLAINTEXT, SASL_PLAINTEXT).
+     * @param securityProtocol The security protocol for all listeners (e.g., PLAINTEXT, SSL, SASL_SSL).
      * @return The listener.security.protocol.map configuration string.
      */
     protected String configureListenerSecurityProtocolMap(String securityProtocol) {
-        return this.listenerNames.stream()
-            .map(listenerName -> listenerName + ":" + securityProtocol)
+        return this.listeners.stream()
+            .map(listener -> listener.name() + ":" + securityProtocol)
             .collect(Collectors.joining(","));
     }
 
@@ -682,6 +816,24 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             return securityProtocolMapWithControllerMapping;
         }
         return securityProtocolMapWithControllerMapping.isEmpty() ? "CONTROLLER:" + controllerProtocol : securityProtocolMapWithControllerMapping + ",CONTROLLER:" + controllerProtocol;
+    }
+
+    /**
+     * Determines the security protocol for the client listener based on TLS and authentication settings.
+     *
+     * @return the security protocol string
+     */
+    /* test */ String getClientListenerProtocol() {
+        boolean hasSasl = this.authenticationType != AuthenticationType.NONE;
+        if (this.certAssembly != null && hasSasl) {
+            return "SASL_SSL";
+        } else if (this.certAssembly != null) {
+            return "SSL";
+        } else if (hasSasl) {
+            return "SASL_PLAINTEXT";
+        } else {
+            return "PLAINTEXT";
+        }
     }
 
     /**
@@ -952,6 +1104,22 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         return self();
     }
 
+    /**
+     * Enables TLS for client connections on this container.
+     * Called by {@link StrimziKafkaCluster} to configure TLS.
+     * The cluster is responsible for generating/providing certificates
+     * and copying them to the container.
+     *
+     * @param certAssembly the certificate assembly containing keystore/truststore password and lifecycle operations
+     */
+    /* test */ StrimziKafkaContainer enableTls(CertAssembly certAssembly) {
+        if (certAssembly == null) {
+            throw new IllegalArgumentException("CertAssembly cannot be null.");
+        }
+        this.certAssembly = certAssembly;
+        return self();
+    }
+
     protected StrimziKafkaContainer withClusterId(String clusterId) {
         this.clusterId = clusterId;
         return self();
@@ -1206,5 +1374,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
     /* test */ int getFixedExposedPort() {
         return fixedExposedPort;
+    }
+
+    /* test */ boolean hasWaitForRunningConfigured() {
+        return this.getWaitStrategy() instanceof LogMessageWaitStrategy;
     }
 }

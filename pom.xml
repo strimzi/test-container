@@ -182,7 +182,7 @@
             <artifactId>toxiproxy-java</artifactId>
             <version>${toxiproxy.java.version}</version>
         </dependency>
-
+        
         <!-- TEST DEPENDENCY -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -417,7 +417,7 @@
                         <avoidCallsTo>org.slf4j</avoidCallsTo>
                         <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
                     </avoidCallsTo>
-                    <mutationThreshold>96</mutationThreshold>
+                    <mutationThreshold>100</mutationThreshold>
                     <coverageThreshold>76</coverageThreshold>
                     <verbose>true</verbose>
                 </configuration>
