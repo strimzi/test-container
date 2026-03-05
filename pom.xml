@@ -102,7 +102,7 @@
         <docker-java.version>3.7.0</docker-java.version>
         <kafka.version>4.0.0</kafka.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <fasterxml.jackson-core.version>2.19.0</fasterxml.jackson-core.version>
+        <fasterxml.jackson-core.version>2.21.1</fasterxml.jackson-core.version>
         <fasterxml.jackson-databind.version>2.19.0</fasterxml.jackson-databind.version>
         <toxiproxy.java.version>2.1.11</toxiproxy.java.version>
         <pitest-annotations.version>2.2.1</pitest-annotations.version>
