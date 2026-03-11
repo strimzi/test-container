@@ -9,7 +9,6 @@ import eu.rekawek.toxiproxy.model.ToxicDirection;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -205,7 +204,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     private void verifyReadinessOfKRaftCluster() throws InterruptedException, ExecutionException {
-        try (Admin adminClient = AdminClient.create(Map.of(
+        try (Admin adminClient = Admin.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()))) {
             // Check broker availability
             Collection<Node> brokers = adminClient.describeCluster().nodes().get();
@@ -222,8 +221,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     private void verifyFunctionalityOfKafkaCluster() throws ExecutionException, InterruptedException, TimeoutException {
-        // using try-with-resources for AdminClient, KafkaProducer and KafkaConsumer (implicit closing connection)
-        try (final AdminClient adminClient = AdminClient.create(Map.of(
+        try (final Admin adminClient = Admin.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
              KafkaProducer<String, String> producer = new KafkaProducer<>(
                  Map.of(
@@ -312,7 +310,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         String bootstrapControllers = this.systemUnderTest.getBootstrapControllers();
         LOGGER.info("Bootstrap controllers: {}", bootstrapControllers);
 
-        try (AdminClient adminClient = AdminClient.create(Map.of(
+        try (Admin adminClient = Admin.create(Map.of(
             AdminClientConfig.BOOTSTRAP_CONTROLLERS_CONFIG, bootstrapControllers,
             AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000,
             AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 30000))) {
@@ -569,7 +567,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         final String topicName = "latency-test-topic";
 
-        try (final AdminClient adminClient = AdminClient.create(Map.of(
+        try (final Admin adminClient = Admin.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers(),
             AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000,
             AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 60000));
@@ -628,7 +626,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         final String topicName = "slow-network-test";
 
-        try (final AdminClient adminClient = AdminClient.create(Map.of(
+        try (final Admin adminClient = Admin.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
              final KafkaProducer<String, String> producer = new KafkaProducer<>(
                  Map.of(
