@@ -117,6 +117,7 @@
         <mockito.version>5.17.0</mockito.version>
 
         <!-- PLUGIN VERSIONS       -->
+        <spotbugs-maven-plugin.version>4.9.3.0</spotbugs-maven-plugin.version>
         <maven-jar-plugin.version>3.4.0</maven-jar-plugin.version>
         <maven.compiler-plugin.version>3.11.0</maven.compiler-plugin.version>
         <maven.javadoc-plugin.version>3.5.0</maven.javadoc-plugin.version>
@@ -388,6 +389,26 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${spotbugs-maven-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs</artifactId>
+                        <version>${spotbugs.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <!-- Set to true as part of https://github.com/strimzi/test-clients/issues/178 -->
+                    <failOnError>false</failOnError>
+                    <xmlOutput>true</xmlOutput>
+                    <excludeFilterFile>${project.basedir}/.spotbugs/spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.pitest</groupId>
