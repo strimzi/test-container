@@ -27,7 +27,7 @@ jobs:
       - uses: strimzi/github-actions/.github/actions/build/release-artifacts@v1
         with:
           releaseVersion: ${{ inputs.releaseVersion }}
-          artifactSuffix: "test-container"
+          artifactSuffix: "strimzi-test-container"
 
       - uses: strimzi/github-actions/.github/actions/build/deploy-java@v1
         with:

@@ -40,7 +40,7 @@ jobs:
         uses: strimzi/github-actions/.github/actions/build/build-binaries@v1
         with:
           mainJavaBuild: ${{ matrix.java.mainBuild }}
-          artifactSuffix: "test-container"
+          artifactSuffix: "strimzi-test-container"
           clusterOperatorBuild: "false"
   
   deploy-java:

@@ -26,10 +26,10 @@ jobs:
       repo: ${{ github.repository }}
       ref: ${{ github.sha }}
       architecture: "amd64"
-      artifactSuffix: "test-container"
+      artifactSuffix: "strimzi-test-container"
       buildContainers: false
       modules: "./"
-      nexusCheck: "test-container"
+      nexusCheck: "strimzi-test-container"
       javaVersion: "17"
       helmChartName: "none"
       releaseVersion: "6.6.6"
