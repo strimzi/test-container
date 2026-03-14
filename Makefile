@@ -18,6 +18,9 @@ release_maven:
 
 .PHONY: release_package
 release_package: java_package
+	echo "Creating release archives ..."
+	tar -czf target/$(PROJECT_NAME)-$(RELEASE_VERSION).tar.gz -C target $(PROJECT_NAME)-$(RELEASE_VERSION).jar
+	cd target && zip $(PROJECT_NAME)-$(RELEASE_VERSION).zip $(PROJECT_NAME)-$(RELEASE_VERSION).jar
 
 .PHONY: clean
 clean: java_clean
