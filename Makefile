@@ -2,7 +2,7 @@ include ./Makefile.os
 include ./Makefile.maven
 
 RELEASE_VERSION ?= latest
-PROJECT_NAME ?= test-container
+PROJECT_NAME ?= strimzi-test-container
 
 .PHONY: all
 all: java_install spotbugs
