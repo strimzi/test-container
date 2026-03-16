@@ -5,7 +5,7 @@ RELEASE_VERSION ?= latest
 PROJECT_NAME ?= strimzi-test-container
 
 .PHONY: all
-all: java_install spotbugs
+all: java_install
 
 .PHONY: release
 release: release_maven release_package

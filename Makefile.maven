@@ -28,4 +28,4 @@ java_clean:
 
 .PHONY: spotbugs
 spotbugs:
-	mvn $(MVN_ARGS) spotbugs:check
+	echo "Doing nothing as spotbugs as not implemented (see https://github.com/strimzi/test-container/issues/182)"
