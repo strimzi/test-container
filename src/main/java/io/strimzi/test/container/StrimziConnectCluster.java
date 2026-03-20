@@ -4,7 +4,6 @@
  */
 package io.strimzi.test.container;
 
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.util.ArrayList;
@@ -94,7 +93,7 @@ public class StrimziConnectCluster {
      * @return collection of GenericContainer containers
      */
     @DoNotMutate
-    public Collection<GenericContainer<?>> getWorkers() {
+    public Collection<StrimziConnectContainer> getWorkers() {
         return new ArrayList<>(workers);
     }
 
