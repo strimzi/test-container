@@ -15,7 +15,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
-class StrimziConnectContainer extends GenericContainer<StrimziConnectContainer> {
+public class StrimziConnectContainer extends GenericContainer<StrimziConnectContainer> {
 
     private static final String STARTER_SCRIPT = "/start_connect.sh";
     private static final String CONFIG_FILE = "/opt/kafka/config/connect.properties";
@@ -23,7 +23,7 @@ class StrimziConnectContainer extends GenericContainer<StrimziConnectContainer> 
     private final StrimziKafkaCluster kafkaCluster;
     private final Properties configs;
 
-    public StrimziConnectContainer(String imageName, StrimziKafkaCluster kafkaCluster, Properties configs) {
+    StrimziConnectContainer(String imageName, StrimziKafkaCluster kafkaCluster, Properties configs) {
         super(imageName);
         this.kafkaCluster = kafkaCluster;
         this.configs = configs;
