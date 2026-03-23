@@ -945,7 +945,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             adminConfig.put("ssl.keystore.location", clientKeystorePath.toString());
             adminConfig.put("ssl.keystore.password", systemUnderTest.getClientStorePassword());
             adminConfig.put("ssl.keystore.type", "PKCS12");
-            adminConfig.put("ssl.endpoint.identification.algorithm", "");
             adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
 
             try (AdminClient adminClient = AdminClient.create(adminConfig)) {

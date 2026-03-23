@@ -210,7 +210,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Setup OAuth configuration
         setupOAuthConfiguration();
 
-        //    When TLS is enabled, the startup script waits for the keystore
+        // When TLS is enabled, the startup script waits for the keystore
         // to be distributed by the cluster before starting Kafka. The default
         // Testcontainers port-wait strategy would time out because the port isn't
         // listening yet. Use a log-based wait so the container is considered

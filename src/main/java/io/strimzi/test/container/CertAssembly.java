@@ -27,9 +27,11 @@ import java.util.Collection;
  *  ii.  A clients CA that signs client certificates
  *       (mTLS authentication).
  *
- * The broker truststore contains the clients CA (to verify
+ * The broker truststore for the external listener contains the clients CA (to verify
  * client certs during mTLS), while the client truststore
  * contains the cluster CA (to verify the broker's identity).
+ * Additionally, the broker truststore for the internal listener contains the cluster
+ * CA (to verify the other broker's identities).
  *
  * Manages three pairs of PKCS12 stores:
  *  i.   Broker stores, deployed at
@@ -228,7 +230,7 @@ class CertAssembly {
                 .alias("ca")
                 .fromFile(clientsCaCert)
                 .execute();
-            // internal truststore, contains cluster-ca (i.e., for verificatioen inter-broker certs)
+            // internal truststore, contains cluster-ca (i.e., for verification inter-broker certs)
             keytool.importTrustedCertificate()
                 .keystore("/tmp/internal.truststore.p12")
                 .password(this.internalPassword)
