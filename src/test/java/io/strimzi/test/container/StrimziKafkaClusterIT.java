@@ -859,7 +859,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             Map<String, Object> adminConfig = new HashMap<>(sslProps);
             adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
 
-            try (AdminClient adminClient = AdminClient.create(adminConfig)) {
+            try (Admin adminClient = Admin.create(adminConfig)) {
                 Collection<Node> brokers = adminClient.describeCluster().nodes().get(30, TimeUnit.SECONDS);
                 assertThat(brokers, is(notNullValue()));
                 assertThat(brokers.size(), is(NUMBER_OF_REPLICAS));
@@ -882,7 +882,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                     new StringDeserializer(), new StringDeserializer())) {
 
                 Map<String, Object> adminConfig2 = new HashMap<>(sslProps);
-                try (AdminClient adminClient = AdminClient.create(adminConfig2)) {
+                try (Admin adminClient = Admin.create(adminConfig2)) {
                     adminClient.createTopics(List.of(new NewTopic(topicName, 1, (short) 3)))
                         .all().get(30, TimeUnit.SECONDS);
                 }
@@ -947,7 +947,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             adminConfig.put("ssl.keystore.type", "PKCS12");
             adminConfig.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
 
-            try (AdminClient adminClient = AdminClient.create(adminConfig)) {
+            try (Admin adminClient = Admin.create(adminConfig)) {
                 Collection<Node> brokers = adminClient.describeCluster().nodes().get(30, TimeUnit.SECONDS);
                 assertThat(brokers, is(notNullValue()));
                 assertThat(brokers.size(), is(2));
