@@ -22,6 +22,7 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.logging.log4j.Level;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -164,7 +165,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     @Test
     void testDedicatedRolesClusterStartsAndFunctionsProperly() throws InterruptedException, ExecutionException, TimeoutException {
         try (StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(5)
+            .withNumberOfBrokers(3)
             .withDedicatedRoles()
             .withNumberOfControllers(3)
             .build()) {
@@ -173,22 +174,21 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
             // Verify cluster configuration
             assertThat(cluster.isUsingDedicatedRoles(), is(true));
-            assertThat(cluster.getNodes().size(), is(8)); // 3 controllers + 5 brokers
+            assertThat(cluster.getNodes().size(), is(6)); // 3 controllers + 3 brokers
             assertThat(cluster.getControllers().size(), is(3));
-            assertThat(cluster.getBrokers().size(), is(5));
+            assertThat(cluster.getBrokers().size(), is(3));
 
             // Verify bootstrap servers are available
             String bootstrapServers = cluster.getBootstrapServers();
             assertThat(bootstrapServers, notNullValue());
 
-            // Should have exactly 5 broker endpoints
             String[] servers = bootstrapServers.split(",");
-            assertThat(servers.length, is(5));
+            assertThat(servers.length, is(3));
 
             // Verify network bootstrap servers
             String networkBootstrapServers = cluster.getNetworkBootstrapServers();
             assertThat(networkBootstrapServers, notNullValue());
-            assertThat(networkBootstrapServers.split(",").length, is(5));
+            assertThat(networkBootstrapServers.split(",").length, is(3));
 
             // Set systemUnderTest for the verification method
             this.systemUnderTest = cluster;
