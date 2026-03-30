@@ -367,24 +367,20 @@ This is particularly useful for code components that are challenging to test at 
 Using `@DoNotMutate` helps keep mutation coverage metrics meaningful by excluding areas where mutation detection would not add value.
 
 ### Additional tips
-
-1. In case you are using `Azure pipelines` Ryuk needs to be turned off, since Azure does not allow starting privileged containers.
-   Disable Ryuk by setting an environment variable::
-    - `TESTCONTAINERS_RYUK_DISABLED` - TRUE
     
-2. By default, `TestContainers` performs a series of start-up checks to ensure that the environment is configured correctly.
+1. By default, `TestContainers` performs a series of start-up checks to ensure that the environment is configured correctly.
    It takes a couple of seconds, but if you want to speed up your tests, you can disable the checks once you have everything configured.
    Disable start-up checks by setting an environment variable:
    - `TESTCONTAINERS_CHECKS_DISABLE` - TRUE
 
-3. To use `podman` instead of `docker` you'll need to enable the podman socket and export a couple of environment variables:
+2. To use `podman` instead of `docker` you'll need to enable the podman socket and export a couple of environment variables:
     ```bash
     systemctl --user enable podman.socket --now
     export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
     export TESTCONTAINERS_RYUK_DISABLED=true
     ```
    
-4. For users running tests with Podman, there is a known [issue](containers/podman#17640) that may occur:
+3. For users running tests with Podman, there is a known [issue](containers/podman#17640) that may occur:
     ```plaintext
     2024-10-31 09:48:40 ERROR [1:550] Could not start container
     java.lang.RuntimeException: com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.NoHttpResponseException: localhost:2375 failed to respond
