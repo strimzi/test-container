@@ -312,7 +312,54 @@ StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBu
 kafkaCluster.start();
 ```
 
-#### xi) Logging Kafka Container/Cluster Output to SLF4J
+#### xi) TLS Encryption
+
+StrimziKafkaCluster supports TLS encryption with auto-generated certificates. 
+When TLS is enabled, the cluster creates self-signed CAs, broker certificates, and client certificates (for mTLS) automatically.
+
+```java
+StrimziKafkaCluster kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+    .withNumberOfBrokers(3)
+    .withTls()
+    .build();
+
+kafkaCluster.start();
+
+// Bootstrap servers will use SSL:// protocol
+String bootstrapServers = kafkaCluster.getBootstrapServers();
+```
+
+##### Configuring a Kafka client with TLS
+
+The cluster provides truststore and keystore bytes that you can use to configure your Kafka clients:
+
+```java
+Path truststorePath = Files.createTempFile("truststore", ".p12");
+Files.write(truststorePath, kafkaCluster.getClientTrustStoreBytes());
+
+Path keystorePath = Files.createTempFile("client-keystore", ".p12");
+Files.write(keystorePath, kafkaCluster.getClientKeyStoreBytes());
+
+String password = kafkaCluster.getClientStorePassword();
+
+// Configure Kafka client properties
+Map<String, Object> props = new HashMap<>();
+props.put("bootstrap.servers", kafkaCluster.getBootstrapServers());
+props.put("security.protocol", "SSL");
+props.put("ssl.truststore.location", truststorePath.toString());
+props.put("ssl.truststore.password", password);
+props.put("ssl.truststore.type", "PKCS12");
+props.put("ssl.keystore.location", keystorePath.toString());
+props.put("ssl.keystore.password", password);
+props.put("ssl.keystore.type", "PKCS12");
+```
+
+> [!NOTE]
+> TLS certificates are auto-generated during cluster startup. 
+> The cluster uses two separate CAs (i.e., one for internal cluster traffic and one for client authentication). 
+> You can check whether TLS is enabled using `kafkaCluster.isTlsEnabled()`.
+
+#### xii) Logging Kafka Container/Cluster Output to SLF4J
 
 If you want to enable logging of the Kafka container's output to SLF4J,
 you can set the environment variable `STRIMZI_TEST_CONTAINER_LOGGING_ENABLED` to true.

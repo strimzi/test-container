@@ -8,11 +8,13 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.NetworkSettings;
 import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.ToxiproxyClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -57,11 +59,12 @@ public class StrimziKafkaContainerMockTest {
         };
 
         String[] listenersConfig = kafkaContainer
+            .withNodeId(0)
             .withKafkaVersion(KAFKA_3_9_0)
             .buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -94,10 +97,10 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -133,10 +136,10 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,BROKER2://0.0.0.0:9090,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,BROKER2://172.18.0.2:9090,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,BROKER2://broker-0:9090,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -169,16 +172,16 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
-        // Verify that listenerNames includes CONTROLLER
-        assertTrue(kafkaContainer.listenerNames.contains("CONTROLLER"));
+        // Verify that listeners includes CONTROLLER
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
     }
 
     @Test
@@ -208,17 +211,17 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
-        // Verify that listenerNames now contains the expected listener names
-        assertTrue(kafkaContainer.listenerNames.contains("PLAINTEXT"));
-        assertTrue(kafkaContainer.listenerNames.contains("BROKER1"));
+        // Verify that listeners now contains the expected listener names
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("PLAINTEXT")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER1")));
     }
 
     @Test
@@ -280,17 +283,17 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "SSL://localhost:9093,BROKER1://172.17.0.2:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "SSL://localhost:9093,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
-        // Verify that listenerNames now contains the expected listener names
-        assertTrue(kafkaContainer.listenerNames.contains("SSL"));
-        assertTrue(kafkaContainer.listenerNames.contains("BROKER1"));
+        // Verify that listeners now contains the expected listener names
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("SSL")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER1")));
     }
 
     @Test
@@ -356,7 +359,7 @@ public class StrimziKafkaContainerMockTest {
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092," +
             "BROKER1://0.0.0.0:9091," +
@@ -364,18 +367,18 @@ public class StrimziKafkaContainerMockTest {
             "BROKER3://0.0.0.0:9089," +
             "CONTROLLER://0.0.0.0:9094";
         String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092," +
-            "BROKER1://172.17.0.2:9091," +
-            "BROKER2://172.18.0.2:9090," +
-            "BROKER3://172.19.0.2:9089," +
+            "BROKER1://broker-0:9091," +
+            "BROKER2://broker-0:9090," +
+            "BROKER3://broker-0:9089," +
             "CONTROLLER://localhost:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
-        // Verify that listenerNames includes all BROKERx
-        assertTrue(kafkaContainer.listenerNames.contains("BROKER1"));
-        assertTrue(kafkaContainer.listenerNames.contains("BROKER2"));
-        assertTrue(kafkaContainer.listenerNames.contains("BROKER3"));
+        // Verify that listeners includes all BROKERx
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER1")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER2")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER3")));
     }
 
     @Test
@@ -399,6 +402,25 @@ public class StrimziKafkaContainerMockTest {
 
         String networkBootstrapServers = kafkaContainer.getNetworkBootstrapServers();
         assertThat(networkBootstrapServers, is("PLAINTEXT://toxiproxy:8667"));
+    }
+
+    @Test
+    void testGetNetworkBootstrapServersCallsInitializeProxy() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+        boolean[] initializeCalled = {false};
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+                initializeCalled[0] = true;
+            }
+        }
+            .withNodeRole(KafkaNodeRole.BROKER)
+            .withNodeId(1)
+            .withProxyContainer(proxyContainer);
+
+        kafkaContainer.getNetworkBootstrapServers();
+        assertThat("initializeProxy() should be called", initializeCalled[0], is(true));
     }
 
     @Test
@@ -448,6 +470,25 @@ public class StrimziKafkaContainerMockTest {
     }
 
     @Test
+    void testGetNetworkBootstrapControllersCallsInitializeProxy() {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+        boolean[] initializeCalled = {false};
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            void initializeProxy() {
+                initializeCalled[0] = true;
+            }
+        }
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withNodeId(1)
+            .withProxyContainer(proxyContainer);
+
+        kafkaContainer.getNetworkBootstrapControllers();
+        assertThat("initializeProxy() should be called", initializeCalled[0], is(true));
+    }
+
+    @Test
     void testGetNetworkBootstrapControllersWithCombinedNodeAndProxy() {
         ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
 
@@ -471,6 +512,66 @@ public class StrimziKafkaContainerMockTest {
     }
 
     @Test
+    void testInitializeProxyUsesCorrectPortCalculation() throws Exception {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+        Mockito.when(proxyContainer.getHost()).thenReturn("localhost");
+        Mockito.when(proxyContainer.getControlPort()).thenReturn(8474);
+
+        int nodeId = 3;
+        Proxy mockProxy = Mockito.mock(Proxy.class);
+        ToxiproxyClient mockClient = Mockito.mock(ToxiproxyClient.class);
+        Mockito.when(mockClient.createProxy(
+            Mockito.anyString(),
+            Mockito.anyString(),
+            Mockito.anyString()
+        )).thenReturn(mockProxy);
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(nodeId)
+            .withProxyContainer(proxyContainer);
+
+        Field clientField = StrimziKafkaContainer.class.getDeclaredField("toxiproxyClient");
+        clientField.setAccessible(true);
+        clientField.set(kafkaContainer, mockClient);
+
+        kafkaContainer.initializeProxy();
+
+        int expectedPort = StrimziKafkaContainer.TOXIPROXY_PORT_BASE + nodeId;
+        Mockito.verify(mockClient).createProxy(
+            "kafka" + nodeId,
+            "0.0.0.0:" + expectedPort,
+            "broker-" + nodeId + ":" + StrimziKafkaContainer.KAFKA_PORT
+        );
+    }
+
+    @Test
+    void testGetProxyReturnsProxyInstance() throws Exception {
+        ToxiproxyContainer proxyContainer = Mockito.mock(ToxiproxyContainer.class);
+        Mockito.when(proxyContainer.getHost()).thenReturn("localhost");
+        Mockito.when(proxyContainer.getControlPort()).thenReturn(8474);
+
+        int nodeId = 2;
+        Proxy mockProxy = Mockito.mock(Proxy.class);
+        ToxiproxyClient mockClient = Mockito.mock(ToxiproxyClient.class);
+        Mockito.when(mockClient.createProxy(
+            Mockito.anyString(),
+            Mockito.anyString(),
+            Mockito.anyString()
+        )).thenReturn(mockProxy);
+
+        StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer()
+            .withNodeId(nodeId)
+            .withProxyContainer(proxyContainer);
+
+        Field clientField = StrimziKafkaContainer.class.getDeclaredField("toxiproxyClient");
+        clientField.setAccessible(true);
+        clientField.set(kafkaContainer, mockClient);
+
+        Proxy result = kafkaContainer.getProxy();
+        assertThat("getProxy() should return the proxy, not null", result, is(mockProxy));
+    }
+
+    @Test
     void testBuildListenersConfigBrokerOnlyNodeNoTrailingComma() {
         InspectContainerResponse containerInfo = Mockito.mock(InspectContainerResponse.class);
         NetworkSettings networkSettings = Mockito.mock(NetworkSettings.class);
@@ -478,7 +579,6 @@ public class StrimziKafkaContainerMockTest {
 
         Map<String, ContainerNetwork> networks = new LinkedHashMap<>();
         ContainerNetwork containerNetwork = Mockito.mock(ContainerNetwork.class);
-        Mockito.when(containerNetwork.getIpAddress()).thenReturn("172.17.0.2");
         networks.put("bridge", containerNetwork);
         Mockito.when(networkSettings.getNetworks()).thenReturn(networks);
 
@@ -488,12 +588,13 @@ public class StrimziKafkaContainerMockTest {
                 return "PLAINTEXT://localhost:9092";
             }
         };
-        kafkaContainer.withNodeRole(KafkaNodeRole.BROKER);
+        kafkaContainer.withNodeId(0)
+            .withNodeRole(KafkaNodeRole.BROKER);
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
