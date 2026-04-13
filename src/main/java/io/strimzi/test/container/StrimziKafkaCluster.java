@@ -493,11 +493,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * @throws IllegalArgumentException if the image name is null or empty
          */
         public StrimziKafkaClusterBuilder withImage(String kafkaImage) {
-            if (kafkaImage != null && !kafkaImage.trim().isEmpty()) {
-                this.kafkaImage = kafkaImage.trim();
-            } else {
-                throw new IllegalArgumentException("Kafka image cannot be null or empty.");
-            }
+            this.kafkaImage = Utils.requireNonBlank(kafkaImage, "Kafka image");
             return this;
         }
 
@@ -548,11 +544,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
          */
         public StrimziKafkaClusterBuilder withLogCollection(final String logFilePath) {
-            if (logFilePath != null && !logFilePath.trim().isEmpty()) {
-                this.logFilePath = logFilePath.trim();
-            } else {
-                throw new IllegalArgumentException("Log file path cannot be null or empty.");
-            }
+            this.logFilePath = Utils.requireNonBlank(logFilePath, "Log file path");
             return this;
         }
 
@@ -649,11 +641,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * @throws IllegalArgumentException if the username is null or empty
          */
         public StrimziKafkaClusterBuilder withSaslUsername(String saslUsername) {
-            if (saslUsername != null && !saslUsername.trim().isEmpty()) {
-                this.saslUsername = saslUsername;
-            } else {
-                throw new IllegalArgumentException("SASL username cannot be null or empty.");
-            }
+            this.saslUsername = Utils.requireNonBlank(saslUsername, "SASL username");
             return this;
         }
 
@@ -665,11 +653,7 @@ public class StrimziKafkaCluster implements KafkaContainer {
          * @throws IllegalArgumentException if the password is null or empty
          */
         public StrimziKafkaClusterBuilder withSaslPassword(String saslPassword) {
-            if (saslPassword != null && !saslPassword.trim().isEmpty()) {
-                this.saslPassword = saslPassword;
-            } else {
-                throw new IllegalArgumentException("SASL password cannot be null or empty.");
-            }
+            this.saslPassword = Utils.requireNonBlank(saslPassword, "SASL password");
             return this;
         }
 
