@@ -100,7 +100,7 @@
         <spotbugs.version>4.9.3</spotbugs.version>
         <log4j.version>2.19.0</log4j.version>
         <docker-java.version>3.7.0</docker-java.version>
-        <kafka.version>4.0.0</kafka.version>
+        <kafka.version>4.2.0</kafka.version>
         <slf4j.version>1.7.36</slf4j.version>
         <fasterxml.jackson-core.version>2.21.1</fasterxml.jackson-core.version>
         <fasterxml.jackson-databind.version>2.19.0</fasterxml.jackson-databind.version>
@@ -113,7 +113,7 @@
         <maven-surefire-failsafe-plugin.version>3.1.2</maven-surefire-failsafe-plugin.version>
         <testcontainers-keycloak.version>4.0.0</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
-        <kafka-oauth-client.version>0.16.2</kafka-oauth-client.version>
+        <kafka-oauth-client.version>0.17.1</kafka-oauth-client.version>
         <mockito.version>5.17.0</mockito.version>
 
         <!-- PLUGIN VERSIONS       -->
