@@ -53,8 +53,8 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
@@ -64,7 +64,7 @@ public class StrimziKafkaContainerMockTest {
             .buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -92,15 +92,15 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
         String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -131,15 +131,15 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
         String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,BROKER2://0.0.0.0:9090,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,BROKER2://broker-0:9090,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,BROKER2://broker-0:9090,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -167,15 +167,15 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
         String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -206,15 +206,15 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
         String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,BROKER1://broker-0:9091,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -242,15 +242,15 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
-        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+        String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "PLAINTEXT://localhost:9092,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -278,15 +278,15 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
         String[] listenersConfig = kafkaContainer.withNodeId(0).buildListenersConfig(containerInfo);
 
         String expectedListeners = "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = "SSL://localhost:9093,BROKER1://broker-0:9091,CONTROLLER://localhost:9094";
+        String expectedAdvertisedListeners = "SSL://localhost:9093,BROKER1://broker-0:9091,CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -354,8 +354,8 @@ public class StrimziKafkaContainerMockTest {
             }
 
             @Override
-            public String getBootstrapControllers() {
-                return "CONTROLLER://localhost:9094";
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-0:9094";
             }
         };
 
@@ -370,7 +370,7 @@ public class StrimziKafkaContainerMockTest {
             "BROKER1://broker-0:9091," +
             "BROKER2://broker-0:9090," +
             "BROKER3://broker-0:9089," +
-            "CONTROLLER://localhost:9094";
+            "CONTROLLER://broker-0:9094";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
@@ -624,6 +624,39 @@ public class StrimziKafkaContainerMockTest {
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
+    }
+
+    @Test
+    void testBuildListenersConfigControllerOnlyNode() {
+        InspectContainerResponse containerInfo = Mockito.mock(InspectContainerResponse.class);
+        NetworkSettings networkSettings = Mockito.mock(NetworkSettings.class);
+        Mockito.when(containerInfo.getNetworkSettings()).thenReturn(networkSettings);
+
+        Map<String, ContainerNetwork> networks = new LinkedHashMap<>();
+        ContainerNetwork containerNetwork = Mockito.mock(ContainerNetwork.class);
+        networks.put("bridge", containerNetwork);
+        Mockito.when(networkSettings.getNetworks()).thenReturn(networks);
+
+        kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-1:9094";
+            }
+        };
+        kafkaContainer.withNodeId(1)
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+
+        String expectedListeners = "CONTROLLER://0.0.0.0:9094";
+        String expectedAdvertisedListeners = ",CONTROLLER://broker-1:9094";
+
+        assertThat(listenersConfig[0], is(expectedListeners));
+        assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
+
+        // Verify only CONTROLLER listener is present (no PLAINTEXT, no BROKER)
+        assertThat(kafkaContainer.listeners.size(), is(1));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
     }
 
     @BeforeEach

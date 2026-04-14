@@ -197,6 +197,61 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         }
     }
 
+    @Test
+    void testDedicatedRolesBrokerReconnectsToControllerAfterRestart() throws ExecutionException, InterruptedException, TimeoutException {
+        try (StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(3)
+            .withDedicatedRoles()
+            .withNumberOfControllers(3)
+            .build()) {
+
+            cluster.start();
+
+            this.systemUnderTest = cluster;
+            verifyFunctionalityOfKafkaCluster();
+
+            // Pick a broker to restart
+            StrimziKafkaContainer brokerToRestart = cluster.getBrokers().iterator().next();
+            int restartedNodeId = brokerToRestart.getNodeId();
+            LOGGER.info("Stopping broker with nodeId={}", restartedNodeId);
+
+            // Stop the broker container (i.e., simulate crash)
+            brokerToRestart.stop();
+
+            LOGGER.info("Restarting broker with nodeId={}", restartedNodeId);
+
+            // Restart the broker (i.e., it must reconnect to controllers using the controllers advertised.listeners
+            // (network alias, not localhost)
+            brokerToRestart.start();
+
+            // Wait for the broker to rejoin the cluster
+            try (Admin adminClient = Admin.create(Map.of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, cluster.getBootstrapServers(),
+                AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "30000",
+                AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "60000"))) {
+
+                Utils.waitFor("All brokers are available after restart",
+                    Duration.ofSeconds(5), Duration.ofMinutes(2),
+                    () -> {
+                        try {
+                            Collection<Node> brokers = adminClient.describeCluster().nodes().get(10, TimeUnit.SECONDS);
+                            LOGGER.info("Available brokers: {}", brokers.size());
+                            return brokers.size() == 3;
+                        } catch (Exception e) {
+                            LOGGER.warn("Failed to describe cluster: {}", e.getMessage());
+                            return false;
+                        }
+                    });
+            }
+
+            // Verify cluster is still functional after broker restart
+            // Use a different topic name because verifyFunctionalityOfKafkaCluster()
+            verifyFunctionalityOfKafkaClusterWithTopic("reconnect-test-topic");
+
+            LOGGER.info("Broker with nodeId={} successfully reconnected to controllers", restartedNodeId);
+        }
+    }
+
     private void setUpKafkaKRaftCluster() {
         systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(NUMBER_OF_REPLICAS)
@@ -222,6 +277,10 @@ public class StrimziKafkaClusterIT extends AbstractIT {
     }
 
     private void verifyFunctionalityOfKafkaCluster() throws ExecutionException, InterruptedException, TimeoutException {
+        verifyFunctionalityOfKafkaClusterWithTopic("example-topic");
+    }
+
+    private void verifyFunctionalityOfKafkaClusterWithTopic(String topicName) throws ExecutionException, InterruptedException, TimeoutException {
         try (final Admin adminClient = Admin.create(Map.of(
             AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, systemUnderTest.getBootstrapServers()));
              KafkaProducer<String, String> producer = new KafkaProducer<>(
@@ -242,7 +301,6 @@ public class StrimziKafkaClusterIT extends AbstractIT {
                  new StringDeserializer()
              )
         ) {
-            final String topicName = "example-topic";
             final String recordKey = "strimzi";
             final String recordValue = "the-best-project-in-the-world";
 

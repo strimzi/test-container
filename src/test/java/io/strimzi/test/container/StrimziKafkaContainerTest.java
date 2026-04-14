@@ -828,7 +828,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
-        assertThat(networkBootstrapControllers, is("broker-1:9094"));
+        assertThat(networkBootstrapControllers, is("CONTROLLER://broker-1:9094"));
     }
 
     @Test
@@ -838,7 +838,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(2);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
-        assertThat(networkBootstrapControllers, is("broker-2:9094"));
+        assertThat(networkBootstrapControllers, is("CONTROLLER://broker-2:9094"));
     }
 
     @Test

@@ -522,7 +522,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Only add controller listener for nodes that act as controllers
         if (this.nodeRole.isController()) {
             advertisedListeners.append(",");
-            advertisedListeners.append(getBootstrapControllers());
+            advertisedListeners.append(getNetworkBootstrapControllers());
             final String controllerListenerName = "CONTROLLER";
             // adding Controller listener for Kraft mode
             kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
@@ -898,7 +898,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
             return String.format("PLAINTEXT://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
-        return NETWORK_ALIAS_PREFIX + nodeId + ":" + INTER_BROKER_LISTENER_PORT;
+        return String.format("PLAINTEXT://%s%d:%d", NETWORK_ALIAS_PREFIX, nodeId, INTER_BROKER_LISTENER_PORT);
     }
 
     /**
@@ -944,7 +944,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
             return String.format("CONTROLLER://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
-        return NETWORK_ALIAS_PREFIX + nodeId + ":" + StrimziKafkaContainer.CONTROLLER_PORT;
+        return String.format("CONTROLLER://%s%d:%d", NETWORK_ALIAS_PREFIX, nodeId, StrimziKafkaContainer.CONTROLLER_PORT);
     }
 
     /**
