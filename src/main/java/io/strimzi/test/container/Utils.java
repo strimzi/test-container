@@ -126,4 +126,20 @@ class Utils {
             throw new UncheckedIOException("Failed to find free port", e);
         }
     }
+
+    /**
+     * Checks that the given string is not null, empty, or only whitespace. 
+     * If it is, an IllegalArgumentException is thrown with a message 
+     * containing the field name.
+     * 
+     * @param value the string to check
+     * @param fieldName the name of the field being checked, used in the exception message
+     * @return the trimmed string if it is valid
+     */
+    static String requireNonBlank(String value, String fieldName) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " cannot be null or empty.");
+        }
+        return value.trim();
+    }
 }

@@ -1080,11 +1080,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance for method chaining.
      */
     public StrimziKafkaContainer withSaslUsername(String saslUsername) {
-        if (saslUsername != null && !saslUsername.trim().isEmpty()) {
-            this.saslUsername = saslUsername;
-        } else {
-            throw new IllegalArgumentException("SASL username cannot be null or empty.");
-        }
+        this.saslUsername = Utils.requireNonBlank(saslUsername, "SASL username");
         return self();
     }
 
@@ -1095,11 +1091,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return StrimziKafkaContainer instance for method chaining.
      */
     public StrimziKafkaContainer withSaslPassword(String saslPassword) {
-        if (saslPassword != null && !saslPassword.trim().isEmpty()) {
-            this.saslPassword = saslPassword;
-        } else {
-            throw new IllegalArgumentException("SASL password cannot be null or empty.");
-        }
+        this.saslPassword = Utils.requireNonBlank(saslPassword, "SASL password");
         return self();
     }
 
@@ -1208,11 +1200,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return the current instance of {@code StrimziKafkaClusterBuilder} for method chaining
      */
     public StrimziKafkaContainer withLogCollection(final String logFilePath) {
-        if (logFilePath != null && !logFilePath.trim().isEmpty()) {
-            this.logFilePath = logFilePath.trim();
-        } else {
-            throw new IllegalArgumentException("Log file path cannot be null or empty.");
-        }
+        this.logFilePath = Utils.requireNonBlank(logFilePath, "Log file path");
         return self();
     }
 
