@@ -547,13 +547,16 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         assertThat("Broker should expose KAFKA_PORT", brokerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(true));
         assertThat("Broker should not expose CONTROLLER_PORT", brokerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
+        assertThat("Broker should not expose CONTROLLER_EXTERNAL_PORT", brokerPorts.contains(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT), is(false));
         assertThat(broker.getNodeRole(), is(KafkaNodeRole.BROKER));
 
         StrimziKafkaContainer controller = systemUnderTest.getControllers().iterator().next();
         List<Integer> controllerPorts = controller.getExposedPorts();
 
-        assertThat("Controller should expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
+        assertThat("Controller should expose CONTROLLER_EXTERNAL_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT), is(true));
+        assertThat("Controller should not expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
         assertThat("Controller should not expose KAFKA_PORT", controllerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(false));
+
         assertThat(controller.getNodeRole(), is(KafkaNodeRole.CONTROLLER));
     }
 
@@ -604,7 +607,8 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         StrimziKafkaContainer controller = systemUnderTest.getControllers().iterator().next();
         List<Integer> controllerPorts = controller.getExposedPorts();
 
-        assertThat("Controller should expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(true));
+        assertThat("Controller should expose CONTROLLER_EXTERNAL_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT), is(true));
+        assertThat("Controller should not expose CONTROLLER_PORT", controllerPorts.contains(StrimziKafkaContainer.CONTROLLER_PORT), is(false));
         assertThat("Controller should not expose KAFKA_PORT", controllerPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(false));
         assertThat("Should expose custom port 8080", controllerPorts.contains(8080), is(true));
         assertThat("Should expose custom port 8081", controllerPorts.contains(8081), is(true));
