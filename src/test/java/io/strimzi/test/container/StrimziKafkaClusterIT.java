@@ -352,7 +352,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat(controllers.length, is(3));
 
         for (String controller : controllers) {
-            assertThat(controller, matchesPattern("broker-[0-9]+:9094"));
+            assertThat(controller, matchesPattern("CONTROLLER://broker-[0-9]+:9094"));
         }
     }
 

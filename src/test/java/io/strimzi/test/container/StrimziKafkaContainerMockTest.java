@@ -642,21 +642,26 @@ public class StrimziKafkaContainerMockTest {
             public String getNetworkBootstrapControllers() {
                 return "CONTROLLER://broker-1:9094";
             }
+            @Override
+            public String getBootstrapControllers() {
+                return "CONTROLLER_EXTERNAL://localhost:39095";
+            }
         };
         kafkaContainer.withNodeId(1)
             .withNodeRole(KafkaNodeRole.CONTROLLER);
 
         String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
 
-        String expectedListeners = "CONTROLLER://0.0.0.0:9094";
-        String expectedAdvertisedListeners = ",CONTROLLER://broker-1:9094";
+        String expectedListeners = "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095";
+        String expectedAdvertisedListeners = "CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095";
 
         assertThat(listenersConfig[0], is(expectedListeners));
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
-        // Verify only CONTROLLER listener is present (no PLAINTEXT, no BROKER)
-        assertThat(kafkaContainer.listeners.size(), is(1));
+        // Verify both CONTROLLER and CONTROLLER_EXTERNAL listeners are present
+        assertThat(kafkaContainer.listeners.size(), is(2));
         assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER_EXTERNAL")));
     }
 
     @BeforeEach

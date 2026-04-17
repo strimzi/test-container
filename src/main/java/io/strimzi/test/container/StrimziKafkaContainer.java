@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
@@ -70,6 +71,11 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * Default Kafka controller port
      */
     public static final int CONTROLLER_PORT = 9094;
+
+    /**
+     * Default Kafka controller external port (for host-accessible controller connections)
+     */
+    public static final int CONTROLLER_EXTERNAL_PORT = 9095;
 
     /**
      * Prefix for network aliases.
@@ -235,8 +241,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Determine default ports based on node role
         List<Integer> portsToExpose = new ArrayList<>();
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
-            // Controller-only nodes expose the controller
-            portsToExpose.add(CONTROLLER_PORT);
+            // Controller-only nodes only need the external controller port exposed to the host.
+            // The internal CONTROLLER port (9094) is accessed via Docker network aliases.
+            portsToExpose.add(CONTROLLER_EXTERNAL_PORT);
         } else if (this.nodeRole == KafkaNodeRole.BROKER) {
             // Broker-only nodes expose the Kafka client port
             portsToExpose.add(KAFKA_PORT);
@@ -380,7 +387,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         if (this.nodeRole.isController()) {
-            this.controllerExposedPort = getMappedPort(CONTROLLER_PORT);
+            if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
+                // Controller-only: external access uses CONTROLLER_EXTERNAL_PORT
+                this.controllerExposedPort = getMappedPort(CONTROLLER_EXTERNAL_PORT);
+            } else {
+                // Combined-mode: external access uses CONTROLLER_PORT (no CONTROLLER_EXTERNAL)
+                this.controllerExposedPort = getMappedPort(CONTROLLER_PORT);
+            }
             LOGGER.info("Mapped controller port: {}", controllerExposedPort);
         }
 
@@ -520,14 +533,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         }
 
         // Only add controller listener for nodes that act as controllers
-        if (this.nodeRole.isController()) {
-            advertisedListeners.append(",");
-            advertisedListeners.append(getNetworkBootstrapControllers());
-            final String controllerListenerName = "CONTROLLER";
-            // adding Controller listener for Kraft mode
-            kafkaListeners.append(controllerListenerName).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
-            this.listeners.add(new ListenerConfig(controllerListenerName, ListenerRole.CONTROLLER));
-        }
+        addControllerListeners(kafkaListeners, advertisedListeners);
 
         LOGGER.info("This is all advertised listeners for Kafka {}", advertisedListeners);
 
@@ -540,6 +546,37 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             listeners,
             advertisedListeners.toString()
         };
+    }
+
+    /**
+     * Adds controller listeners for controller nodes.
+     * Controller-only nodes get both CONTROLLER (internal) and CONTROLLER_EXTERNAL (host-accessible) listeners.
+     * Combined-mode nodes only get the CONTROLLER listener.
+     *
+     * @param kafkaListeners StringBuilder for listeners configuration
+     * @param advertisedListeners StringBuilder for advertised.listeners configuration
+     */
+    private void addControllerListeners(StringBuilder kafkaListeners, StringBuilder advertisedListeners) {
+        if (!this.nodeRole.isController()) {
+            return;
+        }
+
+        // Internal controller listener (Docker network alias) -- all controller nodes
+        if (advertisedListeners.length() > 0) {
+            advertisedListeners.append(",");
+        }
+        advertisedListeners.append(getNetworkBootstrapControllers());
+        kafkaListeners.append("CONTROLLER").append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
+        this.listeners.add(new ListenerConfig("CONTROLLER", ListenerRole.CONTROLLER));
+
+        // External controller listener -- controller-only nodes only
+        // (Kafka forbids controller listeners in advertised.listeners for combined-mode nodes)
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
+            advertisedListeners.append(",");
+            advertisedListeners.append(getBootstrapControllers());
+            kafkaListeners.append(",").append("CONTROLLER_EXTERNAL").append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT);
+            this.listeners.add(new ListenerConfig("CONTROLLER_EXTERNAL", ListenerRole.CONTROLLER));
+        }
     }
 
     /**
@@ -603,14 +640,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     }
 
     /* test */ void extractControllerListener(Properties properties, String advertisedListeners) {
-        if (advertisedListeners != null && advertisedListeners.contains("CONTROLLER://")) {
-            String[] parts = advertisedListeners.split(",");
-            for (String part : parts) {
-                if (part.trim().startsWith("CONTROLLER://")) {
-                    properties.setProperty("advertised.listeners", part.trim());
-                    break;
-                }
-            }
+        if (advertisedListeners == null || advertisedListeners.isEmpty()) {
+            return;
+        }
+        String[] parts = advertisedListeners.split(",");
+        String controllerListeners = Arrays.stream(parts)
+            .map(String::trim)
+            .filter(p -> p.startsWith("CONTROLLER://") || p.startsWith("CONTROLLER_EXTERNAL://"))
+            .collect(Collectors.joining(","));
+        if (!controllerListeners.isEmpty()) {
+            properties.setProperty("advertised.listeners", controllerListeners);
         }
     }
 
@@ -634,8 +673,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("process.roles", this.nodeRole.getProcessRoles());
         properties.setProperty("node.id", String.valueOf(this.nodeId));
 
-        // Required on ALL nodes (broker-only too)
-        properties.setProperty("controller.listener.names", "CONTROLLER");
+        // Controller-only nodes have dual controller listeners (CONTROLLER + CONTROLLER_EXTERNAL)
+        // Combined and broker-only nodes use only CONTROLLER
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
+            properties.setProperty("controller.listener.names", "CONTROLLER,CONTROLLER_EXTERNAL");
+        } else {
+            properties.setProperty("controller.listener.names", "CONTROLLER");
+        }
 
         // For standalone containers (not part of a cluster), set default quorum voters
         if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters")) {
@@ -810,11 +854,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      * @return securityProtocolMapWithControllerMapping string including CONTROLLER mapping
      */
     private String ensureControllerMapping(String securityProtocolMap, String controllerProtocol) {
-        String securityProtocolMapWithControllerMapping = (securityProtocolMap == null) ? "" : securityProtocolMap.trim();
-        if (securityProtocolMapWithControllerMapping.contains("CONTROLLER:")) {
-            return securityProtocolMapWithControllerMapping;
+        String result = (securityProtocolMap == null) ? "" : securityProtocolMap.trim();
+        if (!result.contains("CONTROLLER:")) {
+            result = result.isEmpty() ? "CONTROLLER:" + controllerProtocol : result + ",CONTROLLER:" + controllerProtocol;
         }
-        return securityProtocolMapWithControllerMapping.isEmpty() ? "CONTROLLER:" + controllerProtocol : securityProtocolMapWithControllerMapping + ",CONTROLLER:" + controllerProtocol;
+        // Controller-only nodes also need CONTROLLER_EXTERNAL mapping
+        if (this.nodeRole == KafkaNodeRole.CONTROLLER && !result.contains("CONTROLLER_EXTERNAL:")) {
+            result = result + ",CONTROLLER_EXTERNAL:" + controllerProtocol;
+        }
+        return result;
     }
 
     /**
@@ -917,14 +965,18 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             throw new UnsupportedOperationException("Broker-only nodes do not provide controller endpoints. Use controller or combined-role nodes for controller connections.");
         }
 
+        // Controller-only nodes use CONTROLLER_EXTERNAL listener name (external access)
+        // Combined-mode nodes keep CONTROLLER listener name
+        final String listenerName = (this.nodeRole == KafkaNodeRole.CONTROLLER) ? "CONTROLLER_EXTERNAL" : "CONTROLLER";
+
         if (proxyContainer != null) {
             initializeProxy();
             // Return the host-accessible proxy address
             final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
             final int mappedPort = proxyContainer.getMappedPort(listenPort);
-            return String.format("CONTROLLER://%s:%d", proxyContainer.getHost(), mappedPort);
+            return String.format("%s://%s:%d", listenerName, proxyContainer.getHost(), mappedPort);
         }
-        return String.format("CONTROLLER://%s:%d", getHost(), this.controllerExposedPort);
+        return String.format("%s://%s:%d", listenerName, getHost(), this.controllerExposedPort);
     }
 
     /**

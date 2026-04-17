@@ -24,6 +24,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -727,13 +728,23 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
-    void testExtractControllerListenerMultipleControllersPicksFirst() {
+    void testExtractControllerListenerExtractsBothControllerListeners() {
+        Properties props = new Properties();
+        String adv = "CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095";
+
+        kafkaContainer.extractControllerListener(props, adv);
+
+        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095"));
+    }
+
+    @Test
+    void testExtractControllerListenerMultipleControllersPicksBoth() {
         Properties props = new Properties();
         String adv = "CONTROLLER://broker-1:9094,CONTROLLER://broker-2:9094";
 
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094,CONTROLLER://broker-2:9094"));
     }
 
     @Test
@@ -765,6 +776,23 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
+    void testSetKRaftPropertiesControllerOnlyNodeHasDualControllerListenerNames() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withNodeId(0);
+
+        container.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        container.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER_EXTERNAL", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+
+        Properties properties = container.buildDefaultServerProperties(
+            "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095",
+            "CONTROLLER://broker-0:9094,CONTROLLER_EXTERNAL://localhost:39095"
+        );
+
+        assertThat(properties.getProperty("controller.listener.names"), is("CONTROLLER,CONTROLLER_EXTERNAL"));
+    }
+
+    @Test
     void testSetKRaftPropertiesWithExistingControllerQuorumVoters() {
         Map<String, String> kafkaConfig = Map.of("controller.quorum.voters", "1@custom:9094");
         StrimziKafkaContainer container = new StrimziKafkaContainer()
@@ -773,16 +801,16 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withNodeId(1);
         container.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
-        
+
         Properties defaultProps = container.buildDefaultServerProperties(
-            "PLAINTEXT://0.0.0.0:9092", 
+            "PLAINTEXT://0.0.0.0:9092",
             "PLAINTEXT://localhost:9092"
         );
-        
+
         // The buildDefaultServerProperties should skip setting default quorum voters when already configured
         // This tests the conditional: if (this.kafkaConfigurationMap == null || !this.kafkaConfigurationMap.containsKey("controller.quorum.voters"))
         assertThat(defaultProps.getProperty("controller.quorum.voters"), nullValue());
-        
+
         // Test that the override happens during overrideProperties
         String finalProperties = container.overrideProperties(defaultProps, kafkaConfig);
         assertThat(finalProperties, containsString("controller.quorum.voters=1@custom\\:9094"));
@@ -795,7 +823,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1);
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
-        assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
+        assertThat(bootstrapControllers, startsWith("CONTROLLER_EXTERNAL://"));
     }
 
     @Test
@@ -896,6 +924,26 @@ class StrimziKafkaContainerTest {
     }
 
     @Test
+    void testEnsureControllerMappingIncludesExternalForControllerOnlyNode() {
+        StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER)
+            .withNodeId(1);
+
+        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER_EXTERNAL", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+
+        Properties properties = controllerContainer.buildDefaultServerProperties(
+            "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095",
+            "CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095"
+        );
+
+        String listenerSecurityProtocolMap = properties.getProperty("listener.security.protocol.map");
+
+        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER:PLAINTEXT"));
+        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER_EXTERNAL:PLAINTEXT"));
+    }
+
+    @Test
     void testEnsureControllerMappingIsPresent() {
         StrimziKafkaContainer controllerContainer = new StrimziKafkaContainer()
             .withNodeRole(KafkaNodeRole.CONTROLLER)
@@ -947,7 +995,9 @@ class StrimziKafkaContainerTest {
 
         List<Integer> exposedPorts = container.determineExposedPorts();
 
-        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.CONTROLLER_PORT));
+        // Controller-only nodes only expose the external port (9095), not the internal port (9094)
+        assertThat(exposedPorts, not(hasItem(StrimziKafkaContainer.CONTROLLER_PORT)));
+        assertThat(exposedPorts, hasItem(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT));
         assertThat(exposedPorts.contains(StrimziKafkaContainer.KAFKA_PORT), is(false));
     }
 
@@ -986,6 +1036,18 @@ class StrimziKafkaContainerTest {
 
         assertThat(exposedPorts, hasItem(StrimziKafkaContainer.KAFKA_PORT));
         assertThat(exposedPorts, hasItem(8080));
+    }
+
+    @Test
+    void testDetermineExposedPortsControllerOnlyNodeIncludesExternalPort() {
+        StrimziKafkaContainer container = new StrimziKafkaContainer()
+            .withNodeRole(KafkaNodeRole.CONTROLLER);
+
+        List<Integer> ports = container.determineExposedPorts();
+
+        assertThat(ports, not(hasItem(StrimziKafkaContainer.CONTROLLER_PORT)));
+        assertThat(ports, hasItem(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT));
+        assertThat(ports, not(hasItem(StrimziKafkaContainer.KAFKA_PORT)));
     }
 
     @Test
