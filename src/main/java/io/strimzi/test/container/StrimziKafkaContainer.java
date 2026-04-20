@@ -857,13 +857,17 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
      */
     private String ensureControllerMapping(String securityProtocolMap, String controllerProtocol) {
         String result = (securityProtocolMap == null) ? "" : securityProtocolMap.trim();
-        if (!result.contains("CONTROLLER:")) {
-            result = result.isEmpty() ? "CONTROLLER:" + controllerProtocol : result + ",CONTROLLER:" + controllerProtocol;
+
+        final String[] requiredMappings = (this.nodeRole == KafkaNodeRole.CONTROLLER)
+            ? new String[]{"CONTROLLER:", "CONTROLLER_EXTERNAL:"}
+            : new String[]{"CONTROLLER:"};
+
+        for (final String prefix : requiredMappings) {
+            if (!result.contains(prefix)) {
+                result = result.isEmpty() ? prefix + controllerProtocol : result + "," + prefix + controllerProtocol;
+            }
         }
-        // Controller-only nodes also need CONTROLLER_EXTERNAL mapping
-        if (this.nodeRole == KafkaNodeRole.CONTROLLER && !result.contains("CONTROLLER_EXTERNAL:")) {
-            result = result + ",CONTROLLER_EXTERNAL:" + controllerProtocol;
-        }
+
         return result;
     }
 
