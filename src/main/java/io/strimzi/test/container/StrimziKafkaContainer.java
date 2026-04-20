@@ -124,8 +124,10 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         CLIENT,
         /** Inter-broker communication listener */
         INTER_BROKER,
-        /** Controller communication listener */
-        CONTROLLER
+        /** Controller communication listener (internal, Docker network) */
+        CONTROLLER,
+        /** Controller communication listener (external, host-accessible) */
+        CONTROLLER_EXTERNAL
     }
 
     /**
@@ -575,7 +577,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             advertisedListeners.append(",");
             advertisedListeners.append(getBootstrapControllers());
             kafkaListeners.append(",").append("CONTROLLER_EXTERNAL").append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT);
-            this.listeners.add(new ListenerConfig("CONTROLLER_EXTERNAL", ListenerRole.CONTROLLER));
+            this.listeners.add(new ListenerConfig("CONTROLLER_EXTERNAL", ListenerRole.CONTROLLER_EXTERNAL));
         }
     }
 
