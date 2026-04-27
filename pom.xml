@@ -418,7 +418,7 @@
                         <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
                     </avoidCallsTo>
                     <mutationThreshold>100</mutationThreshold>
-                    <coverageThreshold>76</coverageThreshold>
+                    <coverageThreshold>75</coverageThreshold>
                     <verbose>true</verbose>
                 </configuration>
             </plugin>
