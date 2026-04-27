@@ -22,6 +22,8 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -662,6 +664,43 @@ public class StrimziKafkaContainerMockTest {
         assertThat(kafkaContainer.listeners.size(), is(2));
         assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
         assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER_EXTERNAL")));
+    }
+
+    @Test
+    void testBuildListenersConfigCombinedNodeDoesNotHaveControllerExternal() {
+        InspectContainerResponse containerInfo = Mockito.mock(InspectContainerResponse.class);
+        NetworkSettings networkSettings = Mockito.mock(NetworkSettings.class);
+        Mockito.when(containerInfo.getNetworkSettings()).thenReturn(networkSettings);
+
+        Map<String, ContainerNetwork> networks = new LinkedHashMap<>();
+        ContainerNetwork containerNetwork = Mockito.mock(ContainerNetwork.class);
+        networks.put("bridge", containerNetwork);
+        Mockito.when(networkSettings.getNetworks()).thenReturn(networks);
+
+        kafkaContainer = new StrimziKafkaContainer() {
+            @Override
+            public String getBootstrapServers() {
+                return "PLAINTEXT://localhost:9092";
+            }
+            @Override
+            public String getNetworkBootstrapControllers() {
+                return "CONTROLLER://broker-1:9094";
+            }
+        };
+        kafkaContainer.withNodeId(1)
+            .withNodeRole(KafkaNodeRole.COMBINED);
+
+        String[] listenersConfig = kafkaContainer.buildListenersConfig(containerInfo);
+
+        // Combined nodes should have CONTROLLER but NOT CONTROLLER_EXTERNAL because
+        // Kafka forbids controller listeners in advertised.listeners when process.roles contains broker
+        assertThat(listenersConfig[0], containsString("CONTROLLER://"));
+        assertThat(listenersConfig[0], not(containsString("CONTROLLER_EXTERNAL://")));
+        assertThat(listenersConfig[1], not(containsString("CONTROLLER_EXTERNAL://")));
+
+        // Verify listeners list contains CONTROLLER only, no CONTROLLER_EXTERNAL
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
+        assertFalse(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER_EXTERNAL")));
     }
 
     @BeforeEach
