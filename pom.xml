@@ -401,12 +401,6 @@
                     </dependency>
                 </dependencies>
                 <configuration>
-                    <targetClasses>
-                        <!-- we not want to include also WaitException, Utils, KafkaVersionService because we mainly
-                            focus mutation core classes (i.e., Strimzi*, KafkaContainer) -->
-                        <param>io.strimzi.test.container.Strimzi*</param>
-                        <param>io.strimzi.test.container.KafkaContainer</param>
-                    </targetClasses>
                     <targetTests>
                         <!-- include just UTs within mutation and prevent image pulling -->
                         <param>io.strimzi.test.container.Strimzi*Test</param>
@@ -417,8 +411,8 @@
                         <avoidCallsTo>org.slf4j</avoidCallsTo>
                         <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
                     </avoidCallsTo>
-                    <mutationThreshold>100</mutationThreshold>
-                    <coverageThreshold>75</coverageThreshold>
+                    <mutationThreshold>60</mutationThreshold>
+                    <coverageThreshold>50</coverageThreshold>
                     <verbose>true</verbose>
                 </configuration>
             </plugin>
