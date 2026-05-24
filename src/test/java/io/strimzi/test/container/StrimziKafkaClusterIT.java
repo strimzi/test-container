@@ -1142,6 +1142,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         // to connect to the internal listener (which only trusts the cluster CA)
         String commandConfig = String.join("\\n",
             "security.protocol=SSL",
+            "ssl.enabled.protocols=TLSv1.3",
             "ssl.keystore.location=/tmp/client.keystore.p12",
             "ssl.keystore.password=" + password,
             "ssl.keystore.type=PKCS12",
@@ -1161,16 +1162,75 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         String output = result.getStdout() + result.getStderr();
 
-        // The internal listener requires mTLS and its truststore only contains
-        // the cluster CA. The client cert is signed by the clients CA, so the
-        // SSL handshake should fail with a bad_certificate alert.
+        // The internal listener only trusts the cluster CA. The client cert is signed by the
+        // clients CA, so the handshake fails. Under TLS 1.3, the client checks the server's
+        // CertificateRequest CA list, finds no match, and sends an empty Certificate message.
+        // The server responds with a certificate_required alert (RFC 8446 §6.2).
         assertThat("Client cert signed by clients CA should be rejected by "
                 + "internal listener that only trusts cluster CA",
             result.getExitCode(), is(not(0)));
         assertThat("Should fail due to SSL authentication",
             output, CoreMatchers.containsString("SslAuthenticationException"));
-        assertThat("Should receive bad_certificate alert from broker",
-            output, CoreMatchers.containsString("bad_certificate"));
+        assertThat("Should receive certificate_required alert from broker (RFC 8446 §6.2, TLS 1.3)",
+            output, CoreMatchers.containsString("certificate_required"));
+    }
+
+    @Test
+    void testClientCertRejectedByInternalListenerWithTls12() throws Exception {
+        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
+            .withTls()
+            .build();
+
+        systemUnderTest.start();
+
+        StrimziKafkaContainer broker = systemUnderTest.getNodes().iterator().next();
+
+        // Copy client keystore and truststore into the container
+        broker.copyFileToContainer(
+            Transferable.of(systemUnderTest.getClientKeyStoreBytes()),
+            "/tmp/client.keystore.p12");
+        broker.copyFileToContainer(
+            Transferable.of(systemUnderTest.getClientTrustStoreBytes()),
+            "/tmp/client.truststore.p12");
+
+        String password = systemUnderTest.getClientStorePassword();
+
+        // Force TLS 1.2: the client checks the server's CertificateRequest CA list, finds no
+        // match, and sends an empty Certificate message.
+        String commandConfig = String.join("\\n",
+            "security.protocol=SSL",
+            "ssl.enabled.protocols=TLSv1.2",
+            "ssl.keystore.location=/tmp/client.keystore.p12",
+            "ssl.keystore.password=" + password,
+            "ssl.keystore.type=PKCS12",
+            "ssl.key.password=" + password,
+            "ssl.truststore.location=/tmp/client.truststore.p12",
+            "ssl.truststore.password=" + password,
+            "ssl.truststore.type=PKCS12");
+
+        Container.ExecResult result = broker.execInContainer(
+            "bash", "-c",
+            String.format(
+                "echo -e '%s' > /tmp/wrong-ca-client-tls12.properties && "
+                    + "bin/kafka-broker-api-versions.sh "
+                    + "--bootstrap-server localhost:9091 "
+                    + "--command-config /tmp/wrong-ca-client-tls12.properties 2>&1",
+                commandConfig));
+
+        String output = result.getStdout() + result.getStderr();
+
+        // The internal listener only trusts the cluster CA. The client cert is signed by the
+        // clients CA, so the handshake fails. Under TLS 1.2, the client checks the server's
+        // CertificateRequest CA list, finds no match, and sends an empty Certificate message.
+        // The server responds with a handshake_failure alert (RFC 5246 §7.2.2).
+        assertThat("Client cert signed by clients CA should be rejected by "
+                + "internal listener that only trusts cluster CA",
+            result.getExitCode(), is(not(0)));
+        assertThat("Should fail due to SSL authentication",
+            output, CoreMatchers.containsString("SslAuthenticationException"));
+        assertThat("Should receive handshake_failure alert from broker (RFC 5246 §7.2.2, TLS 1.2)",
+            output, CoreMatchers.containsString("handshake_failure"));
     }
 
     private void configureTlsForClient(Map<String, Object> config, Path truststorePath, Path clientKeystorePath, String password) {
