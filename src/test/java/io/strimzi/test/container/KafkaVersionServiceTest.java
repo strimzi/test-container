@@ -113,6 +113,14 @@ public class KafkaVersionServiceTest {
     }
 
     @Test
+    void testGetLatestPatchVersionsReturnsNonEmptyList() {
+        List<String> versions = KafkaVersionService.getInstance().getLatestPatchVersions();
+
+        assertThat(versions, CoreMatchers.notNullValue());
+        assertThat(versions.isEmpty(), CoreMatchers.is(false));
+    }
+
+    @Test
     void testGetLatestPatchVersionsHasOneVersionPerMinor() {
         List<KafkaVersionService.KafkaVersion> input = List.of(
             new KafkaVersionService.KafkaVersion("3.7.0", "img1"),
