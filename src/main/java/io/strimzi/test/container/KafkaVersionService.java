@@ -201,6 +201,32 @@ class KafkaVersionService {
     }
 
     /**
+     * Get list of the latest patch release for each minor version.
+     * For example, if supported versions are [3.7.0, 3.7.1, 4.0.0, 4.0.1, 4.1.0],
+     * this returns [3.7.1, 4.0.1, 4.1.0].
+     *
+     * @return list of version strings representing the latest patch per minor, sorted from oldest to newest
+     */
+    public List<String> getLatestPatchVersions() {
+        return getLatestPatchVersions(this.logicalKafkaVersionEntities);
+    }
+
+    static List<String> getLatestPatchVersions(List<KafkaVersion> versions) {
+        return versions.stream()
+            .collect(Collectors.toMap(
+                kv -> {
+                    String[] parts = kv.getVersion().split("\\.");
+                    return parts[0] + "." + parts[1];
+                },
+                KafkaVersion::getVersion,
+                (existing, candidate) -> KafkaVersion.compareVersions(existing, candidate) >= 0 ? existing : candidate
+            ))
+            .values().stream()
+            .sorted(KafkaVersion::compareVersions)
+            .collect(Collectors.toList());
+    }
+
+    /**
      * Get the latest release where the result is intentionally not deterministic.
      * It's the released test-container-images image with the highest Kafka version number.
      * The result will change when a new version of Kafka is released with a higher Kafka version number,
