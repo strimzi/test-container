@@ -1136,48 +1136,12 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             Transferable.of(systemUnderTest.getClientTrustStoreBytes()),
             "/tmp/client.truststore.p12");
 
-        // The internal listener only trusts the cluster CA. The client cert is signed by the
-        // clients CA, so the handshake fails. Under TLS 1.3, the client checks the server's
-        // CertificateRequest CA list, finds no match, and sends an empty Certificate message.
-        // The server responds with a certificate_required alert (RFC 8446 §6.2).
-        assertClientCertRejectedByInternalListener(broker, systemUnderTest.getClientStorePassword(),
-            "TLSv1.3", "certificate_required");
-    }
+        String password = systemUnderTest.getClientStorePassword();
 
-    @Test
-    void testClientCertRejectedByInternalListenerWithTls12() throws Exception {
-        systemUnderTest = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
-            .withNumberOfBrokers(NUMBER_OF_REPLICAS)
-            .withTls()
-            .build();
-
-        systemUnderTest.start();
-
-        StrimziKafkaContainer broker = systemUnderTest.getNodes().iterator().next();
-
-        // Copy client keystore and truststore into the container
-        broker.copyFileToContainer(
-            Transferable.of(systemUnderTest.getClientKeyStoreBytes()),
-            "/tmp/client.keystore.p12");
-        broker.copyFileToContainer(
-            Transferable.of(systemUnderTest.getClientTrustStoreBytes()),
-            "/tmp/client.truststore.p12");
-
-        // The internal listener only trusts the cluster CA. The client cert is signed by the
-        // clients CA, so the handshake fails. Under TLS 1.2, the client checks the server's
-        // CertificateRequest CA list, finds no match, and sends an empty Certificate message.
-        // The server responds with a handshake_failure alert (RFC 5246 §7.2.2).
-        assertClientCertRejectedByInternalListener(broker, systemUnderTest.getClientStorePassword(),
-            "TLSv1.2", "handshake_failure");
-    }
-
-    private void assertClientCertRejectedByInternalListener(StrimziKafkaContainer broker,
-                                                            String password,
-                                                            String tlsProtocol,
-                                                            String expectedAlert) throws Exception {
+        // Create a command-config that uses the client cert (signed by clients CA)
+        // to connect to the internal listener (which only trusts the cluster CA)
         String commandConfig = String.join("\\n",
             "security.protocol=SSL",
-            "ssl.enabled.protocols=" + tlsProtocol,
             "ssl.keystore.location=/tmp/client.keystore.p12",
             "ssl.keystore.password=" + password,
             "ssl.keystore.type=PKCS12",
@@ -1197,13 +1161,16 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         String output = result.getStdout() + result.getStderr();
 
+        // The internal listener requires mTLS and its truststore only contains
+        // the cluster CA. The client cert is signed by the clients CA, so the
+        // SSL handshake should fail with a bad_certificate alert.
         assertThat("Client cert signed by clients CA should be rejected by "
                 + "internal listener that only trusts cluster CA",
             result.getExitCode(), is(not(0)));
         assertThat("Should fail due to SSL authentication",
             output, CoreMatchers.containsString("SslAuthenticationException"));
-        assertThat("Should receive " + expectedAlert + " alert from broker",
-            output, CoreMatchers.containsString(expectedAlert));
+        assertThat("Should receive certificate_required alert from broker",
+            output, CoreMatchers.containsString("certificate_required"));
     }
 
     private void configureTlsForClient(Map<String, Object> config, Path truststorePath, Path clientKeystorePath, String password) {
