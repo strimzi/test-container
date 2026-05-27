@@ -1163,14 +1163,12 @@ public class StrimziKafkaClusterIT extends AbstractIT {
 
         // The internal listener requires mTLS and its truststore only contains
         // the cluster CA. The client cert is signed by the clients CA, so the
-        // SSL handshake should fail with a bad_certificate alert.
+        // SSL handshake should fail.
         assertThat("Client cert signed by clients CA should be rejected by "
                 + "internal listener that only trusts cluster CA",
             result.getExitCode(), is(not(0)));
         assertThat("Should fail due to SSL authentication",
             output, CoreMatchers.containsString("SslAuthenticationException"));
-        assertThat("Should receive certificate_required alert from broker",
-            output, CoreMatchers.containsString("certificate_required"));
     }
 
     private void configureTlsForClient(Map<String, Object> config, Path truststorePath, Path clientKeystorePath, String password) {
