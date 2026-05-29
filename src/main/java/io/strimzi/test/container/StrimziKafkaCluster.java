@@ -1000,6 +1000,18 @@ public class StrimziKafkaCluster implements KafkaContainer {
     }
 
     /**
+     * Get list of the latest patch release for each minor version.
+     * For example, if supported versions are [3.7.0, 3.7.1, 4.0.0, 4.0.1, 4.1.0],
+     * this returns [3.7.1, 4.0.1, 4.1.0].
+     * Useful as a {@code @MethodSource} to run integration tests only against representative versions.
+     *
+     * @return list of version strings representing the latest patch per minor, sorted from oldest to newest
+     */
+    public static List<String> getLatestPatchVersions() {
+        return KafkaVersionService.getInstance().getLatestPatchVersions();
+    }
+
+    /**
      * Retrieves the Proxy instance for a specific node by its node ID.
      * Works for both brokers and controllers.
      *

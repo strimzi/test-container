@@ -111,4 +111,27 @@ public class KafkaVersionServiceTest {
         assertThat("Supported versions should contain the latest release",
             versions.contains(latestVersion), CoreMatchers.is(true));
     }
+
+    @Test
+    void testGetLatestPatchVersionsReturnsNonEmptyList() {
+        List<String> versions = KafkaVersionService.getInstance().getLatestPatchVersions();
+
+        assertThat(versions, CoreMatchers.notNullValue());
+        assertThat(versions.isEmpty(), CoreMatchers.is(false));
+    }
+
+    @Test
+    void testGetLatestPatchVersionsHasOneVersionPerMinor() {
+        List<KafkaVersionService.KafkaVersion> input = List.of(
+            new KafkaVersionService.KafkaVersion("3.7.0", "img1"),
+            new KafkaVersionService.KafkaVersion("3.7.1", "img2"),
+            new KafkaVersionService.KafkaVersion("3.8.0", "img3"),
+            new KafkaVersionService.KafkaVersion("3.8.2", "img4"),
+            new KafkaVersionService.KafkaVersion("3.8.1", "img5")
+        );
+
+        List<String> result = KafkaVersionService.getLatestPatchVersions(input);
+
+        assertThat(result, CoreMatchers.is(List.of("3.7.1", "3.8.2")));
+    }
 }
