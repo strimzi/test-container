@@ -262,8 +262,8 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testConfigureListenerSecurityProtocolMapWithInterBrokerProtocol() {
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SASL_SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
+        kafkaContainer.listeners.add(new Listener("SASL_SSL", Listener.Role.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
         // Both client and inter-broker can use SASL
         String result = kafkaContainer.configureListenerSecurityProtocolMap("SASL_SSL");
 
@@ -274,7 +274,7 @@ class StrimziKafkaContainerTest {
     void testConfigureOAuthOverPlain() {
         Properties properties = new Properties();
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
         kafkaContainer.withSaslUsername("test-user");
         kafkaContainer.withSaslPassword("test-password");
 
@@ -302,7 +302,7 @@ class StrimziKafkaContainerTest {
     void testConfigureOAuthBearer() {
         Properties properties = new Properties();
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
         kafkaContainer.withOAuthConfig("test-realm", "test-client-id", "test-client-secret", "http://oauth-server", "preferred_username");
 
         kafkaContainer.configureOAuthBearer(properties);
@@ -326,7 +326,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithKRaft() {
         String listeners = "PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "PLAINTEXT://localhost:9092";
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -364,7 +364,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithAuthenticationTypeButOAuthNotEnabled() {
         String listeners = "PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "PLAINTEXT://localhost:9092";
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -384,7 +384,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithOAutPlain() {
         String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SASL_PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener("SASL_PLAINTEXT", Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -437,7 +437,7 @@ class StrimziKafkaContainerTest {
     void testBuildDefaultServerPropertiesWithOAuthBearer() {
         String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
         String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SASL_PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener("SASL_PLAINTEXT", Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -781,8 +781,8 @@ class StrimziKafkaContainerTest {
             .withNodeRole(KafkaNodeRole.CONTROLLER)
             .withNodeId(0);
 
-        container.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
-        container.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER_EXTERNAL", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        container.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
+        container.listeners.add(new Listener(Listener.CONTROLLER_EXTERNAL, Listener.Role.CONTROLLER));
 
         Properties properties = container.buildDefaultServerProperties(
             "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095",
@@ -800,7 +800,7 @@ class StrimziKafkaContainerTest {
             .withNodeRole(KafkaNodeRole.COMBINED)
             .withNodeId(1)
             .withNodeId(1);
-        container.listeners.add(new StrimziKafkaContainer.ListenerConfig("PLAINTEXT", StrimziKafkaContainer.ListenerRole.CLIENT));
+        container.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
 
         Properties defaultProps = container.buildDefaultServerProperties(
             "PLAINTEXT://0.0.0.0:9092",
@@ -929,8 +929,8 @@ class StrimziKafkaContainerTest {
             .withNodeRole(KafkaNodeRole.CONTROLLER)
             .withNodeId(1);
 
-        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
-        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER_EXTERNAL", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        controllerContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
+        controllerContainer.listeners.add(new Listener(Listener.CONTROLLER_EXTERNAL, Listener.Role.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
             "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095",
@@ -950,7 +950,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withNodeId(1);
 
-        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        controllerContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
             "CONTROLLER://0.0.0.0:9094",
@@ -973,7 +973,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withNodeId(1);
 
-        controllerContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        controllerContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
             "CONTROLLER://0.0.0.0:9094",
@@ -1091,7 +1091,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .enableTls(CertAssembly.autoGenerated());
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
+        kafkaContainer.listeners.add(new Listener("SSL", Listener.Role.CLIENT));
 
         String result = kafkaContainer.configureListenerSecurityProtocolMap("SSL");
         assertThat(result, containsString("SSL:SSL"));
@@ -1103,8 +1103,8 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .enableTls(CertAssembly.autoGenerated());
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
+        kafkaContainer.listeners.add(new Listener("SSL", Listener.Role.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
 
         Properties properties = kafkaContainer.buildDefaultServerProperties(
             "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091",
@@ -1151,9 +1151,9 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .enableTls(certAssembly);
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        kafkaContainer.listeners.add(new Listener("SSL", Listener.Role.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
+        kafkaContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         Properties properties = kafkaContainer.buildDefaultServerProperties(
             "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094",
@@ -1201,8 +1201,8 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .enableTls(certAssembly);
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
+        kafkaContainer.listeners.add(new Listener("SSL", Listener.Role.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
 
         int listenerCountBefore = kafkaContainer.listeners.size();
 
@@ -1214,7 +1214,7 @@ class StrimziKafkaContainerTest {
         assertThat(kafkaContainer.listeners.size(), is(listenerCountBefore + 1));
 
         boolean hasController = kafkaContainer.listeners.stream()
-            .anyMatch(l -> l.role() == StrimziKafkaContainer.ListenerRole.CONTROLLER);
+            .anyMatch(l -> l.role() == Listener.Role.CONTROLLER);
         assertThat("CONTROLLER listener should be added when missing", hasController, is(true));
     }
 
@@ -1226,9 +1226,9 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .enableTls(certAssembly);
 
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("SSL", StrimziKafkaContainer.ListenerRole.CLIENT));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("BROKER1", StrimziKafkaContainer.ListenerRole.INTER_BROKER));
-        kafkaContainer.listeners.add(new StrimziKafkaContainer.ListenerConfig("CONTROLLER", StrimziKafkaContainer.ListenerRole.CONTROLLER));
+        kafkaContainer.listeners.add(new Listener("SSL", Listener.Role.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
+        kafkaContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         int listenerCountBefore = kafkaContainer.listeners.size();
 
@@ -1241,7 +1241,7 @@ class StrimziKafkaContainerTest {
             kafkaContainer.listeners.size(), is(listenerCountBefore));
 
         long controllerCount = kafkaContainer.listeners.stream()
-            .filter(l -> l.role() == StrimziKafkaContainer.ListenerRole.CONTROLLER)
+            .filter(l -> l.role() == Listener.Role.CONTROLLER)
             .count();
         assertThat("There should be exactly one CONTROLLER listener", controllerCount, is(1L));
     }
