@@ -183,7 +183,7 @@ public class StrimziKafkaContainerMockTest {
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
         // Verify that listeners includes CONTROLLER
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.CONTROLLER)));
     }
 
     @Test
@@ -222,8 +222,8 @@ public class StrimziKafkaContainerMockTest {
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
         // Verify that listeners now contains the expected listener names
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("PLAINTEXT")));
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER1")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.PLAINTEXT)));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.INTER_BROKER_PREFIX + "1")));
     }
 
     @Test
@@ -294,8 +294,8 @@ public class StrimziKafkaContainerMockTest {
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
         // Verify that listeners now contains the expected listener names
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("SSL")));
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER1")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.SSL)));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.INTER_BROKER_PREFIX + "1")));
     }
 
     @Test
@@ -378,9 +378,9 @@ public class StrimziKafkaContainerMockTest {
         assertThat(listenersConfig[1], is(expectedAdvertisedListeners));
 
         // Verify that listeners includes all BROKERx
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER1")));
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER2")));
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("BROKER3")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.INTER_BROKER_PREFIX + "1")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.INTER_BROKER_PREFIX + "2")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.INTER_BROKER_PREFIX + "3")));
     }
 
     @Test
@@ -662,8 +662,8 @@ public class StrimziKafkaContainerMockTest {
 
         // Verify both CONTROLLER and CONTROLLER_EXTERNAL listeners are present
         assertThat(kafkaContainer.listeners.size(), is(2));
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER_EXTERNAL")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.CONTROLLER)));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.CONTROLLER_EXTERNAL)));
     }
 
     @Test
@@ -699,8 +699,8 @@ public class StrimziKafkaContainerMockTest {
         assertThat(listenersConfig[1], not(containsString("CONTROLLER_EXTERNAL://")));
 
         // Verify listeners list contains CONTROLLER only, no CONTROLLER_EXTERNAL
-        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER")));
-        assertFalse(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals("CONTROLLER_EXTERNAL")));
+        assertTrue(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.CONTROLLER)));
+        assertFalse(kafkaContainer.listeners.stream().anyMatch(l -> l.name().equals(Listener.CONTROLLER_EXTERNAL)));
     }
 
     @BeforeEach

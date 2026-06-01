@@ -11,6 +11,7 @@ package io.strimzi.test.container;
 class Listener {
 
     static final String PLAINTEXT = "PLAINTEXT";
+    static final String SSL = "SSL";
     static final String CONTROLLER = "CONTROLLER";
     static final String CONTROLLER_EXTERNAL = "CONTROLLER_EXTERNAL";
     static final String INTER_BROKER_PREFIX = "BROKER";
