@@ -1094,7 +1094,7 @@ public class StrimziKafkaClusterTest {
 
         for (StrimziKafkaContainer container : cluster.getNodes()) {
             assertThat("Combined node should have TLS enabled (SSL protocol)",
-                container.getClientListenerProtocol(), is("SSL"));
+                container.getClientListenerProtocol(), is(Listener.SSL));
         }
     }
 
@@ -1111,12 +1111,12 @@ public class StrimziKafkaClusterTest {
 
         for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("Broker should have TLS enabled",
-                container.getClientListenerProtocol(), is("SSL"));
+                container.getClientListenerProtocol(), is(Listener.SSL));
         }
 
         for (StrimziKafkaContainer container : cluster.getControllers()) {
             assertThat("Controller should have TLS enabled",
-                container.getClientListenerProtocol(), is("SSL"));
+                container.getClientListenerProtocol(), is(Listener.SSL));
         }
     }
 
