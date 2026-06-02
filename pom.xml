@@ -111,7 +111,7 @@
         <jupiter.version>5.11.4</jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <maven-surefire-failsafe-plugin.version>3.1.2</maven-surefire-failsafe-plugin.version>
-        <testcontainers-keycloak.version>4.0.0</testcontainers-keycloak.version>
+        <testcontainers-keycloak.version>4.2.1</testcontainers-keycloak.version>
         <fasterxml.jackson-annotations.version>2.16.2</fasterxml.jackson-annotations.version>
         <kafka-oauth-client.version>0.17.1</kafka-oauth-client.version>
         <mockito.version>5.17.0</mockito.version>
