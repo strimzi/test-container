@@ -13,6 +13,7 @@ import java.util.Properties;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -150,7 +151,7 @@ public class StrimziConnectClusterTest {
                 .withGroupId("groupId")
                 .build();
 
-        Properties configs = ((StrimziConnectContainer) cluster.getWorkers().iterator().next()).getConfigs();
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
         assertThat(configs.getProperty("plugin.path"), containsString("connect-file"));
     }
 
@@ -164,7 +165,7 @@ public class StrimziConnectClusterTest {
                 .withAdditionalConnectConfiguration(Map.of("plugin.path", "/other-path"))
                 .build();
 
-        Properties configs = ((StrimziConnectContainer) cluster.getWorkers().iterator().next()).getConfigs();
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
         assertThat(configs.getProperty("plugin.path"), containsString("connect-file"));
         assertThat(configs.getProperty("plugin.path"), containsString("/other-path"));
     }
@@ -180,9 +181,53 @@ public class StrimziConnectClusterTest {
                 .withAdditionalConnectConfiguration(Map.of("plugin.path", "/other-path"))
                 .build();
 
-        Properties configs = ((StrimziConnectContainer) cluster.getWorkers().iterator().next()).getConfigs();
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
         assertThat(configs.getProperty("plugin.path"), not(containsString("connect-file")));
         assertThat(configs.getProperty("plugin.path"), containsString("/other-path"));
+    }
+
+    @Test
+    void testFaultInjectionSourceConnectorWithFileConnectors() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId("groupId")
+                .withStrimziFaultInjectionSourceConnector()
+                .build();
+
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
+        assertThat(configs.getProperty("plugin.path"), containsString("connect-file"));
+        assertThat(configs.getProperty("plugin.path"), containsString("fault-injection-source-connector"));
+    }
+
+    @Test
+    void testFaultInjectionSourceConnectorWithoutFileConnectors() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId("groupId")
+                .withoutFileConnectors()
+                .withStrimziFaultInjectionSourceConnector()
+                .build();
+
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
+        assertThat(configs.getProperty("plugin.path"), not(containsString("connect-file")));
+        assertThat(configs.getProperty("plugin.path"), containsString("fault-injection-source-connector"));
+    }
+
+    @Test
+    void testFaultInjectionSourceConnectorNotIncludedByDefault() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId("groupId")
+                .build();
+
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
+        assertThat(configs.getProperty("plugin.path"), not(containsString("fault-injection-source-connector")));
     }
 
     @Test
@@ -196,5 +241,19 @@ public class StrimziConnectClusterTest {
 
         String expectedVersion = KafkaVersionService.getInstance().latestRelease().getVersion();
         assertThat(cluster.getKafkaVersion(), is(expectedVersion));
+    }
+
+    @Test
+    void testDefaultDoesNotIncludeTestingConnector() {
+        StrimziConnectCluster cluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withKafkaCluster(new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                        .withNumberOfBrokers(1)
+                        .build())
+                .withGroupId(GROUP_ID)
+                .withoutFileConnectors()
+                .build();
+
+        Properties configs = cluster.getWorkers().iterator().next().getConfigs();
+        assertThat(configs.getProperty("plugin.path"), is(nullValue()));
     }
 }
