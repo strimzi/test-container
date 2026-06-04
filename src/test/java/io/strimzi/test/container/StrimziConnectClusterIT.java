@@ -199,6 +199,20 @@ public class StrimziConnectClusterIT {
         }
     }
 
+    @Test
+    public void testTestingConnectorDiscovery() throws Exception {
+        connectCluster = new StrimziConnectCluster.StrimziConnectClusterBuilder()
+                .withGroupId("my-cluster")
+                .withKafkaCluster(kafkaCluster)
+                .withStrimziFaultInjectionSourceConnector()
+                .build();
+        connectCluster.start();
+
+        assertThat(connectCluster.getWorkers().size(), is(1));
+        String connectors = httpGet("/connector-plugins");
+        assertThat(connectors, containsString("StrimziFaultInjectionSourceConnector"));
+    }
+
     public String httpGet(String path) throws Exception {
         HttpClient httpClient = HttpClient.newHttpClient();
         URI uri = new URI(connectCluster.getRestEndpoint() + path);

@@ -23,10 +23,13 @@ public class StrimziConnectCluster {
     private static final int CONNECT_PORT = 8083;
     private static final int INTER_WORKER_PORT = 8084;
 
+    private static final String FAULT_INJECTION_SOURCE_CONNECTOR_PLUGIN_PATH = "/opt/kafka/plugins/fault-injection-source-connector/";
+
     private final StrimziKafkaCluster kafkaCluster;
     private final Map<String, String> additionalConnectConfiguration;
     private final String kafkaVersion;
     private final boolean includeFileConnectors;
+    private final boolean includeFaultInjectionSourceConnector;
     private final String groupId;
     private final List<StrimziConnectContainer> workers;
 
@@ -42,6 +45,7 @@ public class StrimziConnectCluster {
                 ? KafkaVersionService.getInstance().latestRelease().getVersion()
                 : builder.kafkaVersion;
         this.includeFileConnectors = builder.includeFileConnectors;
+        this.includeFaultInjectionSourceConnector = builder.includeFaultInjectionSourceConnector;
         this.groupId = builder.groupId;
 
         final String imageName = KafkaVersionService.strimziTestContainerImageName(kafkaVersion);
@@ -77,20 +81,27 @@ public class StrimziConnectCluster {
         properties.putAll(additionalConnectConfiguration);
         if (includeFileConnectors) {
             final String connectFileJar = "/opt/kafka/libs/connect-file-" + kafkaVersion + ".jar";
-            if (properties.containsKey("plugin.path")) {
-                final String pluginPath = properties.getProperty("plugin.path");
-                properties.setProperty("plugin.path", pluginPath + "," + connectFileJar);
-            } else {
-                properties.setProperty("plugin.path", connectFileJar);
-            }
+            appendPluginPath(properties, connectFileJar);
+        }
+        if (includeFaultInjectionSourceConnector) {
+            appendPluginPath(properties, FAULT_INJECTION_SOURCE_CONNECTOR_PLUGIN_PATH);
         }
         return properties;
+    }
+
+    private static void appendPluginPath(Properties properties, String path) {
+        if (properties.containsKey("plugin.path")) {
+            final String pluginPath = properties.getProperty("plugin.path");
+            properties.setProperty("plugin.path", pluginPath + "," + path);
+        } else {
+            properties.setProperty("plugin.path", path);
+        }
     }
 
     /**
      * Get the workers of this Kafka Connect cluster.
      *
-     * @return collection of GenericContainer containers
+     * @return collection of StrimziConnectContainer containers
      */
     @DoNotMutate
     public Collection<StrimziConnectContainer> getWorkers() {
@@ -143,6 +154,7 @@ public class StrimziConnectCluster {
 
         private Map<String, String> additionalConnectConfiguration = new HashMap<>();
         private boolean includeFileConnectors = true;
+        private boolean includeFaultInjectionSourceConnector = false;
         private int workersNum = 1;
         private String kafkaVersion;
         private StrimziKafkaCluster kafkaCluster;
@@ -203,6 +215,18 @@ public class StrimziConnectCluster {
          */
         public StrimziConnectClusterBuilder withoutFileConnectors() {
             this.includeFileConnectors = false;
+            return this;
+        }
+
+        /**
+         * Enable the Strimzi Fault Injection Source Connector.
+         * When enabled, the plugin.path is configured to include the pre-built connector JAR
+         * from the test container image at {@code /opt/kafka/plugins/fault-injection-source-connector/}.
+         *
+         * @return the current instance of {@code StrimziConnectClusterBuilder} for method chaining
+         */
+        public StrimziConnectClusterBuilder withStrimziFaultInjectionSourceConnector() {
+            this.includeFaultInjectionSourceConnector = true;
             return this;
         }
 
