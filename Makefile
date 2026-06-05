@@ -19,7 +19,7 @@ release_maven:
 .PHONY: release_json
 release_json:
 	echo "Update kafka_versions.json image tags to $(RELEASE_VERSION)"
-	$(SED) -i 's/latest-kafka/$(RELEASE_VERSION)-kafka/g' src/main/resources/kafka_versions.json
+	$(SED) -i 's#quay.io/strimzi-test-container/test-container:[a-zA-Z0-9_.-]*-kafka#quay.io/strimzi-test-container/test-container:$(RELEASE_VERSION)-kafka#g' src/main/resources/kafka_versions.json
 
 .PHONY: release_package
 release_package: java_package
