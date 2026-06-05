@@ -8,13 +8,18 @@ PROJECT_NAME ?= strimzi-test-container
 all: java_install
 
 .PHONY: release
-release: release_maven release_package
+release: release_maven release_json release_package
 
 .PHONY: release_maven
 release_maven:
 	echo "Update pom versions to $(RELEASE_VERSION)"
 	mvn $(MVN_ARGS) versions:set -DnewVersion=$(shell echo $(RELEASE_VERSION) | tr a-z A-Z)
 	mvn $(MVN_ARGS) versions:commit
+
+.PHONY: release_json
+release_json:
+	echo "Update kafka_versions.json image tags to $(RELEASE_VERSION)"
+	$(SED) -i 's#quay.io/strimzi-test-container/test-container:[a-zA-Z0-9_.-]*-kafka#quay.io/strimzi-test-container/test-container:$(RELEASE_VERSION)-kafka#g' src/main/resources/kafka_versions.json
 
 .PHONY: release_package
 release_package: java_package
