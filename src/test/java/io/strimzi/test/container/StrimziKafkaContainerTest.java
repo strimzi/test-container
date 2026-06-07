@@ -83,7 +83,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testBootstrapServersWithoutProxy() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
-        assertThat(kafkaContainer.getBootstrapServers(), startsWith("PLAINTEXT://"));
+        assertThat(kafkaContainer.getBootstrapServers(), startsWith(Listener.PLAINTEXT + "://"));
     }
 
     @Test
@@ -119,7 +119,7 @@ class StrimziKafkaContainerTest {
     @Test
     void testExtractListenerNameThrowsExceptionOnInvalidBootstrap() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-            () -> kafkaContainer.extractListenerName("PLAINTEXT://localhost"));
+            () -> kafkaContainer.extractListenerName(Listener.PLAINTEXT + "://localhost"));
         assertThat(exception.getMessage(), containsString("must be prefixed with a listener name"));
     }
 
@@ -172,7 +172,7 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testExtractListenerNameWithValidBootstrapServers() {
-        kafkaContainer.withBootstrapServers(c -> "PLAINTEXT://localhost:9092");
+        kafkaContainer.withBootstrapServers(c -> Listener.PLAINTEXT + "://localhost:9092");
         String listenerName = kafkaContainer.extractListenerName(kafkaContainer.getBootstrapServers());
         assertThat("Listener name should be extracted correctly.", listenerName, CoreMatchers.is(Listener.PLAINTEXT));
     }
@@ -262,12 +262,12 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testConfigureListenerSecurityProtocolMapWithInterBrokerProtocol() {
-        kafkaContainer.listeners.add(new Listener("SASL_SSL", Listener.Role.CLIENT));
+        kafkaContainer.listeners.add(new Listener(Listener.SASL_SSL, Listener.Role.CLIENT));
         kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
         // Both client and inter-broker can use SASL
-        String result = kafkaContainer.configureListenerSecurityProtocolMap("SASL_SSL");
+        String result = kafkaContainer.configureListenerSecurityProtocolMap(Listener.SASL_SSL);
 
-        assertThat(result, is("SASL_SSL:SASL_SSL,BROKER1:SASL_SSL"));
+        assertThat(result, is(Listener.SASL_SSL + ":" + Listener.SASL_SSL + "," + Listener.INTER_BROKER_PREFIX + "1:" + Listener.SASL_SSL));
     }
 
     @Test
@@ -282,7 +282,7 @@ class StrimziKafkaContainerTest {
 
         assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("PLAIN"));
         assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("PLAIN"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(Listener.PLAINTEXT + ":" + Listener.SASL_PLAINTEXT + "," + Listener.CONTROLLER + ":" + Listener.SASL_PLAINTEXT));
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("PLAIN"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
@@ -309,7 +309,7 @@ class StrimziKafkaContainerTest {
 
         assertThat(properties.getProperty("sasl.enabled.mechanisms"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("sasl.mechanism.inter.broker.protocol"), is("OAUTHBEARER"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(Listener.PLAINTEXT + ":" + Listener.SASL_PLAINTEXT + "," + Listener.CONTROLLER + ":" + Listener.SASL_PLAINTEXT));
         assertThat(properties.getProperty("sasl.mechanism.controller.protocol"), is("OAUTHBEARER"));
         assertThat(properties.getProperty("principal.builder.class"), is("io.strimzi.kafka.oauth.server.OAuthKafkaPrincipalBuilder"));
 
@@ -324,8 +324,8 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testBuildDefaultServerPropertiesWithKRaft() {
-        String listeners = "PLAINTEXT://0.0.0.0:9092";
-        String advertisedListeners = "PLAINTEXT://localhost:9092";
+        String listeners = Listener.PLAINTEXT + "://0.0.0.0:9092";
+        String advertisedListeners = Listener.PLAINTEXT + "://localhost:9092";
         kafkaContainer.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
@@ -337,8 +337,8 @@ class StrimziKafkaContainerTest {
         // Common properties
         assertThat(properties.getProperty("listeners"), is(listeners));
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
-        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"));
+        assertThat(properties.getProperty("inter.broker.listener.name"), is(Listener.INTER_BROKER_PREFIX + "1"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(Listener.PLAINTEXT + ":" + Listener.PLAINTEXT + "," + Listener.CONTROLLER + ":" + Listener.PLAINTEXT));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -362,8 +362,8 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testBuildDefaultServerPropertiesWithAuthenticationTypeButOAuthNotEnabled() {
-        String listeners = "PLAINTEXT://0.0.0.0:9092";
-        String advertisedListeners = "PLAINTEXT://localhost:9092";
+        String listeners = Listener.PLAINTEXT + "://0.0.0.0:9092";
+        String advertisedListeners = Listener.PLAINTEXT + "://localhost:9092";
         kafkaContainer.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
@@ -382,9 +382,9 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testBuildDefaultServerPropertiesWithOAutPlain() {
-        String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
-        String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
-        kafkaContainer.listeners.add(new Listener("SASL_PLAINTEXT", Listener.Role.CLIENT));
+        String listeners = Listener.SASL_PLAINTEXT + "://0.0.0.0:9092";
+        String advertisedListeners = Listener.SASL_PLAINTEXT + "://localhost:9092";
+        kafkaContainer.listeners.add(new Listener(Listener.SASL_PLAINTEXT + "", Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -398,8 +398,8 @@ class StrimziKafkaContainerTest {
         assertThat(properties, notNullValue());
         assertThat(properties.getProperty("listeners"), is(listeners));
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
-        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
+        assertThat(properties.getProperty("inter.broker.listener.name"), is(Listener.INTER_BROKER_PREFIX + "1"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(Listener.SASL_PLAINTEXT + ":" + Listener.SASL_PLAINTEXT + "," + Listener.CONTROLLER + ":" + Listener.SASL_PLAINTEXT));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -435,9 +435,9 @@ class StrimziKafkaContainerTest {
 
     @Test
     void testBuildDefaultServerPropertiesWithOAuthBearer() {
-        String listeners = "SASL_PLAINTEXT://0.0.0.0:9092";
-        String advertisedListeners = "SASL_PLAINTEXT://localhost:9092";
-        kafkaContainer.listeners.add(new Listener("SASL_PLAINTEXT", Listener.Role.CLIENT));
+        String listeners = Listener.SASL_PLAINTEXT + "://0.0.0.0:9092";
+        String advertisedListeners = Listener.SASL_PLAINTEXT + "://localhost:9092";
+        kafkaContainer.listeners.add(new Listener(Listener.SASL_PLAINTEXT + "", Listener.Role.CLIENT));
         kafkaContainer
             .withNodeId(1)
             .withNodeId(1)
@@ -449,8 +449,8 @@ class StrimziKafkaContainerTest {
         assertThat(properties, notNullValue());
         assertThat(properties.getProperty("listeners"), is(listeners));
         assertThat(properties.getProperty("advertised.listeners"), is(advertisedListeners));
-        assertThat(properties.getProperty("inter.broker.listener.name"), is("BROKER1"));
-        assertThat(properties.getProperty("listener.security.protocol.map"), is("SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:SASL_PLAINTEXT"));
+        assertThat(properties.getProperty("inter.broker.listener.name"), is(Listener.INTER_BROKER_PREFIX + "1"));
+        assertThat(properties.getProperty("listener.security.protocol.map"), is(Listener.SASL_PLAINTEXT + ":" + Listener.SASL_PLAINTEXT + "," + Listener.CONTROLLER + ":" + Listener.SASL_PLAINTEXT + ""));
         assertThat(properties.getProperty("num.network.threads"), is("3"));
         assertThat(properties.getProperty("num.io.threads"), is("8"));
         assertThat(properties.getProperty("socket.send.buffer.bytes"), is("102400"));
@@ -569,7 +569,7 @@ class StrimziKafkaContainerTest {
     void testWithBootstrapServersReturnsSelf() {
         StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer();
 
-        StrimziKafkaContainer result = kafkaContainer.withBootstrapServers(c -> "PLAINTEXT://localhost:9092");
+        StrimziKafkaContainer result = kafkaContainer.withBootstrapServers(c -> Listener.PLAINTEXT + "://localhost:9092");
 
         assertSame(kafkaContainer, result, "withBootstrapServers() should return the same instance for method chaining.");
     }
@@ -690,61 +690,61 @@ class StrimziKafkaContainerTest {
     @Test
     void testExtractControllerListenerSingleController() {
         Properties props = new Properties();
-        String adv = "CONTROLLER://broker-1:9094";
+        String adv = Listener.CONTROLLER + "://broker-1:9094";
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+        assertThat(props.getProperty("advertised.listeners"), is(Listener.CONTROLLER + "://broker-1:9094"));
     }
 
     @Test
     void testExtractControllerListenerMultipleListenersPicksController() {
         Properties props = new Properties();
-        String adv = "PLAINTEXT://localhost:9092,CONTROLLER://broker-1:9094,SASL_PLAINTEXT://localhost:9093";
+        String adv = Listener.PLAINTEXT + "://localhost:9092," + Listener.CONTROLLER + "://broker-1:9094," + Listener.SASL_PLAINTEXT + "://localhost:9093";
 
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+        assertThat(props.getProperty("advertised.listeners"), is(Listener.CONTROLLER + "://broker-1:9094"));
     }
 
     @Test
     void testExtractControllerListenerNoControllerNoChange() {
         Properties props = new Properties();
-        props.setProperty("advertised.listeners", "PLAINTEXT://localhost:9092");
-        String adv = "PLAINTEXT://localhost:9092,SASL_PLAINTEXT://localhost:9093";
+        props.setProperty("advertised.listeners", Listener.PLAINTEXT + "://localhost:9092");
+        String adv = Listener.PLAINTEXT + "://localhost:9092," + Listener.SASL_PLAINTEXT + "://localhost:9093";
 
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("PLAINTEXT://localhost:9092"));
+        assertThat(props.getProperty("advertised.listeners"), is(Listener.PLAINTEXT + "://localhost:9092"));
     }
 
     @Test
     void testExtractControllerListenerTrimsWhitespace() {
         Properties props = new Properties();
-        String adv = "PLAINTEXT://localhost:9092,   CONTROLLER://broker-1:9094   ,SASL_PLAINTEXT://localhost:9093";
+        String adv = Listener.PLAINTEXT + "://localhost:9092,   " + Listener.CONTROLLER + "://broker-1:9094   ," + Listener.SASL_PLAINTEXT + "://localhost:9093";
 
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094"));
+        assertThat(props.getProperty("advertised.listeners"), is(Listener.CONTROLLER + "://broker-1:9094"));
     }
 
     @Test
     void testExtractControllerListenerExtractsBothControllerListeners() {
         Properties props = new Properties();
-        String adv = "CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095";
+        String adv = Listener.CONTROLLER + "://broker-1:9094," + Listener.CONTROLLER_EXTERNAL + "://localhost:39095";
 
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095"));
+        assertThat(props.getProperty("advertised.listeners"), is(Listener.CONTROLLER + "://broker-1:9094," + Listener.CONTROLLER_EXTERNAL + "://localhost:39095"));
     }
 
     @Test
     void testExtractControllerListenerMultipleControllersPicksBoth() {
         Properties props = new Properties();
-        String adv = "CONTROLLER://broker-1:9094,CONTROLLER://broker-2:9094";
+        String adv = Listener.CONTROLLER + "://broker-1:9094," + Listener.CONTROLLER + "://broker-2:9094";
 
         kafkaContainer.extractControllerListener(props, adv);
 
-        assertThat(props.getProperty("advertised.listeners"), is("CONTROLLER://broker-1:9094,CONTROLLER://broker-2:9094"));
+        assertThat(props.getProperty("advertised.listeners"), is(Listener.CONTROLLER + "://broker-1:9094," + Listener.CONTROLLER + "://broker-2:9094"));
     }
 
     @Test
@@ -785,11 +785,11 @@ class StrimziKafkaContainerTest {
         container.listeners.add(new Listener(Listener.CONTROLLER_EXTERNAL, Listener.Role.CONTROLLER));
 
         Properties properties = container.buildDefaultServerProperties(
-            "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095",
-            "CONTROLLER://broker-0:9094,CONTROLLER_EXTERNAL://localhost:39095"
+            Listener.CONTROLLER + "://0.0.0.0:9094," + Listener.CONTROLLER_EXTERNAL + "://0.0.0.0:9095",
+            Listener.CONTROLLER + "://broker-0:9094," + Listener.CONTROLLER_EXTERNAL + "://localhost:39095"
         );
 
-        assertThat(properties.getProperty("controller.listener.names"), is("CONTROLLER,CONTROLLER_EXTERNAL"));
+        assertThat(properties.getProperty("controller.listener.names"), is(Listener.CONTROLLER + "," + Listener.CONTROLLER_EXTERNAL));
     }
 
     @Test
@@ -803,8 +803,8 @@ class StrimziKafkaContainerTest {
         container.listeners.add(new Listener(Listener.PLAINTEXT, Listener.Role.CLIENT));
 
         Properties defaultProps = container.buildDefaultServerProperties(
-            "PLAINTEXT://0.0.0.0:9092",
-            "PLAINTEXT://localhost:9092"
+            Listener.PLAINTEXT + "://0.0.0.0:9092",
+            Listener.PLAINTEXT + "://localhost:9092"
         );
 
         // The buildDefaultServerProperties should skip setting default quorum voters when already configured
@@ -823,7 +823,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1);
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
-        assertThat(bootstrapControllers, startsWith("CONTROLLER_EXTERNAL://"));
+        assertThat(bootstrapControllers, startsWith(Listener.CONTROLLER_EXTERNAL + "://"));
     }
 
     @Test
@@ -833,7 +833,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1);
 
         String bootstrapControllers = kafkaContainer.getBootstrapControllers();
-        assertThat(bootstrapControllers, startsWith("CONTROLLER://"));
+        assertThat(bootstrapControllers, startsWith(Listener.CONTROLLER + "://"));
     }
 
     @Test
@@ -856,7 +856,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
-        assertThat(networkBootstrapControllers, is("CONTROLLER://broker-1:9094"));
+        assertThat(networkBootstrapControllers, is(Listener.CONTROLLER + "://broker-1:9094"));
     }
 
     @Test
@@ -866,7 +866,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(2);
 
         String networkBootstrapControllers = kafkaContainer.getNetworkBootstrapControllers();
-        assertThat(networkBootstrapControllers, is("CONTROLLER://broker-2:9094"));
+        assertThat(networkBootstrapControllers, is(Listener.CONTROLLER + "://broker-2:9094"));
     }
 
     @Test
@@ -933,14 +933,14 @@ class StrimziKafkaContainerTest {
         controllerContainer.listeners.add(new Listener(Listener.CONTROLLER_EXTERNAL, Listener.Role.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
-            "CONTROLLER://0.0.0.0:9094,CONTROLLER_EXTERNAL://0.0.0.0:9095",
-            "CONTROLLER://broker-1:9094,CONTROLLER_EXTERNAL://localhost:39095"
+            Listener.CONTROLLER + "://0.0.0.0:9094," + Listener.CONTROLLER_EXTERNAL + "://0.0.0.0:9095",
+            Listener.CONTROLLER + "://broker-1:9094," + Listener.CONTROLLER_EXTERNAL + "://localhost:39095"
         );
 
         String listenerSecurityProtocolMap = properties.getProperty("listener.security.protocol.map");
 
-        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER:PLAINTEXT"));
-        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER_EXTERNAL:PLAINTEXT"));
+        assertThat(listenerSecurityProtocolMap, containsString(Listener.CONTROLLER + ":" + Listener.PLAINTEXT));
+        assertThat(listenerSecurityProtocolMap, containsString("" + Listener.CONTROLLER_EXTERNAL + ":" + Listener.PLAINTEXT));
     }
 
     @Test
@@ -953,8 +953,8 @@ class StrimziKafkaContainerTest {
         controllerContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
-            "CONTROLLER://0.0.0.0:9094",
-            "CONTROLLER://broker-1:9094"
+            Listener.CONTROLLER + "://0.0.0.0:9094",
+            Listener.CONTROLLER + "://broker-1:9094"
         );
 
         String listenerSecurityProtocolMap = properties.getProperty("listener.security.protocol.map");
@@ -962,8 +962,8 @@ class StrimziKafkaContainerTest {
         assertThat(listenerSecurityProtocolMap, is(notNullValue()));
         assertThat(listenerSecurityProtocolMap.isEmpty(), is(false));
 
-        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER:"));
-        assertThat(listenerSecurityProtocolMap, containsString("CONTROLLER:PLAINTEXT"));
+        assertThat(listenerSecurityProtocolMap, containsString(Listener.CONTROLLER + ":"));
+        assertThat(listenerSecurityProtocolMap, containsString(Listener.CONTROLLER + ":" + Listener.PLAINTEXT));
     }
 
     @Test
@@ -976,15 +976,15 @@ class StrimziKafkaContainerTest {
         controllerContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         Properties properties = controllerContainer.buildDefaultServerProperties(
-            "CONTROLLER://0.0.0.0:9094",
-            "PLAINTEXT://localhost:9092,CONTROLLER://broker-1:9094,BROKER1://172.17.0.2:9091"
+            Listener.CONTROLLER + "://0.0.0.0:9094",
+            Listener.PLAINTEXT + "://localhost:9092," + Listener.CONTROLLER + "://broker-1:9094," + Listener.INTER_BROKER_PREFIX + "1://172.17.0.2:9091"
         );
 
         String advertisedListeners = properties.getProperty("advertised.listeners");
-        assertThat(advertisedListeners, is("CONTROLLER://broker-1:9094"));
+        assertThat(advertisedListeners, is(Listener.CONTROLLER + "://broker-1:9094"));
 
-        assertThat(advertisedListeners, CoreMatchers.not(containsString("PLAINTEXT://")));
-        assertThat(advertisedListeners, CoreMatchers.not(containsString("BROKER1://")));
+        assertThat(advertisedListeners, CoreMatchers.not(containsString(Listener.PLAINTEXT + "://")));
+        assertThat(advertisedListeners, CoreMatchers.not(containsString(Listener.INTER_BROKER_PREFIX + "1://")));
     }
 
     @Test
@@ -1072,7 +1072,7 @@ class StrimziKafkaContainerTest {
             .withNodeId(1)
             .withAuthenticationType(AuthenticationType.OAUTH_BEARER);
 
-        assertThat(kafkaContainer.getClientListenerProtocol(), is("SASL_PLAINTEXT"));
+        assertThat(kafkaContainer.getClientListenerProtocol(), is(Listener.SASL_PLAINTEXT));
     }
 
     @Test
@@ -1082,7 +1082,7 @@ class StrimziKafkaContainerTest {
             .withAuthenticationType(AuthenticationType.OAUTH_BEARER)
             .enableTls(CertAssembly.autoGenerated());
 
-        assertThat(kafkaContainer.getClientListenerProtocol(), is("SASL_SSL"));
+        assertThat(kafkaContainer.getClientListenerProtocol(), is(Listener.SASL_SSL));
     }
 
     @Test
@@ -1094,7 +1094,7 @@ class StrimziKafkaContainerTest {
         kafkaContainer.listeners.add(new Listener(Listener.SSL, Listener.Role.CLIENT));
 
         String result = kafkaContainer.configureListenerSecurityProtocolMap(Listener.SSL);
-        assertThat(result, containsString("SSL:SSL"));
+        assertThat(result, containsString(Listener.SSL + ":" + Listener.SSL));
     }
 
     @Test
@@ -1107,8 +1107,8 @@ class StrimziKafkaContainerTest {
         kafkaContainer.listeners.add(new Listener(Listener.INTER_BROKER_PREFIX + "1", Listener.Role.INTER_BROKER));
 
         Properties properties = kafkaContainer.buildDefaultServerProperties(
-            "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091",
-            "SSL://localhost:9092,BROKER1://172.17.0.2:9091"
+            Listener.SSL + "://0.0.0.0:9092," + Listener.INTER_BROKER_PREFIX + "1://0.0.0.0:9091",
+            Listener.SSL + "://localhost:9092," + Listener.INTER_BROKER_PREFIX + "1://172.17.0.2:9091"
         );
 
         // Per-listener TLS: client listener (SSL) uses broker keystore/truststore
@@ -1129,9 +1129,9 @@ class StrimziKafkaContainerTest {
         assertThat(properties.getProperty("listener.name.broker1.ssl.truststore.type"), is("PKCS12"));
         assertThat(properties.getProperty("listener.name.broker1.ssl.client.auth"), is("required"));
         String protocolMap = properties.getProperty("listener.security.protocol.map");
-        assertThat(protocolMap, containsString("SSL:SSL"));
-        assertThat(protocolMap, containsString("BROKER1:SSL"));
-        assertThat(protocolMap, containsString("CONTROLLER:SSL"));
+        assertThat(protocolMap, containsString(Listener.SSL + ":" + Listener.SSL));
+        assertThat(protocolMap, containsString(Listener.INTER_BROKER_PREFIX + "1:" + Listener.SSL));
+        assertThat(protocolMap, containsString(Listener.CONTROLLER + ":" + Listener.SSL));
     }
 
     @Test
@@ -1156,8 +1156,8 @@ class StrimziKafkaContainerTest {
         kafkaContainer.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         Properties properties = kafkaContainer.buildDefaultServerProperties(
-            "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094",
-            "SSL://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://broker-1:9094"
+            Listener.SSL + "://0.0.0.0:9092," + Listener.INTER_BROKER_PREFIX + "1://0.0.0.0:9091," + Listener.CONTROLLER + "://0.0.0.0:9094",
+            Listener.SSL + "://localhost:9092," + Listener.INTER_BROKER_PREFIX + "1://172.17.0.2:9091," + Listener.CONTROLLER + "://broker-1:9094"
         );
 
         // Client listener (SSL) must use BROKER password
@@ -1207,8 +1207,8 @@ class StrimziKafkaContainerTest {
         int listenerCountBefore = kafkaContainer.listeners.size();
 
         kafkaContainer.buildDefaultServerProperties(
-            "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091",
-            "SSL://localhost:9092,BROKER1://172.17.0.2:9091"
+            Listener.SSL + "://0.0.0.0:9092," + Listener.INTER_BROKER_PREFIX + "1://0.0.0.0:9091",
+            Listener.SSL + "://localhost:9092," + Listener.INTER_BROKER_PREFIX + "1://172.17.0.2:9091"
         );
 
         assertThat(kafkaContainer.listeners.size(), is(listenerCountBefore + 1));
@@ -1233,8 +1233,8 @@ class StrimziKafkaContainerTest {
         int listenerCountBefore = kafkaContainer.listeners.size();
 
         kafkaContainer.buildDefaultServerProperties(
-            "SSL://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094",
-            "SSL://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://broker-1:9094"
+            Listener.SSL + "://0.0.0.0:9092," + Listener.INTER_BROKER_PREFIX + "1://0.0.0.0:9091," + Listener.CONTROLLER + "://0.0.0.0:9094",
+            Listener.SSL + "://localhost:9092," + Listener.INTER_BROKER_PREFIX + "1://172.17.0.2:9091," + Listener.CONTROLLER + "://broker-1:9094"
         );
 
         assertThat("Listener count should remain unchanged when CONTROLLER already exists",
@@ -1255,8 +1255,8 @@ class StrimziKafkaContainerTest {
         IllegalStateException exception = assertThrows(
             IllegalStateException.class,
             () -> kafkaContainer.buildDefaultServerProperties(
-                "PLAINTEXT://0.0.0.0:9092,BROKER1://0.0.0.0:9091,CONTROLLER://0.0.0.0:9094",
-                "PLAINTEXT://localhost:9092,BROKER1://172.17.0.2:9091,CONTROLLER://broker-0:9094"
+                Listener.PLAINTEXT + "://0.0.0.0:9092," + Listener.INTER_BROKER_PREFIX + "1://0.0.0.0:9091," + Listener.CONTROLLER + "://0.0.0.0:9094",
+                Listener.PLAINTEXT + "://localhost:9092," + Listener.INTER_BROKER_PREFIX + "1://172.17.0.2:9091," + Listener.CONTROLLER + "://broker-0:9094"
             )
         );
         assertThat(exception.getMessage(), containsString("Unsupported authentication type: SCRAM_SHA_512"));
