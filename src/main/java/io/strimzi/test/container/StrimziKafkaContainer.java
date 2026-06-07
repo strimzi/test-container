@@ -590,7 +590,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             extractControllerListener(properties, advertisedListeners);
         }
 
-        String protocol = this.certAssembly != null ? "SSL" : "PLAINTEXT";
+        String protocol = this.certAssembly != null ? Listener.SSL : Listener.PLAINTEXT;
         String securityProtocolMap = this.configureListenerSecurityProtocolMap(protocol);
         // Ensure CONTROLLER mapping exists on ALL nodes when controller.listener.names is set
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, protocol);
@@ -743,7 +743,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
 
         // Determine protocol based on TLS setting
-        String saslProtocol = this.certAssembly != null ? "SASL_SSL" : "SASL_PLAINTEXT";
+        String saslProtocol = this.certAssembly != null ? Listener.SASL_SSL : Listener.SASL_PLAINTEXT;
         String securityProtocolMap = this.configureListenerSecurityProtocolMap(saslProtocol);
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, saslProtocol);
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
@@ -777,7 +777,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
 
         // Determine protocol based on TLS setting
-        String saslProtocol = this.certAssembly != null ? "SASL_SSL" : "SASL_PLAINTEXT";
+        String saslProtocol = this.certAssembly != null ? Listener.SASL_SSL : Listener.SASL_PLAINTEXT;
         String securityProtocolMap = this.configureListenerSecurityProtocolMap(saslProtocol);
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, saslProtocol);
 
@@ -844,13 +844,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     /* test */ String getClientListenerProtocol() {
         boolean hasSasl = this.authenticationType != AuthenticationType.NONE;
         if (this.certAssembly != null && hasSasl) {
-            return "SASL_SSL";
+            return Listener.SASL_SSL;
         } else if (this.certAssembly != null) {
-            return "SSL";
+            return Listener.SSL;
         } else if (hasSasl) {
-            return "SASL_PLAINTEXT";
+            return Listener.SASL_PLAINTEXT;
         } else {
-            return "PLAINTEXT";
+            return Listener.PLAINTEXT;
         }
     }
 
@@ -965,7 +965,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
             final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
-            return String.format("CONTROLLER://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
+            return String.format(Listener.CONTROLLER + "://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
         return String.format("%s://%s%d:%d", Listener.CONTROLLER, NETWORK_ALIAS_PREFIX, nodeId, StrimziKafkaContainer.CONTROLLER_PORT);
     }

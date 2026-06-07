@@ -824,7 +824,7 @@ public class StrimziKafkaClusterTest {
     @Test
     void testDedicatedRolesClusterWithBootstrapServersProviderAppliedToBrokers() {
         Function<StrimziKafkaContainer, String> customProvider =
-            c -> String.format("PLAINTEXT://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
+            c -> String.format(Listener.PLAINTEXT + "://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
@@ -843,7 +843,7 @@ public class StrimziKafkaClusterTest {
     @Test
     void testCombinedRolesClusterWithBootstrapServersProviderApplied() {
         Function<StrimziKafkaContainer, String> customProvider =
-            c -> String.format("PLAINTEXT://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
+            c -> String.format(Listener.PLAINTEXT + "://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
