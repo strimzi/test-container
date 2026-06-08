@@ -36,12 +36,18 @@ jobs:
         with:
           javaVersion: ${{ matrix.java.version }}
 
+      # On release branches, skip ITs and run only unit tests and mutation testing.
+      # ITs cannot run here because release candidates use -rc1 suffix tags
+      # and inside the repo we are always preparing GA version without the suffix
+      # that may not have published container images yet.
       - name: Build binaries using build-binaries action
         uses: strimzi/github-actions/.github/actions/build/build-binaries@v1
         with:
           mainJavaBuild: ${{ matrix.java.mainBuild }}
           artifactSuffix: "strimzi-test-container"
           clusterOperatorBuild: "false"
+        env:
+          MVN_ARGS: ${{ startsWith(github.ref, 'refs/heads/release-') && '-B -DskipITs' || '' }}
   
   deploy-java:
     name: Deploy Java artifacts to Maven Central
