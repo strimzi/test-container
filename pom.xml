@@ -400,6 +400,15 @@
                         <version>${pit-junit-plugin.version}</version>
                     </dependency>
                 </dependencies>
+                <executions>
+                    <execution>
+                        <id>mutation-testing</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>mutationCoverage</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <targetClasses>
                         <!-- we not want to include also WaitException, Utils, KafkaVersionService because we mainly
