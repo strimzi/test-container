@@ -1310,6 +1310,14 @@ public class StrimziKafkaClusterTest {
     }
 
     @Test
+    void testGetLatestPatchVersionsReturnsNonEmptyList() {
+        List<String> versions = StrimziKafkaCluster.getLatestPatchVersions();
+
+        assertThat(versions, is(CoreMatchers.notNullValue()));
+        assertThat(versions.isEmpty(), is(false));
+    }
+
+    @Test
     void testGetNetworkBootstrapControllersWithDedicatedRoles() {
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
