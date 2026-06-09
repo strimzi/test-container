@@ -2,6 +2,7 @@ include ./Makefile.os
 include ./Makefile.maven
 
 RELEASE_VERSION ?= latest
+RELEASE_VERSION_UPPERCASE = $(shell echo $(RELEASE_VERSION) | tr a-z A-Z)
 PROJECT_NAME ?= strimzi-test-container
 
 .PHONY: all
@@ -13,7 +14,7 @@ release: release_maven release_json release_package
 .PHONY: release_maven
 release_maven:
 	echo "Update pom versions to $(RELEASE_VERSION)"
-	mvn $(MVN_ARGS) versions:set -DnewVersion=$(shell echo $(RELEASE_VERSION) | tr a-z A-Z)
+	mvn $(MVN_ARGS) versions:set -DnewVersion=$(RELEASE_VERSION_UPPERCASE)
 	mvn $(MVN_ARGS) versions:commit
 
 .PHONY: release_json
@@ -24,8 +25,8 @@ release_json:
 .PHONY: release_package
 release_package: java_package
 	echo "Creating release archives ..."
-	tar -czf target/$(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).tar.gz -C target $(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).jar
-	cd target && zip $(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).zip $(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).jar
+	tar -czf target/$(PROJECT_NAME)-$(RELEASE_VERSION_UPPERCASE).tar.gz -C target $(PROJECT_NAME)-$(RELEASE_VERSION_UPPERCASE).jar
+	cd target && zip $(PROJECT_NAME)-$(RELEASE_VERSION_UPPERCASE).zip $(PROJECT_NAME)-$(RELEASE_VERSION_UPPERCASE).jar
 
 .PHONY: clean
 clean: java_clean
