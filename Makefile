@@ -24,8 +24,8 @@ release_json:
 .PHONY: release_package
 release_package: java_package
 	echo "Creating release archives ..."
-	tar -czf target/$(PROJECT_NAME)-$(RELEASE_VERSION).tar.gz -C target $(PROJECT_NAME)-$(RELEASE_VERSION).jar
-	cd target && zip $(PROJECT_NAME)-$(RELEASE_VERSION).zip $(PROJECT_NAME)-$(RELEASE_VERSION).jar
+	tar -czf target/$(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).tar.gz -C target $(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).jar
+	cd target && zip $(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).zip $(PROJECT_NAME)-$(shell echo $(RELEASE_VERSION) | tr a-z A-Z).jar
 
 .PHONY: clean
 clean: java_clean
