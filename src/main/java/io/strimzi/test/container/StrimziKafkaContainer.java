@@ -116,42 +116,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     private ToxiproxyClient toxiproxyClient;
     private Proxy proxy;
 
-    /**
-     * Defines the role of a Kafka listener.
-     */
-    protected enum ListenerRole {
-        /** Client-facing listener for external connections */
-        CLIENT,
-        /** Inter-broker communication listener */
-        INTER_BROKER,
-        /** Controller communication listener (internal, Docker network) */
-        CONTROLLER,
-        /** Controller communication listener (external, host-accessible) */
-        CONTROLLER_EXTERNAL
-    }
-
-    /**
-     * Configuration for a Kafka listener with its name and role.
-     */
-    protected static class ListenerConfig {
-        private final String name;
-        private final ListenerRole role;
-
-        ListenerConfig(String name, ListenerRole role) {
-            this.name = name;
-            this.role = role;
-        }
-
-        public String name() {
-            return name;
-        }
-
-        public ListenerRole role() {
-            return role;
-        }
-    }
-
-    protected List<ListenerConfig> listeners = new ArrayList<>();
+    protected List<Listener> listeners = new ArrayList<>();
 
     // OAuth fields
     private boolean oauthEnabled;
@@ -491,7 +456,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             // add first PLAINTEXT listener
             advertisedListeners.append(bootstrapServers);
             kafkaListeners.append(bsListenerName).append(":").append("//").append("0.0.0.0").append(":").append(KAFKA_PORT).append(",");
-            this.listeners.add(new ListenerConfig(bsListenerName, ListenerRole.CLIENT));
+            this.listeners.add(new Listener(bsListenerName, Listener.Role.CLIENT));
         }
 
         int listenerNumber = 1;
@@ -505,7 +470,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             //  regardless of the number of networks.
             // https://github.com/strimzi/test-container/issues/192
             for (ContainerNetwork network : networks) {
-                String advertisedName = "BROKER" + listenerNumber;
+                String advertisedName = Listener.INTER_BROKER_PREFIX + listenerNumber;
                 advertisedListeners.append(",")
                     .append(advertisedName)
                     .append("://")
@@ -529,7 +494,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
                     .append("://0.0.0.0:")
                     .append(portNumber)
                     .append(",");
-                this.listeners.add(new ListenerConfig(listener, ListenerRole.INTER_BROKER));
+                this.listeners.add(new Listener(listener, Listener.Role.INTER_BROKER));
                 portNumber--;
             }
         }
@@ -568,16 +533,16 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             advertisedListeners.append(",");
         }
         advertisedListeners.append(getNetworkBootstrapControllers());
-        kafkaListeners.append("CONTROLLER").append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
-        this.listeners.add(new ListenerConfig("CONTROLLER", ListenerRole.CONTROLLER));
+        kafkaListeners.append(Listener.CONTROLLER).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_PORT);
+        this.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
 
         // External controller listener -- controller-only nodes only
         // (Kafka forbids controller listeners in advertised.listeners for combined-mode nodes)
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
             advertisedListeners.append(",");
             advertisedListeners.append(getBootstrapControllers());
-            kafkaListeners.append(",").append("CONTROLLER_EXTERNAL").append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT);
-            this.listeners.add(new ListenerConfig("CONTROLLER_EXTERNAL", ListenerRole.CONTROLLER_EXTERNAL));
+            kafkaListeners.append(",").append(Listener.CONTROLLER_EXTERNAL).append("://0.0.0.0:").append(StrimziKafkaContainer.CONTROLLER_EXTERNAL_PORT);
+            this.listeners.add(new Listener(Listener.CONTROLLER_EXTERNAL, Listener.Role.CONTROLLER_EXTERNAL));
         }
     }
 
@@ -618,14 +583,14 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("listeners", listeners);
 
         if (this.nodeRole.isBroker()) {
-            properties.setProperty("inter.broker.listener.name", "BROKER1");
+            properties.setProperty("inter.broker.listener.name", Listener.INTER_BROKER_PREFIX + "1");
             properties.setProperty("advertised.listeners", advertisedListeners);
         } else {
             // Controller-only nodes should only have controller listeners in advertised.listeners
             extractControllerListener(properties, advertisedListeners);
         }
 
-        String protocol = this.certAssembly != null ? "SSL" : "PLAINTEXT";
+        String protocol = this.certAssembly != null ? Listener.SSL : Listener.PLAINTEXT;
         String securityProtocolMap = this.configureListenerSecurityProtocolMap(protocol);
         // Ensure CONTROLLER mapping exists on ALL nodes when controller.listener.names is set
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, protocol);
@@ -648,7 +613,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         String[] parts = advertisedListeners.split(",");
         String controllerListeners = Arrays.stream(parts)
             .map(String::trim)
-            .filter(p -> p.startsWith("CONTROLLER://") || p.startsWith("CONTROLLER_EXTERNAL://"))
+            .filter(p -> p.startsWith(Listener.CONTROLLER + "://") || p.startsWith(Listener.CONTROLLER_EXTERNAL + "://"))
             .collect(Collectors.joining(","));
         if (!controllerListeners.isEmpty()) {
             properties.setProperty("advertised.listeners", controllerListeners);
@@ -678,9 +643,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Controller-only nodes have dual controller listeners (CONTROLLER + CONTROLLER_EXTERNAL)
         // Combined and broker-only nodes use only CONTROLLER
         if (this.nodeRole == KafkaNodeRole.CONTROLLER) {
-            properties.setProperty("controller.listener.names", "CONTROLLER,CONTROLLER_EXTERNAL");
+            properties.setProperty("controller.listener.names", Listener.CONTROLLER + "," + Listener.CONTROLLER_EXTERNAL);
         } else {
-            properties.setProperty("controller.listener.names", "CONTROLLER");
+            properties.setProperty("controller.listener.names", Listener.CONTROLLER);
         }
 
         // For standalone containers (not part of a cluster), set default quorum voters
@@ -727,15 +692,15 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Raft connections to controllers, even though they do not bind the
         // CONTROLLER listener themselves.
         boolean hasControllerListener = this.listeners.stream()
-            .anyMatch(l -> l.role() == ListenerRole.CONTROLLER);
+            .anyMatch(l -> l.role() == Listener.Role.CONTROLLER);
         if (!hasControllerListener) {
-            this.listeners.add(new ListenerConfig("CONTROLLER", ListenerRole.CONTROLLER));
+            this.listeners.add(new Listener(Listener.CONTROLLER, Listener.Role.CONTROLLER));
         }
 
-        for (ListenerConfig listener : this.listeners) {
+        for (Listener listener : this.listeners) {
             boolean isInternal =
-                listener.role() == ListenerRole.INTER_BROKER
-                || listener.role() == ListenerRole.CONTROLLER;
+                listener.role() == Listener.Role.INTER_BROKER
+                || listener.role() == Listener.Role.CONTROLLER;
 
             String password = isInternal
                 ? this.certAssembly.getInternalPassword()
@@ -778,7 +743,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "PLAIN");
 
         // Determine protocol based on TLS setting
-        String saslProtocol = this.certAssembly != null ? "SASL_SSL" : "SASL_PLAINTEXT";
+        String saslProtocol = this.certAssembly != null ? Listener.SASL_SSL : Listener.SASL_PLAINTEXT;
         String securityProtocolMap = this.configureListenerSecurityProtocolMap(saslProtocol);
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, saslProtocol);
         properties.setProperty("listener.security.protocol.map", securityProtocolMap);
@@ -795,7 +760,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         // Callback handler classes
         final String callbackHandler = "io.strimzi.kafka.oauth.server.plain.JaasServerOauthOverPlainValidatorCallbackHandler";
 
-        for (ListenerConfig listener : this.listeners) {
+        for (Listener listener : this.listeners) {
             String listenerName = listener.name().toLowerCase(Locale.ROOT);
             properties.setProperty("listener.name." + listenerName + ".plain.sasl.jaas.config", jaasConfig);
             properties.setProperty("listener.name." + listenerName + ".plain.sasl.server.callback.handler.class", callbackHandler);
@@ -812,7 +777,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         properties.setProperty("sasl.mechanism.inter.broker.protocol", "OAUTHBEARER");
 
         // Determine protocol based on TLS setting
-        String saslProtocol = this.certAssembly != null ? "SASL_SSL" : "SASL_PLAINTEXT";
+        String saslProtocol = this.certAssembly != null ? Listener.SASL_SSL : Listener.SASL_PLAINTEXT;
         String securityProtocolMap = this.configureListenerSecurityProtocolMap(saslProtocol);
         securityProtocolMap = ensureControllerMapping(securityProtocolMap, saslProtocol);
 
@@ -827,7 +792,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         final String serverCallbackHandler = "io.strimzi.kafka.oauth.server.JaasServerOauthValidatorCallbackHandler";
         final String clientSideCallbackHandler = "io.strimzi.kafka.oauth.client.JaasClientOauthLoginCallbackHandler";
 
-        for (final ListenerConfig listener : this.listeners) {
+        for (final Listener listener : this.listeners) {
             String listenerName = listener.name().toLowerCase(Locale.ROOT);
             properties.setProperty("listener.name." + listenerName + ".oauthbearer.sasl.jaas.config", jaasConfig);
             properties.setProperty("listener.name." + listenerName + ".oauthbearer.sasl.server.callback.handler.class", serverCallbackHandler);
@@ -859,8 +824,8 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
         String result = (securityProtocolMap == null) ? "" : securityProtocolMap.trim();
 
         final String[] requiredMappings = (this.nodeRole == KafkaNodeRole.CONTROLLER)
-            ? new String[]{"CONTROLLER:", "CONTROLLER_EXTERNAL:"}
-            : new String[]{"CONTROLLER:"};
+            ? new String[]{Listener.CONTROLLER + ":", Listener.CONTROLLER_EXTERNAL + ":"}
+            : new String[]{Listener.CONTROLLER + ":"};
 
         for (final String prefix : requiredMappings) {
             if (!result.contains(prefix)) {
@@ -879,13 +844,13 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
     /* test */ String getClientListenerProtocol() {
         boolean hasSasl = this.authenticationType != AuthenticationType.NONE;
         if (this.certAssembly != null && hasSasl) {
-            return "SASL_SSL";
+            return Listener.SASL_SSL;
         } else if (this.certAssembly != null) {
-            return "SSL";
+            return Listener.SSL;
         } else if (hasSasl) {
-            return "SASL_PLAINTEXT";
+            return Listener.SASL_PLAINTEXT;
         } else {
-            return "PLAINTEXT";
+            return Listener.PLAINTEXT;
         }
     }
 
@@ -931,7 +896,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             initializeProxy();
             // Return the host-accessible proxy address
             final int mappedPort = proxyContainer.getMappedPort(TOXIPROXY_PORT_BASE + this.nodeId);
-            return String.format("PLAINTEXT://%s:%d", proxyContainer.getHost(), mappedPort);
+            return String.format("%s://%s:%d", Listener.PLAINTEXT, proxyContainer.getHost(), mappedPort);
         }
         return bootstrapServersProvider.apply(this);
     }
@@ -950,9 +915,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
             final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
-            return String.format("PLAINTEXT://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
+            return String.format("%s://%s:%d", Listener.PLAINTEXT, TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
-        return String.format("PLAINTEXT://%s%d:%d", NETWORK_ALIAS_PREFIX, nodeId, INTER_BROKER_LISTENER_PORT);
+        return String.format("%s://%s%d:%d", Listener.PLAINTEXT, NETWORK_ALIAS_PREFIX, nodeId, INTER_BROKER_LISTENER_PORT);
     }
 
     /**
@@ -973,7 +938,7 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
 
         // Controller-only nodes use CONTROLLER_EXTERNAL listener name (external access)
         // Combined-mode nodes keep CONTROLLER listener name
-        final String listenerName = (this.nodeRole == KafkaNodeRole.CONTROLLER) ? "CONTROLLER_EXTERNAL" : "CONTROLLER";
+        final String listenerName = (this.nodeRole == KafkaNodeRole.CONTROLLER) ? Listener.CONTROLLER_EXTERNAL : Listener.CONTROLLER;
 
         if (proxyContainer != null) {
             initializeProxy();
@@ -1000,9 +965,9 @@ public class StrimziKafkaContainer extends GenericContainer<StrimziKafkaContaine
             initializeProxy();
             // Return the network-accessible proxy address (using toxiproxy network alias)
             final int listenPort = TOXIPROXY_PORT_BASE + this.nodeId;
-            return String.format("CONTROLLER://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
+            return String.format(Listener.CONTROLLER + "://%s:%d", TOXIPROXY_NETWORK_ALIAS, listenPort);
         }
-        return String.format("CONTROLLER://%s%d:%d", NETWORK_ALIAS_PREFIX, nodeId, StrimziKafkaContainer.CONTROLLER_PORT);
+        return String.format("%s://%s%d:%d", Listener.CONTROLLER, NETWORK_ALIAS_PREFIX, nodeId, StrimziKafkaContainer.CONTROLLER_PORT);
     }
 
     /**

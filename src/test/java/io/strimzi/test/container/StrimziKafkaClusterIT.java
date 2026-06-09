@@ -352,7 +352,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat(controllers.length, is(3));
 
         for (String controller : controllers) {
-            assertThat(controller, matchesPattern("CONTROLLER://broker-[0-9]+:9094"));
+            assertThat(controller, matchesPattern(Listener.CONTROLLER + "://broker-[0-9]+:9094"));
         }
     }
 
@@ -904,7 +904,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat(systemUnderTest.getClientKeyStoreBytes(), is(notNullValue()));
 
         String bootstrapServers = systemUnderTest.getBootstrapServers();
-        assertThat(bootstrapServers, CoreMatchers.containsString("SSL://"));
+        assertThat(bootstrapServers, CoreMatchers.containsString(Listener.SSL + "://"));
 
         Path truststorePath = Files.createTempFile("truststore", ".p12");
         Files.write(truststorePath, systemUnderTest.getClientTrustStoreBytes());
@@ -989,7 +989,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
         assertThat(systemUnderTest.getControllers().size(), is(1));
 
         String bootstrapServers = systemUnderTest.getBootstrapServers();
-        assertThat(bootstrapServers, CoreMatchers.containsString("SSL://"));
+        assertThat(bootstrapServers, CoreMatchers.containsString(Listener.SSL + "://"));
 
         Path truststorePath = Files.createTempFile("truststore", ".p12");
         Files.write(truststorePath, systemUnderTest.getClientTrustStoreBytes());
@@ -1051,7 +1051,7 @@ public class StrimziKafkaClusterIT extends AbstractIT {
             assertThat(systemUnderTest.isTlsEnabled(), is(true));
 
             String bootstrapServers = systemUnderTest.getBootstrapServers();
-            assertThat(bootstrapServers, CoreMatchers.containsString("SASL_SSL://"));
+            assertThat(bootstrapServers, CoreMatchers.containsString(Listener.SASL_SSL + "://"));
 
             Path truststorePath = Files.createTempFile("truststore", ".p12");
             Files.write(truststorePath, systemUnderTest.getClientTrustStoreBytes());

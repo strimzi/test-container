@@ -64,7 +64,7 @@ public class StrimziKafkaContainerIT extends AbstractIT {
 
         verify();
 
-        assertThat(systemUnderTest.getBootstrapServers(), is("PLAINTEXT://" +
+        assertThat(systemUnderTest.getBootstrapServers(), is(Listener.PLAINTEXT + "://" +
             systemUnderTest.getHost() + ":" + systemUnderTest.getMappedPort(9092)));
     }
 

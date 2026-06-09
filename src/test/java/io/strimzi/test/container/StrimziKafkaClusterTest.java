@@ -824,7 +824,7 @@ public class StrimziKafkaClusterTest {
     @Test
     void testDedicatedRolesClusterWithBootstrapServersProviderAppliedToBrokers() {
         Function<StrimziKafkaContainer, String> customProvider =
-            c -> String.format("PLAINTEXT://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
+            c -> String.format(Listener.PLAINTEXT + "://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(2)
@@ -843,7 +843,7 @@ public class StrimziKafkaClusterTest {
     @Test
     void testCombinedRolesClusterWithBootstrapServersProviderApplied() {
         Function<StrimziKafkaContainer, String> customProvider =
-            c -> String.format("PLAINTEXT://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
+            c -> String.format(Listener.PLAINTEXT + "://custom-host-%d:%d", c.getNodeId(), StrimziKafkaContainer.KAFKA_PORT);
 
         StrimziKafkaCluster cluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
             .withNumberOfBrokers(3)
@@ -1094,7 +1094,7 @@ public class StrimziKafkaClusterTest {
 
         for (StrimziKafkaContainer container : cluster.getNodes()) {
             assertThat("Combined node should have TLS enabled (SSL protocol)",
-                container.getClientListenerProtocol(), is("SSL"));
+                container.getClientListenerProtocol(), is(Listener.SSL));
         }
     }
 
@@ -1111,12 +1111,12 @@ public class StrimziKafkaClusterTest {
 
         for (StrimziKafkaContainer container : cluster.getBrokers()) {
             assertThat("Broker should have TLS enabled",
-                container.getClientListenerProtocol(), is("SSL"));
+                container.getClientListenerProtocol(), is(Listener.SSL));
         }
 
         for (StrimziKafkaContainer container : cluster.getControllers()) {
             assertThat("Controller should have TLS enabled",
-                container.getClientListenerProtocol(), is("SSL"));
+                container.getClientListenerProtocol(), is(Listener.SSL));
         }
     }
 
