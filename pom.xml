@@ -124,8 +124,8 @@
         <maven.checkstyle.version>3.5.0</maven.checkstyle.version>
         <maven.gpg.version>1.6</maven.gpg.version>
         <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
-        <pit-junit-plugin.version>1.2.1</pit-junit-plugin.version>
-        <pit-plugin.version>1.18.1</pit-plugin.version>
+        <pit-junit-plugin.version>1.2.2</pit-junit-plugin.version>
+        <pit-plugin.version>1.25.4</pit-plugin.version>
 
         <junit4.version>4.13.2</junit4.version>
 
@@ -410,24 +410,21 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <targetClasses>
-                        <!-- we not want to include also WaitException, Utils, KafkaVersionService because we mainly
-                            focus mutation core classes (i.e., Strimzi*, KafkaContainer) -->
-                        <param>io.strimzi.test.container.Strimzi*</param>
-                        <param>io.strimzi.test.container.KafkaContainer</param>
-                    </targetClasses>
                     <targetTests>
-                        <!-- include just UTs within mutation and prevent image pulling -->
-                        <param>io.strimzi.test.container.Strimzi*Test</param>
+                        <param>io.strimzi.test.container.*Test</param>
                     </targetTests>
+                    <excludedTestClasses>
+                        <param>io.strimzi.test.container.*IT</param>
+                    </excludedTestClasses>
                     <avoidCallsTo>
                         <avoidCallsTo>java.util.logging</avoidCallsTo>
                         <avoidCallsTo>org.apache.log4j</avoidCallsTo>
                         <avoidCallsTo>org.slf4j</avoidCallsTo>
                         <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
                     </avoidCallsTo>
-                    <mutationThreshold>100</mutationThreshold>
-                    <coverageThreshold>75</coverageThreshold>
+                    <mutationThreshold>78.58824</mutationThreshold>
+                    <coverageThreshold>61.99543</coverageThreshold>
+                    <thresholdPrecision>5</thresholdPrecision>
                     <verbose>true</verbose>
                 </configuration>
             </plugin>
