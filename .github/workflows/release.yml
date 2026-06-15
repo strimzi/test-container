@@ -29,6 +29,12 @@ jobs:
           releaseVersion: ${{ inputs.releaseVersion }}
           artifactSuffix: "strimzi-test-container"
 
+      # deploy-java skips tests, and build workflow can not run them on release branches
+      # because RC images are not published yet. Here, kafka_versions.json is already
+      # updated with the releaseVersion, so tests run against the correct images.
+      - name: Run tests
+        run: mvn -B verify
+
       - uses: strimzi/github-actions/.github/actions/build/deploy-java@v1
         with:
           gpgPassphrase: ${{ secrets.GPG_PASSPHRASE }}
